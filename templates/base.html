@@ -4,12 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Seller Notes</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
 </head>
 <body>
   <header class="top">
     <div class="wrap top-inner">
-      <span class="brand">Seller Notes <small>Amazon.es</small></span>
+      <a class="brand" href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='logo.svg') }}" alt="" width="34" height="34">
+        <span><span class="brand-name">Seller Notes</span><span class="brand-sub">The Blue Project · Amazon.es</span></span>
+      </a>
       <nav>
         <a href="{{ url_for('listings') }}" class="{{ 'on' if page == 'listings' }}">Mis listings</a>
         <a href="{{ url_for('buybox') }}" class="{{ 'on' if page == 'buybox' }}">Buy Box</a>
@@ -19,6 +23,7 @@
   <main class="wrap">
     {% block content %}{% endblock %}
   </main>
+  <footer class="wrap foot">Seller Notes · The Blue Project</footer>
   {% block scripts %}{% endblock %}
 </body>
 </html>
