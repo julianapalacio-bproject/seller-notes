@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Mis listings</h1>
+    <p class="muted">
+      {% if ts %}Última consulta: {{ ts | local }}{% else %}Todavía no hay consultas{% endif %}
+      {% if ignored %} · {{ ignored }} SKU ignorados (skus_ignorados.txt){% endif %}
+    </p>
+  </div>
+  <form method="post" action="{{ url_for('refresh_listings') }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Consultando…'">
+    <button type="submit" {{ 'disabled' if not has_seller_id }}>Actualizar ahora</button>
+  </form>
+</div>
+
+{% if error %}<div class="alert">Error al consultar Amazon: {{ error }}</div>{% endif %}
+{% if not has_seller_id %}<div class="alert">Falta MY_SELLER_ID en el archivo .env.</div>{% endif %}
+
+<section class="tiles">
+  {% for label, value, tone in tiles %}
+  <div class="tile {{ tone if value else '' }}"><span class="num">{{ value }}</span><span>{{ label }}</span></div>
+  {% endfor %}
+</section>
+
+{% if rows %}
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr><th>Estado</th><th>SKU / producto</th><th>ASIN</th><th class="r">Precio</th><th>Canal</th><th class="r">Stock</th><th>Incidencias</th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><span class="badge s-{{ r.estado | replace(' ', '') | replace(',', '') | lower }}">{{ r.estado | capitalize }}</span></td>
+      <td><strong>{{ r.sku }}</strong><div class="muted small">{{ r.nombre }}</div></td>
+      <td><a href="https://www.amazon.es/dp/{{ r.asin }}" target="_blank" rel="noopener">{{ r.asin }}</a></td>
+      <td class="r">{{ '%.2f €' % r.precio if r.precio is not none else '—' }}</td>
+      <td>{{ r.canal }}</td>
+      <td class="r {{ 'zero' if r.stock == 0 }}">{{ r.stock if r.stock is not none else '?' }}</td>
+      <td>
+        {% if r.lista_incidencias %}
+        <details>
+          <summary>{% if r.errores %}<span class="pill bad">{{ r.errores }} error{{ 'es' if r.errores > 1 }}</span>{% endif %}
+                   {% if r.avisos %}<span class="pill warn">{{ r.avisos }} aviso{{ 's' if r.avisos > 1 }}</span>{% endif %}</summary>
+          <ul class="issues">{% for i in r.lista_incidencias %}<li>{{ i }}</li>{% endfor %}</ul>
+        </details>
+        {% else %}<span class="muted">—</span>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty">No hay datos de listings. Pulsa «Actualizar ahora».</p>
+{% endif %}
+{% endblock %}

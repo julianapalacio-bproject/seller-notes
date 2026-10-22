@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Buy Box</h1>
+    <p class="muted">{{ day.strftime('%d/%m/%Y') }}{% if is_today %} · hoy{% endif %} · se recoge cada 5 min con «2 - Iniciar monitor»</p>
+  </div>
+  <div class="daynav">
+    <a class="btn" href="{{ url_for('buybox', dia=prev_day.isoformat()) }}">← Día anterior</a>
+    {% if not is_today %}<a class="btn" href="{{ url_for('buybox', dia=next_day.isoformat()) }}">Día siguiente →</a>
+    <a class="btn" href="{{ url_for('buybox') }}">Hoy</a>{% endif %}
+  </div>
+</div>
+
+{% for a in asins %}
+<section class="card">
+  <div class="card-head">
+    <h2><a href="https://www.amazon.es/dp/{{ a.asin }}" target="_blank" rel="noopener">{{ a.asin }}</a></h2>
+    {% if a.snaps %}<span class="muted small">{{ a.snaps }} consultas · última {{ a.ts | local('%H:%M') }}</span>{% endif %}
+  </div>
+
+  {% if not a.snaps %}
+  <p class="empty">Sin datos este día.</p>
+  {% else %}
+  <div class="tiles">
+    <div class="tile {{ 'ok' if a.bb_is_me else '' }}"><span class="num sm">{{ a.bb_seller }}</span><span>Tiene la Buy Box</span></div>
+    <div class="tile"><span class="num">{{ '%.2f €' % a.bb_price if a.bb_price is not none else '—' }}</span>
+      <span>Precio Buy Box{% if a.price_min is not none and a.price_min != a.price_max %} (mín {{ '%.2f' % a.price_min }} · máx {{ '%.2f' % a.price_max }}){% endif %}</span></div>
+    <div class="tile"><span class="num">{{ a.offers_n }}</span><span>Ofertas</span></div>
+    <div class="tile"><span class="num">{{ a.my_stock if a.my_stock is not none else '—' }}</span><span>Mi stock FBA</span></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h3>Precio de la Buy Box</h3>
+      <div class="chart"><canvas data-chart='{{ a.chart }}'></canvas></div>
+    </div>
+    <div>
+      <h3>Reparto de la Buy Box</h3>
+      <ul class="bars">
+        {% for who, pct, me in a.share %}
+        <li class="{{ 'me' if me }}"><span class="bar" style="width: {{ '%.1f' % pct }}%"></span>
+          <span class="bar-label">{{ '%.1f' % pct }}% · {{ who }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h3>Ofertas ahora</h3>
+      <div class="table-scroll">
+      <table class="compact">
+        <thead><tr><th>Vendedor</th><th class="r">Precio + envío</th><th>Canal</th></tr></thead>
+        <tbody>
+        {% for o in a.offers %}
+          <tr class="{{ 'me' if o.is_me }}">
+            <td>{% if o.is_bb %}<span class="pill ok">Buy Box</span> {% endif %}{{ o.seller }}</td>
+            <td class="r">{{ '%.2f €' % o.landed }}</td>
+            <td>{{ 'FBA' if o.fba else 'FBM' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <div>
+      <h3>Movimientos</h3>
+      {% if a.events %}
+      <ul class="events">
+        {% for e in a.events %}
+        <li><span class="muted">{{ e.ts | local('%H:%M') }}</span> <span class="pill ev-{{ e.type }}">{{ e.label }}</span>
+          {{ e.seller }}{% if e.old or e.new %} <span class="muted">{{ e.old or '' }} → {{ e.new or '' }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">Sin movimientos.</p>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const css = getComputedStyle(document.documentElement);
+  const accent = css.getPropertyValue('--accent').trim();
+  const muted = css.getPropertyValue('--muted').trim();
+  const grid = css.getPropertyValue('--line').trim();
+  document.querySelectorAll('canvas[data-chart]').forEach(c => {
+    const d = JSON.parse(c.dataset.chart);
+    new Chart(c, {
+      type: 'line',
+      data: { labels: d.labels, datasets: [{ label: 'Precio Buy Box (€)', data: d.prices, borderColor: accent,
+              backgroundColor: accent, stepped: true, pointRadius: 0, borderWidth: 2, spanGaps: false }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+                 interaction: { mode: 'index', intersect: false },
+                 scales: { x: { ticks: { color: muted, maxTicksLimit: 8 }, grid: { color: grid } },
+                           y: { ticks: { color: muted, callback: v => v.toFixed(2) + ' €' }, grid: { color: grid }, grace: '5%' } } }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+# Claves de Amazon: NUNCA en el historial
+.env
+
+# Datos que genera el monitor
+*.db
+*.db-journal
+informes/
+
+# Archivos viejos y temporales
+_to_delete/
+__pycache__/
+.DS_Store

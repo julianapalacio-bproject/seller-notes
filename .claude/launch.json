@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "panel", "runtimeExecutable": "python3", "runtimeArgs": ["panel.py", "--no-abrir"], "port": 5050 }
+  ]
+}

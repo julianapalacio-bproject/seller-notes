@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seller Notes</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <span class="brand">Seller Notes <small>Amazon.es</small></span>
+      <nav>
+        <a href="{{ url_for('listings') }}" class="{{ 'on' if page == 'listings' }}">Mis listings</a>
+        <a href="{{ url_for('buybox') }}" class="{{ 'on' if page == 'buybox' }}">Buy Box</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

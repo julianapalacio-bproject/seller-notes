@@ -1,0 +1,5 @@
+# SKU que Seller Notes NO debe analizar: uno por línea.
+# Para volver a analizar uno, borra su línea o ponle # delante.
+APV_MEN_ROSM_500
+ARQ-POLLO-CALCIO-100G
+ARQ-BACALAO-100G
