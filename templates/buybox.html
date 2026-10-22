@@ -1,89 +1,127 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="head">
-  <div>
-    <h1>Buy Box</h1>
-    <p class="muted">{{ day.strftime('%d/%m/%Y') }}{% if is_today %} · hoy{% endif %} · se recoge cada 5 min con «2 - Iniciar monitor»</p>
-  </div>
-  <div class="daynav">
-    <a class="btn" href="{{ url_for('buybox', dia=prev_day.isoformat()) }}">← Día anterior</a>
-    {% if not is_today %}<a class="btn" href="{{ url_for('buybox', dia=next_day.isoformat()) }}">Día siguiente →</a>
-    <a class="btn" href="{{ url_for('buybox') }}">Hoy</a>{% endif %}
-  </div>
-</div>
+<div class="bb-layout">
+  <aside class="bb-menu">
+    <h3>Productos vigilados</h3>
+    <ul>
+      {% for m in menu %}
+      <li>
+        <a href="{{ url_for('buybox', asin=m.asin, periodo=period, dia=day.isoformat()) }}" class="{{ 'on' if m.asin == asin }}">
+          <span class="dot {{ 'me' if m.bb_is_me else ('other' if m.has_data else 'none') }}"
+                title="{{ 'Tienes la Buy Box' if m.bb_is_me else ('La Buy Box la tiene otro' if m.has_data else 'Sin datos aún') }}"></span>
+          <span class="m-text">
+            <strong>{{ m.sku or m.asin }}</strong>
+            <span class="muted small">{{ m.asin }}{% if m.bb_price is not none %} · {{ '%.2f €' % m.bb_price }}{% endif %}</span>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="muted small legend"><span class="dot me"></span> tú tienes la Buy Box &nbsp; <span class="dot other"></span> otro vendedor</p>
+  </aside>
 
-{% for a in asins %}
-<section class="card">
-  <div class="card-head">
-    <h2><a href="https://www.amazon.es/dp/{{ a.asin }}" target="_blank" rel="noopener">{{ a.asin }}</a></h2>
-    {% if a.snaps %}<span class="muted small">{{ a.snaps }} consultas · última {{ a.ts | local('%H:%M') }}</span>{% endif %}
-  </div>
-
-  {% if not a.snaps %}
-  <p class="empty">Sin datos este día.</p>
+  <div class="bb-main">
+  {% if not a %}
+    <p class="empty">No hay ASIN configurados en ASINS (archivo .env).</p>
   {% else %}
-  <div class="tiles">
-    <div class="tile {{ 'ok' if a.bb_is_me else '' }}"><span class="num sm">{{ a.bb_seller }}</span><span>Tiene la Buy Box</span></div>
-    <div class="tile"><span class="num">{{ '%.2f €' % a.bb_price if a.bb_price is not none else '—' }}</span>
-      <span>Precio Buy Box{% if a.price_min is not none and a.price_min != a.price_max %} (mín {{ '%.2f' % a.price_min }} · máx {{ '%.2f' % a.price_max }}){% endif %}</span></div>
-    <div class="tile"><span class="num">{{ a.offers_n }}</span><span>Ofertas</span></div>
-    <div class="tile"><span class="num">{{ a.my_stock if a.my_stock is not none else '—' }}</span><span>Mi stock FBA</span></div>
-  </div>
-
-  <div class="grid2">
-    <div>
-      <h3>Precio de la Buy Box</h3>
-      <div class="chart"><canvas data-chart='{{ a.chart }}'></canvas></div>
-    </div>
-    <div>
-      <h3>Reparto de la Buy Box</h3>
-      <ul class="bars">
-        {% for who, pct, me in a.share %}
-        <li class="{{ 'me' if me }}"><span class="bar" style="width: {{ '%.1f' % pct }}%"></span>
-          <span class="bar-label">{{ '%.1f' % pct }}% · {{ who }}</span></li>
-        {% endfor %}
-      </ul>
-    </div>
-  </div>
-
-  <div class="grid2">
-    <div>
-      <h3>Ofertas ahora</h3>
-      <div class="table-scroll">
-      <table class="compact">
-        <thead><tr><th>Vendedor</th><th class="r">Precio + envío</th><th>Canal</th></tr></thead>
-        <tbody>
-        {% for o in a.offers %}
-          <tr class="{{ 'me' if o.is_me }}">
-            <td>{% if o.is_bb %}<span class="pill ok">Buy Box</span> {% endif %}{{ o.seller }}</td>
-            <td class="r">{{ '%.2f €' % o.landed }}</td>
-            <td>{{ 'FBA' if o.fba else 'FBM' }}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    <div class="head">
+      <div>
+        <h1>{{ a.sku or a.asin }}</h1>
+        <p class="muted">
+          <a href="https://www.amazon.es/dp/{{ a.asin }}" target="_blank" rel="noopener">{{ a.asin }}</a>
+          {% if a.nombre %} · {{ a.nombre }}{% endif %}
+        </p>
       </div>
     </div>
-    <div>
-      <h3>Movimientos</h3>
-      {% if a.events %}
-      <ul class="events">
-        {% for e in a.events %}
-        <li><span class="muted">{{ e.ts | local('%H:%M') }}</span> <span class="pill ev-{{ e.type }}">{{ e.label }}</span>
-          {{ e.seller }}{% if e.old or e.new %} <span class="muted">{{ e.old or '' }} → {{ e.new or '' }}</span>{% endif %}</li>
+
+    <div class="toolbar">
+      <div class="seg">
+        {% for key, (label, n) in periods.items() %}
+        <a href="{{ url_for('buybox', asin=asin, periodo=key, dia=day.isoformat()) }}" class="{{ 'on' if key == period }}">{{ label }}</a>
         {% endfor %}
-      </ul>
-      {% else %}<p class="muted">Sin movimientos.</p>{% endif %}
+      </div>
+      <div class="daynav">
+        <a class="btn" href="{{ url_for('buybox', asin=asin, periodo=period, dia=prev_day.isoformat()) }}">←</a>
+        <span class="range">{% if period == 'dia' %}{{ day.strftime('%d/%m/%Y') }}{% else %}{{ first_day.strftime('%d/%m') }} – {{ day.strftime('%d/%m/%Y') }}{% endif %}</span>
+        {% if not is_today %}
+        <a class="btn" href="{{ url_for('buybox', asin=asin, periodo=period, dia=next_day.isoformat()) }}">→</a>
+        <a class="btn" href="{{ url_for('buybox', asin=asin, periodo=period) }}">Hoy</a>
+        {% endif %}
+      </div>
     </div>
-  </div>
+
+    {% if not a.snaps %}
+    <p class="empty">Sin datos en este periodo.{% if is_today %} El monitor («2 - Iniciar monitor») empieza a recogerlos en cuanto está en marcha.{% endif %}</p>
+    {% else %}
+    <section class="tiles">
+      <div class="tile {{ 'ok' if a.bb_is_me else '' }}"><span class="num sm">{{ a.bb_seller }}</span><span>Tiene la Buy Box ({{ a.ts | local }})</span></div>
+      <div class="tile"><span class="num">{{ '%.2f €' % a.bb_price if a.bb_price is not none else '—' }}</span>
+        <span>Precio Buy Box{% if a.price_min is not none and a.price_min != a.price_max %} · mín {{ '%.2f' % a.price_min }} · máx {{ '%.2f' % a.price_max }}{% endif %}</span></div>
+      <div class="tile"><span class="num">{{ a.bb_changes }}</span><span>Cambios de ganador</span></div>
+      <div class="tile"><span class="num">{{ a.offers_n }}</span><span>Ofertas</span></div>
+      <div class="tile"><span class="num">{{ a.my_stock if a.my_stock is not none else '—' }}</span><span>Mi stock FBA</span></div>
+    </section>
+
+    <section class="card">
+      <div class="grid2">
+        <div>
+          <h3>Precio de la Buy Box · {{ a.snaps }} consultas</h3>
+          <div class="chart"><canvas data-chart='{{ a.chart }}'></canvas></div>
+        </div>
+        <div>
+          <h3>Quién tuvo la Buy Box</h3>
+          <ul class="bars">
+            {% for who, pct, me in a.share %}
+            <li class="{{ 'me' if me }}"><span class="bar" style="width: {{ '%.1f' % pct }}%"></span>
+              <span class="bar-label">{{ '%.1f' % pct }}% · {{ who }}</span></li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="grid2">
+        <div>
+          <h3>Ofertas en la última consulta</h3>
+          <div class="table-scroll">
+          <table class="compact">
+            <thead><tr><th>Vendedor</th><th class="r">Precio + envío</th><th>Canal</th></tr></thead>
+            <tbody>
+            {% for o in a.offers %}
+              <tr class="{{ 'me' if o.is_me }}">
+                <td>{% if o.is_bb %}<span class="pill ok">Buy Box</span> {% endif %}{{ o.seller }}</td>
+                <td class="r">{{ '%.2f €' % o.landed }}</td>
+                <td>{{ 'FBA' if o.fba else 'FBM' }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        <div>
+          <h3>Historial de movimientos</h3>
+          {% if a.events %}
+          <ul class="events">
+            {% for e in a.events %}
+            <li><span class="muted">{{ e.ts | local }}</span> <span class="pill ev-{{ e.type }}">{{ e.label }}</span>
+              {{ e.seller }}{% if e.old or e.new %} <span class="muted">{{ e.old or '' }} → {{ e.new or '' }}</span>{% endif %}</li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="muted">Sin movimientos en este periodo.</p>{% endif %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
   {% endif %}
-</section>
-{% endfor %}
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+  document.querySelector('.bb-menu a.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
   const css = getComputedStyle(document.documentElement);
   const accent = css.getPropertyValue('--accent').trim();
   const muted = css.getPropertyValue('--muted').trim();

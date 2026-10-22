@@ -102,7 +102,35 @@ details summary::-webkit-details-marker { display: none; }
 .events { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; font-size: 13px; }
 .events li { padding: 6px 0; border-bottom: 1px solid var(--line); }
 
+/* Buy Box: menú de productos + historial */
+.bb-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
+.bb-layout > * { min-width: 0; }
+.bb-menu { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 6px 8px 10px; position: sticky; top: 16px; }
+.bb-menu h3 { margin: 10px 8px 8px; }
+.bb-menu ul { list-style: none; margin: 0; padding: 0; }
+.bb-menu li a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text); }
+.bb-menu li a:hover { background: var(--accent-soft); text-decoration: none; }
+.bb-menu li a.on { background: var(--accent); color: #fff; }
+.bb-menu li a.on .muted { color: rgba(255, 255, 255, .8); }
+.m-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.m-text strong { font-size: 14px; overflow-wrap: anywhere; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.dot.me { background: var(--ok); } .dot.other { background: var(--warn); } .dot.none { background: var(--line); }
+.bb-menu li a.on .dot { box-shadow: 0 0 0 2px #fff; }
+.legend { margin: 10px 8px 0; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
+.seg a { padding: 6px 14px; border-radius: 7px; color: var(--muted); font-weight: 600; font-size: 14px; }
+.seg a.on { background: var(--accent); color: #fff; }
+.seg a:hover { text-decoration: none; }
+.daynav { align-items: center; }
+.range { font-weight: 600; padding: 0 4px; }
+
 @media (max-width: 820px) {
+  .bb-layout { grid-template-columns: 1fr; }
+  .bb-menu { position: static; }
+  .bb-menu ul { display: flex; overflow-x: auto; gap: 4px; }
+  .bb-menu li a { white-space: nowrap; }
   .grid2 { grid-template-columns: 1fr; gap: 8px; }
   .top-inner { height: auto; padding: 10px 16px; flex-wrap: wrap; }
 }

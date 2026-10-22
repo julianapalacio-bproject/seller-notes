@@ -99,8 +99,35 @@ def refresh_listings():
 
 
 # ---------------------------------------------------------------- buy box
-def asin_day(con, asin, day, names):
-    start, end, s_utc, e_utc = day_range(day)
+PERIODS = {"dia": ("Día", 1), "7d": ("7 días", 7), "30d": ("30 días", 30)}
+
+
+def product_labels(con):
+    """{asin: (sku, nombre)} según la última consulta de tus listings."""
+    try:
+        rows = con.execute("SELECT asin, sku, nombre FROM listings l "
+                           "WHERE ts=(SELECT MAX(ts) FROM listings WHERE asin=l.asin)").fetchall()
+    except Exception:  # la tabla aún no existe
+        return {}
+    return {r[0]: (r[1], r[2]) for r in rows}
+
+
+def buybox_menu(con, names, labels):
+    """Una entrada por ASIN vigilado con quién tiene ahora la Buy Box."""
+    menu = []
+    for asin in sn.ASINS:
+        last = con.execute("SELECT bb_seller, bb_price FROM snapshots WHERE asin=? ORDER BY ts DESC, id DESC LIMIT 1",
+                           (asin,)).fetchone()
+        sku, nombre = labels.get(asin, ("", ""))
+        menu.append(dict(asin=asin, sku=sku, nombre=nombre, has_data=bool(last),
+                         bb_price=last[1] if last else None,
+                         bb_is_me=bool(last and sn.MY_SELLER_ID and last[0] == sn.MY_SELLER_ID)))
+    return menu
+
+
+def asin_history(con, asin, start, end, names):
+    s_utc, e_utc = start.astimezone(timezone.utc).isoformat(), end.astimezone(timezone.utc).isoformat()
+    label_fmt = "%H:%M" if end - start <= timedelta(days=1) else "%d/%m %H:%M"
     snaps = con.execute(
         "SELECT id, ts, total_offers, bb_seller, bb_price, my_stock FROM snapshots "
         "WHERE asin=? AND ts>=? AND ts<? ORDER BY ts", (asin, s_utc, e_utc)).fetchall()
@@ -114,6 +141,7 @@ def asin_day(con, asin, day, names):
     for cur, nxt in zip(snaps, snaps[1:] + [None]):
         t0 = datetime.fromisoformat(cur[1])
         t1 = datetime.fromisoformat(nxt[1]) if nxt else min(end, now)
+        t1 = min(t1, t0 + timedelta(minutes=2 * sn.INTERVAL_MINUTES))  # huecos con el monitor apagado no cuentan
         share[cur[3]] += max((t1 - t0).total_seconds(), 0)
     tot = sum(share.values()) or 1
     data["share"] = [(sn.name(s, names), 100 * v / tot, s == sn.MY_SELLER_ID and bool(s))
@@ -124,7 +152,10 @@ def asin_day(con, asin, day, names):
                 bb_is_me=bool(sn.MY_SELLER_ID) and last[3] == sn.MY_SELLER_ID, bb_price=last[4], my_stock=last[5])
     prices = [s[4] for s in snaps if s[4] is not None]
     data["price_min"], data["price_max"] = (min(prices), max(prices)) if prices else (None, None)
-    data["chart"] = json.dumps({"labels": [local(s[1], "%H:%M") for s in snaps],
+    changes = con.execute("SELECT COUNT(*) FROM events WHERE asin=? AND ts>=? AND ts<? AND type='cambio_buybox'",
+                          (asin, s_utc, e_utc)).fetchone()[0]
+    data["bb_changes"] = changes
+    data["chart"] = json.dumps({"labels": [local(s[1], label_fmt) for s in snaps],
                                 "prices": [s[4] for s in snaps],
                                 "offers": [s[2] for s in snaps]})
     # Amazon a veces marca varias ofertas como ganadoras; se señala solo la que guardó el monitor
@@ -138,7 +169,7 @@ def asin_day(con, asin, day, names):
     data["events"] = [
         dict(ts=r[0], label=EVENT_LABELS.get(r[1], r[1]), type=r[1], seller=sn.name(r[2], names), old=r[3], new=r[4])
         for r in con.execute("SELECT ts, type, seller_id, old_value, new_value FROM events "
-                             "WHERE asin=? AND ts>=? AND ts<? ORDER BY ts DESC", (asin, s_utc, e_utc))]
+                             "WHERE asin=? AND ts>=? AND ts<? ORDER BY ts DESC LIMIT 500", (asin, s_utc, e_utc))]
     return data
 
 
@@ -146,14 +177,30 @@ def asin_day(con, asin, day, names):
 def buybox():
     con = sn.db()
     names = sn.seller_names()
+    labels = product_labels(con)
+    menu = buybox_menu(con, names, labels)
+    asin = request.args.get("asin")
+    if asin not in sn.ASINS:
+        asin = sn.ASINS[0] if sn.ASINS else None
+    period = request.args.get("periodo", "dia")
+    if period not in PERIODS:
+        period = "dia"
+    today = datetime.now(sn.TZ).date()
     try:
         day = datetime.strptime(request.args.get("dia", ""), "%Y-%m-%d").date()
     except ValueError:
-        day = datetime.now(sn.TZ).date()
-    asins = [asin_day(con, a, day, names) for a in sn.ASINS]
-    return render_template("buybox.html", page="buybox", asins=asins, day=day,
-                           prev_day=day - timedelta(days=1), next_day=day + timedelta(days=1),
-                           is_today=day == datetime.now(sn.TZ).date())
+        day = today
+    # "dia" muestra ese día; 7d/30d muestran los N días que terminan ese día
+    days = PERIODS[period][1]
+    start, _, _, _ = day_range(day - timedelta(days=days - 1))
+    _, end, _, _ = day_range(day)
+    data = asin_history(con, asin, start, end, names) if asin else None
+    if data is not None:
+        data["sku"], data["nombre"] = labels.get(asin, ("", ""))
+    return render_template("buybox.html", page="buybox", menu=menu, a=data, asin=asin,
+                           period=period, periods=PERIODS, day=day, first_day=day - timedelta(days=days - 1),
+                           prev_day=day - timedelta(days=days), next_day=day + timedelta(days=days),
+                           is_today=day >= today)
 
 
 if __name__ == "__main__":

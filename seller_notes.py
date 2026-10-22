@@ -593,6 +593,12 @@ def main():
         return poll_once(con)
     if cmd == "listings":
         return listings_status(con)
+    import fcntl
+    lock = open(BASE / ".monitor.lock", "w")
+    try:  # un solo monitor a la vez: dos duplicarían las consultas y los datos
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        sys.exit("Ya hay un monitor en marcha en otra ventana. Ciérralo (Ctrl+C) antes de abrir otro.")
     print(f"Seller Notes · vigilando {', '.join(ASINS)} cada {INTERVAL_MINUTES:g} min. Ctrl+C para parar.", flush=True)
     last_report_day = datetime.now(TZ).date()
     last_listings = 0.0
