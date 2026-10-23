@@ -4,14 +4,14 @@ Seller Notes — analizador de catálogos de proveedor (Amazon.es).
 
 A partir de un Excel/CSV con EAN y precio de coste busca cada producto en Amazon.es y calcula:
 ASIN, BSR, nº de vendedores, precio de la Buy Box, comisiones de Amazon + FBA, beneficio, ROI y
-margen (todo sin IVA), y si tu cuenta puede venderlo (marcas que requieren aprobación).
+margen (todo sin IVA).
 
 Uso:
   python analizador.py catalogo.xlsx    # detecta las columnas solo y guarda el Excel en informes/catalogos/
 Desde el panel: menú «Catálogos».
 
-APIs (roles Precios + Publicación de productos): Catalog Items, Product Pricing (lotes),
-Product Fees (lotes) y Listings Restrictions.
+APIs (roles Precios + Publicación de productos): Catalog Items, Product Pricing (lotes)
+y Product Fees (lotes).
 """
 import csv
 import io
@@ -257,19 +257,6 @@ def fees_batch(prices, progress):
     return out
 
 
-def restriction(asin):
-    """('OK' | 'Requiere aprobación' | 'No disponible', motivo) para tu cuenta."""
-    j = call("GET", "/listings/2021-08-01/restrictions",
-             params={"asin": asin, "sellerId": sn.MY_SELLER_ID, "marketplaceIds": sn.MARKETPLACE_ID,
-                     "conditionType": "new_new", "reasonLocale": "es_ES"})
-    reasons = [r for x in j.get("restrictions", []) for r in x.get("reasons", [])]
-    if not reasons:
-        return "OK", ""
-    codes = {r.get("reasonCode") for r in reasons}
-    label = "Requiere aprobación" if "APPROVAL_REQUIRED" in codes else "No disponible"
-    return label, "; ".join(r.get("message", "") for r in reasons)
-
-
 def buybox_from_offers(payload):
     """(precio Buy Box con envío, de dónde sale, nº ofertas, nº FBA, Amazon vende, yo vendo)."""
     total, offers = sn.parse_payload(payload)
@@ -308,7 +295,7 @@ def analyze(items, envio_unidad=0.0, progress=lambda pct, msg: None):
     asins = sorted({it["asin"] for it in items if it.get("asin")})
     secs = max(len(asins) - 20, 0) // 20 * 10
     progress(25, f"Consultando ofertas de {len(asins)} productos (≈{secs // 60 + 1} min)…")
-    offers = offers_batch(asins, lambda f: progress(25 + 45 * f, f"Consultando ofertas y Buy Box… {int(f * 100)}%"))
+    offers = offers_batch(asins, lambda f: progress(25 + 55 * f, f"Consultando ofertas y Buy Box… {int(f * 100)}%"))
 
     prices = {}
     for it in items:
@@ -323,27 +310,11 @@ def analyze(items, envio_unidad=0.0, progress=lambda pct, msg: None):
         elif it.get("asin"):
             it["nota"] = it["nota"] or "No se pudieron leer las ofertas"
 
-    progress(70, "Calculando comisiones de Amazon y FBA…")
-    fees = fees_batch(prices, lambda f: progress(70 + 15 * f, f"Calculando comisiones… {int(f * 100)}%"))
-
-    progress(85, "Comprobando si tu cuenta puede vender cada producto…")
-    restr = {}
-    if sn.MY_SELLER_ID:
-        for i, asin in enumerate(asins):
-            try:
-                restr[asin] = restriction(asin)
-            except PermissionError:
-                restr = {}
-                break
-            except Exception as e:
-                restr[asin] = ("?", str(e)[:200])
-            time.sleep(0.25)
-            progress(85 + 14 * (i + 1) / len(asins), f"Comprobando restricciones… {i + 1}/{len(asins)}")
+    progress(80, "Calculando comisiones de Amazon y FBA…")
+    fees = fees_batch(prices, lambda f: progress(80 + 19 * f, f"Calculando comisiones… {int(f * 100)}%"))
 
     for it in items:
         asin = it.get("asin")
-        if asin in restr:
-            it["restriccion"], it["restriccion_motivo"] = restr[asin]
         if asin in fees and it.get("precio"):
             it["comisiones"], it["comision_venta"], it["comision_fba"] = fees[asin]
             it["venta_sin_iva"] = round(it["precio"] / (1 + it["iva"] / 100), 2)
@@ -373,7 +344,6 @@ COLUMNS = [  # (campo, cabecera, ancho, formato)
     ("comision_venta", "Comisión venta", 11, "#,##0.00 €"), ("comision_fba", "Tarifa FBA", 10, "#,##0.00 €"),
     ("comisiones", "Comisiones total", 11, "#,##0.00 €"), ("beneficio", "Beneficio/ud", 11, "#,##0.00 €"),
     ("roi", "ROI %", 8, "0.0"), ("margen", "Margen %", 8, "0.0"),
-    ("restriccion", "¿Puedo venderlo?", 18, None), ("restriccion_motivo", "Motivo restricción", 40, None),
     ("otros_asins", "Otros ASIN con ese EAN", 20, None), ("nota", "Nota", 28, None),
 ]
 
@@ -472,7 +442,7 @@ def main():
     print(f"\n{len(items)} productos · {sum(1 for it in items if it.get('asin'))} en Amazon.es · {len(ok)} con ROI calculado")
     for it in sorted(ok, key=lambda x: -x["roi"])[:15]:
         print(f"  ROI {it['roi']:6.1f}%  {it['beneficio']:6.2f} €/ud  BSR {it.get('bsr') or '-':>7}  "
-              f"{it['asin']}  {it.get('restriccion', '')}  {it['nombre'][:45]}")
+              f"{it['asin']}  {it['nombre'][:45]}")
     print(f"\nGuardado en {out}")
 
 

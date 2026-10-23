@@ -5,7 +5,7 @@ Seller Notes — panel web (solo en tu ordenador).
 Lee la misma base de datos que seller_notes.py y muestra:
   /listings  estado de tus SKU (activo/inactivo, incidencias, precio, stock)
   /buybox    Buy Box de los ASIN vigilados: ganador, reparto del día, precio y movimientos
-  /catalogos analizador de catálogos de proveedor (ROI, BSR, comisiones, restricciones)
+  /catalogos analizador de catálogos de proveedor (ROI, BSR, comisiones)
 
 Uso:
   python panel.py        # abre http://127.0.0.1:5050
@@ -290,7 +290,6 @@ def catalogo(job_id):
     roi_ok = [it for it in found if (it.get("roi") or -999) >= 30]
     tiles = [("Productos", len(items), ""), ("En Amazon.es", len(found), ""),
              ("ROI ≥ 30%", len(roi_ok), "ok"),
-             ("Requieren aprobación", sum(1 for it in found if it.get("restriccion") == "Requiere aprobación"), "warn"),
              ("Amazon vende", sum(1 for it in found if it.get("amazon_vende")), "bad")]
     items.sort(key=lambda it: (it.get("roi") is None, -(it.get("roi") or 0)))
     return render_template("catalogo.html", page="catalogos", job=job, items=items, tiles=tiles)

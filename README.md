@@ -63,7 +63,7 @@ Doble clic en **`6 - Abrir panel.command`** (o `python panel.py`) y se abre `htt
 - **Mis listings**: estado de cada SKU, incidencias, precio y stock, con botón para actualizar desde Amazon.
 - **Buy Box**: por cada ASIN vigilado, quién la tiene, precio a lo largo del día, reparto, ofertas actuales y movimientos. Se puede ver cualquier día anterior.
 
-- **Catálogos**: sube el Excel/CSV de un proveedor (EAN + precio de coste). Seller Notes busca cada EAN en Amazon.es y calcula BSR, nº de ofertas (y si vende Amazon), precio de la Buy Box, comisiones de venta y FBA, beneficio por unidad, ROI y margen (todo sin IVA), y si tu cuenta puede vender la marca o necesita aprobación. Se puede filtrar, ordenar y descargar en Excel. También desde la terminal: `python analizador.py catalogo.xlsx`.
+- **Catálogos**: sube el Excel/CSV de un proveedor (EAN + precio de coste). Seller Notes busca cada EAN en Amazon.es y calcula BSR, nº de ofertas (y si vende Amazon), precio de la Buy Box, comisiones de venta y FBA, beneficio por unidad, ROI y margen (todo sin IVA). Se puede filtrar, ordenar y descargar en Excel. También desde la terminal: `python analizador.py catalogo.xlsx`.
   - Las comisiones son la estimación de Amazon al precio actual de la Buy Box. Si Amazon no da la tarifa FBA (faltan medidas del producto), se avisa porque el beneficio saldría inflado.
   - Si la marca del proveedor no coincide con la de Amazon para ese EAN, se avisa para revisarlo a mano.
 

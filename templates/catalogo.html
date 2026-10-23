@@ -28,7 +28,6 @@
   <label>ROI mínimo <input type="number" id="f-roi" value="" placeholder="%" step="5"></label>
   <label>BSR máximo <input type="number" id="f-bsr" value="" placeholder="cualquiera" step="1000"></label>
   <label class="check"><input type="checkbox" id="f-found" checked> Solo los que están en Amazon</label>
-  <label class="check"><input type="checkbox" id="f-restr"> Ocultar los que requieren aprobación</label>
   <label class="check"><input type="checkbox" id="f-amazon"> Ocultar si Amazon vende</label>
   <span class="muted small" id="f-count"></span>
 </section>
@@ -40,13 +39,11 @@
       <th data-sort="text">Producto</th><th data-sort="num">BSR</th><th data-sort="num">Ofertas</th>
       <th data-sort="num" class="r">Buy Box</th><th data-sort="num" class="r">Coste</th><th data-sort="num" class="r">Comisiones</th>
       <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">ROI</th><th data-sort="num" class="r">Margen</th>
-      <th data-sort="text">¿Puedo venderlo?</th>
     </tr>
   </thead>
   <tbody>
   {% for it in items %}
     <tr data-roi="{{ it.roi if it.roi is not none else '' }}" data-bsr="{{ it.bsr or '' }}" data-found="{{ 1 if it.asin else 0 }}"
-        data-restr="{{ 1 if it.restriccion == 'Requiere aprobación' or it.restriccion == 'No disponible' else 0 }}"
         data-amazon="{{ 1 if it.amazon_vende else 0 }}">
       <td data-v="{{ it.nombre or it.titulo }}">
         <strong>{{ (it.nombre or it.titulo or '(sin nombre)')[:70] }}</strong>
@@ -69,11 +66,6 @@
       <td class="r" data-v="{{ it.roi if it.roi is not none else -9999 }}">
         {% if it.roi is not none %}<span class="roi {{ 'good' if it.roi >= 30 else 'mid' if it.roi >= 15 else 'low' }}">{{ '%.0f' % it.roi }}%</span>{% else %}—{% endif %}</td>
       <td class="r" data-v="{{ it.margen if it.margen is not none else -9999 }}">{{ '%.0f%%' % it.margen if it.margen is not none else '—' }}</td>
-      <td data-v="{{ it.restriccion or '' }}">
-        {% if it.restriccion == 'OK' %}<span class="pill ok">Sí</span>
-        {% elif it.restriccion %}<span class="pill {{ 'warn' if it.restriccion == 'Requiere aprobación' else 'bad' }}" title="{{ it.restriccion_motivo }}">{{ it.restriccion }}</span>
-        {% else %}—{% endif %}
-      </td>
     </tr>
   {% endfor %}
   </tbody>
@@ -109,7 +101,6 @@
         const ok = (isNaN(roi) || (d.roi !== '' && +d.roi >= roi))
           && (isNaN(bsr) || (d.bsr !== '' && +d.bsr <= bsr))
           && (!$('f-found').checked || d.found === '1')
-          && (!$('f-restr').checked || d.restr === '0')
           && (!$('f-amazon').checked || d.amazon === '0');
         r.hidden = !ok;
         shown += ok;
