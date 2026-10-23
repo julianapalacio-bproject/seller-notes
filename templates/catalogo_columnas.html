@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Comprueba las columnas</h1>
+    <p class="muted">{{ original }} · {{ total }} filas. He detectado estas columnas; cámbialas si alguna no es correcta.</p>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('analizar_catalogo') }}" class="card"
+      onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Empezando…'">
+  <input type="hidden" name="archivo" value="{{ archivo }}">
+  <input type="hidden" name="original" value="{{ original }}">
+  <input type="hidden" name="header_idx" value="{{ header_idx }}">
+
+  <div class="form-grid">
+    {% for key, label in fields.items() %}
+    <label>
+      <span>{{ label }}{% if key in ('ean', 'coste') %} <em class="req">obligatoria</em>{% endif %}</span>
+      <select name="col_{{ key }}" {{ 'required' if key in ('ean', 'coste') }}>
+        <option value="">— ninguna —</option>
+        {% for h in headers %}
+        <option value="{{ loop.index0 }}" {{ 'selected' if mapping.get(key) == loop.index0 }}>{{ h or ('Columna ' ~ loop.index) }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endfor %}
+  </div>
+
+  <div class="form-grid">
+    <label><span>Nombre del proveedor</span><input type="text" name="proveedor" value="{{ proveedor }}"></label>
+    <label><span>IVA de venta si no hay columna (%)</span><input type="text" name="iva" value="{{ '%g' % iva }}" inputmode="decimal"></label>
+    <label><span>Envío a FBA por unidad (€, opcional)</span><input type="text" name="envio" value="0" inputmode="decimal"></label>
+  </div>
+
+  <h3>Vista previa</h3>
+  <div class="table-scroll">
+    <table class="compact">
+      <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for r in preview %}<tr>{% for c in r %}<td class="small">{{ c[:60] }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table>
+  </div>
+
+  <div class="actions">
+    <a class="btn" href="{{ url_for('catalogos') }}">Cancelar</a>
+    <button type="submit">Analizar {{ total }} productos</button>
+  </div>
+  <p class="muted small">Amazon limita la velocidad de consulta: cuenta con ~1 minuto por cada 100 productos más las comprobaciones. Puedes cerrar esta página; el análisis sigue mientras el panel esté abierto.</p>
+</form>
+{% endblock %}

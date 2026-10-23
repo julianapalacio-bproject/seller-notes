@@ -11,3 +11,6 @@ _to_delete/
 __pycache__/
 .DS_Store
 .monitor.lock
+
+# Catálogos de proveedores subidos al panel
+catalogos/

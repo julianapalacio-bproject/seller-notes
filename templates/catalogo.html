@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>{{ job.proveedor or job.archivo }}</h1>
+    <p class="muted">{{ job.archivo }} · {{ job.ts | local }} · <a href="{{ url_for('catalogos') }}">todos los catálogos</a></p>
+  </div>
+  {% if job.estado == 'terminado' %}<a class="btn primary" href="{{ url_for('catalogo_excel', job_id=job.id) }}">Descargar Excel</a>{% endif %}
+</div>
+
+{% if job.estado == 'en_curso' %}
+<section class="card" id="progress" data-url="{{ url_for('catalogo_estado', job_id=job.id) }}">
+  <h3>Analizando…</h3>
+  <div class="progress"><span style="width: {{ job.progreso }}%"></span></div>
+  <p class="muted" id="progress-msg">{{ job.mensaje }}</p>
+</section>
+{% elif job.estado == 'error' %}
+<div class="alert">El análisis no terminó: {{ job.mensaje }}</div>
+{% else %}
+
+<section class="tiles">
+  {% for label, value, tone in tiles %}
+  <div class="tile {{ tone if value else '' }}"><span class="num">{{ value }}</span><span>{{ label }}</span></div>
+  {% endfor %}
+</section>
+
+<section class="filters card">
+  <label>ROI mínimo <input type="number" id="f-roi" value="" placeholder="%" step="5"></label>
+  <label>BSR máximo <input type="number" id="f-bsr" value="" placeholder="cualquiera" step="1000"></label>
+  <label class="check"><input type="checkbox" id="f-found" checked> Solo los que están en Amazon</label>
+  <label class="check"><input type="checkbox" id="f-restr"> Ocultar los que requieren aprobación</label>
+  <label class="check"><input type="checkbox" id="f-amazon"> Ocultar si Amazon vende</label>
+  <span class="muted small" id="f-count"></span>
+</section>
+
+<div class="table-scroll">
+<table id="results" class="sortable">
+  <thead>
+    <tr>
+      <th data-sort="text">Producto</th><th data-sort="num">BSR</th><th data-sort="num">Ofertas</th>
+      <th data-sort="num" class="r">Buy Box</th><th data-sort="num" class="r">Coste</th><th data-sort="num" class="r">Comisiones</th>
+      <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">ROI</th><th data-sort="num" class="r">Margen</th>
+      <th data-sort="text">¿Puedo venderlo?</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for it in items %}
+    <tr data-roi="{{ it.roi if it.roi is not none else '' }}" data-bsr="{{ it.bsr or '' }}" data-found="{{ 1 if it.asin else 0 }}"
+        data-restr="{{ 1 if it.restriccion == 'Requiere aprobación' or it.restriccion == 'No disponible' else 0 }}"
+        data-amazon="{{ 1 if it.amazon_vende else 0 }}">
+      <td data-v="{{ it.nombre or it.titulo }}">
+        <strong>{{ (it.nombre or it.titulo or '(sin nombre)')[:70] }}</strong>
+        <div class="muted small">
+          {% if it.asin %}<a href="https://www.amazon.es/dp/{{ it.asin }}" target="_blank" rel="noopener">{{ it.asin }}</a> · {% endif %}EAN {{ it.ean or '—' }}{% if it.referencia %} · Ref. {{ it.referencia }}{% endif %}
+        </div>
+        {% if it.nota %}<div class="note small">{{ it.nota }}</div>{% endif %}
+      </td>
+      <td data-v="{{ it.bsr or 999999999 }}">{% if it.bsr %}{{ '{:,}'.format(it.bsr).replace(',', '.') }}<div class="muted small">{{ it.categoria }}</div>{% else %}—{% endif %}</td>
+      <td data-v="{{ it.ofertas or 0 }}">{% if it.ofertas is not none %}{{ it.ofertas }} <span class="muted small">({{ it.ofertas_fba }} FBA)</span>
+        {% if it.amazon_vende %}<div><span class="pill bad">Amazon</span></div>{% endif %}
+        {% if it.yo_vendo %}<div><span class="pill ok">Ya lo vendes</span></div>{% endif %}{% else %}—{% endif %}</td>
+      <td class="r" data-v="{{ it.precio or 0 }}">{{ '%.2f €' % it.precio if it.precio else '—' }}
+        {% if it.precio_fuente and it.precio_fuente != 'Buy Box' %}<div class="muted small">{{ it.precio_fuente }}</div>{% endif %}</td>
+      <td class="r" data-v="{{ it.coste or 0 }}">{{ '%.2f €' % it.coste if it.coste is not none else '—' }}</td>
+      <td class="r" data-v="{{ it.comisiones or 0 }}">{% if it.comisiones is not none %}{{ '%.2f €' % it.comisiones }}
+        <div class="muted small">{{ '%.2f' % it.comision_venta }} + FBA {{ '%.2f' % it.comision_fba }}</div>{% else %}—{% endif %}</td>
+      <td class="r {{ 'pos' if (it.beneficio or 0) > 0 else 'neg' if it.beneficio is not none }}" data-v="{{ it.beneficio if it.beneficio is not none else -9999 }}">
+        {{ '%.2f €' % it.beneficio if it.beneficio is not none else '—' }}</td>
+      <td class="r" data-v="{{ it.roi if it.roi is not none else -9999 }}">
+        {% if it.roi is not none %}<span class="roi {{ 'good' if it.roi >= 30 else 'mid' if it.roi >= 15 else 'low' }}">{{ '%.0f' % it.roi }}%</span>{% else %}—{% endif %}</td>
+      <td class="r" data-v="{{ it.margen if it.margen is not none else -9999 }}">{{ '%.0f%%' % it.margen if it.margen is not none else '—' }}</td>
+      <td data-v="{{ it.restriccion or '' }}">
+        {% if it.restriccion == 'OK' %}<span class="pill ok">Sí</span>
+        {% elif it.restriccion %}<span class="pill {{ 'warn' if it.restriccion == 'Requiere aprobación' else 'bad' }}" title="{{ it.restriccion_motivo }}">{{ it.restriccion }}</span>
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted small">Beneficio por unidad = Buy Box sin IVA − comisiones (venta + FBA, estimación de Amazon al precio de la Buy Box) − coste sin IVA{% if job.opciones %}{% endif %} − envío a FBA. Haz clic en una cabecera para ordenar.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const prog = document.getElementById('progress');
+  if (prog) {
+    const tick = async () => {
+      const j = await (await fetch(prog.dataset.url)).json();
+      if (j.estado !== 'en_curso') return location.reload();
+      prog.querySelector('.progress span').style.width = j.progreso + '%';
+      document.getElementById('progress-msg').textContent = j.mensaje;
+      setTimeout(tick, 2000);
+    };
+    setTimeout(tick, 2000);
+  }
+
+  const table = document.getElementById('results');
+  if (table) {
+    const rows = [...table.tBodies[0].rows];
+    const $ = id => document.getElementById(id);
+    const apply = () => {
+      const roi = parseFloat($('f-roi').value), bsr = parseFloat($('f-bsr').value);
+      let shown = 0;
+      rows.forEach(r => {
+        const d = r.dataset;
+        const ok = (isNaN(roi) || (d.roi !== '' && +d.roi >= roi))
+          && (isNaN(bsr) || (d.bsr !== '' && +d.bsr <= bsr))
+          && (!$('f-found').checked || d.found === '1')
+          && (!$('f-restr').checked || d.restr === '0')
+          && (!$('f-amazon').checked || d.amazon === '0');
+        r.hidden = !ok;
+        shown += ok;
+      });
+      $('f-count').textContent = `${shown} de ${rows.length} productos`;
+    };
+    document.querySelectorAll('.filters input').forEach(i => i.addEventListener('input', apply));
+    apply();
+
+    table.querySelectorAll('th[data-sort]').forEach((th, col) => th.addEventListener('click', () => {
+      const asc = th.dataset.dir !== 'asc';
+      table.querySelectorAll('th').forEach(h => delete h.dataset.dir);
+      th.dataset.dir = asc ? 'asc' : 'desc';
+      const num = th.dataset.sort === 'num';
+      rows.sort((a, b) => {
+        const x = a.cells[col].dataset.v, y = b.cells[col].dataset.v;
+        const c = num ? (+x) - (+y) : x.localeCompare(y, 'es');
+        return asc ? c : -c;
+      }).forEach(r => table.tBodies[0].appendChild(r));
+    }));
+  }
+</script>
+{% endblock %}

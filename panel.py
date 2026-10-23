@@ -5,19 +5,24 @@ Seller Notes — panel web (solo en tu ordenador).
 Lee la misma base de datos que seller_notes.py y muestra:
   /listings  estado de tus SKU (activo/inactivo, incidencias, precio, stock)
   /buybox    Buy Box de los ASIN vigilados: ganador, reparto del día, precio y movimientos
+  /catalogos analizador de catálogos de proveedor (ROI, BSR, comisiones, restricciones)
 
 Uso:
   python panel.py        # abre http://127.0.0.1:5050
 """
+import io
 import json
 import sys
 import webbrowser
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from threading import Timer
+from pathlib import Path
+from threading import Thread, Timer
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, render_template, request, send_file, url_for
+from werkzeug.utils import secure_filename
 
+import analizador as an
 import seller_notes as sn
 
 PORT = 5050
@@ -203,7 +208,122 @@ def buybox():
                            is_today=day >= today)
 
 
+# ---------------------------------------------------------------- catálogos de proveedor
+UPLOAD_DIR = sn.BASE / "catalogos"
+
+
+def catalog_jobs(con):
+    an.ensure_tables(con)
+    cols = ["id", "ts", "archivo", "proveedor", "estado", "progreso", "mensaje", "n"]
+    return [dict(zip(cols, r)) for r in con.execute(f"SELECT {', '.join(cols)} FROM catalogos ORDER BY id DESC")]
+
+
+@app.route("/catalogos")
+def catalogos():
+    return render_template("catalogos.html", page="catalogos", jobs=catalog_jobs(sn.db()),
+                           error=request.args.get("error"), iva=an.IVA_VENTA)
+
+
+@app.route("/catalogos/subir", methods=["POST"])
+def subir_catalogo():
+    f = request.files.get("archivo")
+    if not f or not f.filename:
+        return redirect(url_for("catalogos", error="Elige un archivo .xlsx o .csv"))
+    UPLOAD_DIR.mkdir(exist_ok=True)
+    path = UPLOAD_DIR / f"{datetime.now(sn.TZ):%Y%m%d-%H%M%S}_{secure_filename(f.filename) or 'catalogo.xlsx'}"
+    f.save(path)
+    try:
+        rows = an.read_table(path)
+    except Exception as e:
+        path.unlink(missing_ok=True)
+        return redirect(url_for("catalogos", error=str(e)))
+    if not rows:
+        return redirect(url_for("catalogos", error="El archivo está vacío"))
+    header_idx, mapping = an.detect_columns(rows)
+    headers = [str(c if c is not None else "") for c in rows[header_idx]]
+    preview = [[("" if c is None else str(c)) for c in r] for r in rows[header_idx + 1: header_idx + 6]]
+    return render_template("catalogo_columnas.html", page="catalogos", archivo=path.name, original=f.filename,
+                           header_idx=header_idx, headers=headers, mapping=mapping, preview=preview,
+                           fields=an.FIELD_LABELS, total=len(rows) - header_idx - 1, iva=an.IVA_VENTA,
+                           proveedor=Path(f.filename).stem)
+
+
+@app.route("/catalogos/analizar", methods=["POST"])
+def analizar_catalogo():
+    form = request.form
+    path = UPLOAD_DIR / secure_filename(form["archivo"])
+    mapping = {f: int(form[f"col_{f}"]) for f in an.FIELD_LABELS if form.get(f"col_{f}", "") != ""}
+    if "ean" not in mapping or "coste" not in mapping:
+        return redirect(url_for("catalogos", error="Hay que indicar al menos la columna de EAN y la de coste"))
+    iva = an.parse_money(form.get("iva")) or an.IVA_VENTA
+    envio = an.parse_money(form.get("envio")) or 0.0
+    con = sn.db()
+    an.ensure_tables(con)
+    cur = con.execute(
+        "INSERT INTO catalogos(ts, archivo, proveedor, estado, progreso, mensaje, opciones) VALUES (?,?,?,?,?,?,?)",
+        (datetime.now(timezone.utc).isoformat(timespec="seconds"), form.get("original") or path.name,
+         form.get("proveedor", "").strip(), "en_curso", 0, "Empezando…",
+         json.dumps({"iva": iva, "envio": envio, "mapping": mapping})))
+    con.commit()
+    job_id = cur.lastrowid
+    Thread(target=an.run_job, args=(job_id, path, int(form["header_idx"]), mapping, iva, envio), daemon=True).start()
+    return redirect(url_for("catalogo", job_id=job_id))
+
+
+def load_job(job_id):
+    con = sn.db()
+    job = next((j for j in catalog_jobs(con) if j["id"] == job_id), None)
+    items = [json.loads(r[0]) for r in con.execute(
+        "SELECT data FROM catalogo_items WHERE catalogo_id=? ORDER BY fila", (job_id,))] if job else []
+    for it in items:  # los productos sin datos de Amazon no traen todos los campos
+        for key, *_ in an.COLUMNS:
+            it.setdefault(key, None)
+    return job, items
+
+
+@app.route("/catalogos/<int:job_id>")
+def catalogo(job_id):
+    job, items = load_job(job_id)
+    if not job:
+        return redirect(url_for("catalogos"))
+    found = [it for it in items if it.get("asin")]
+    roi_ok = [it for it in found if (it.get("roi") or -999) >= 30]
+    tiles = [("Productos", len(items), ""), ("En Amazon.es", len(found), ""),
+             ("ROI ≥ 30%", len(roi_ok), "ok"),
+             ("Requieren aprobación", sum(1 for it in found if it.get("restriccion") == "Requiere aprobación"), "warn"),
+             ("Amazon vende", sum(1 for it in found if it.get("amazon_vende")), "bad")]
+    items.sort(key=lambda it: (it.get("roi") is None, -(it.get("roi") or 0)))
+    return render_template("catalogo.html", page="catalogos", job=job, items=items, tiles=tiles)
+
+
+@app.route("/catalogos/<int:job_id>/estado")
+def catalogo_estado(job_id):
+    job, _ = load_job(job_id)
+    return jsonify({k: job[k] for k in ("estado", "progreso", "mensaje")} if job else {"estado": "error"})
+
+
+@app.route("/catalogos/<int:job_id>/excel")
+def catalogo_excel(job_id):
+    job, items = load_job(job_id)
+    if not job or job["estado"] != "terminado":
+        return redirect(url_for("catalogos"))
+    items.sort(key=lambda it: (it.get("roi") is None, -(it.get("roi") or 0)))
+    name = f"analisis_{secure_filename(job['proveedor'] or Path(job['archivo']).stem)}_{local(job['ts'], '%Y-%m-%d')}.xlsx"
+    return send_file(io.BytesIO(an.to_excel(items, job["archivo"])), as_attachment=True, download_name=name,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+def mark_interrupted_jobs():
+    """Si el panel se cerró a mitad de un análisis, ese análisis no va a terminar."""
+    con = sn.db()
+    an.ensure_tables(con)
+    con.execute("UPDATE catalogos SET estado='error', mensaje='Interrumpido: el panel se cerró durante el análisis' "
+                "WHERE estado='en_curso'")
+    con.commit()
+
+
 if __name__ == "__main__":
+    mark_interrupted_jobs()
     if "--no-abrir" not in sys.argv:
         Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
     print(f"Seller Notes · panel en http://127.0.0.1:{PORT}  (Ctrl+C para cerrar)")

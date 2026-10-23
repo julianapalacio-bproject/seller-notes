@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Catálogos de proveedor</h1>
+    <p class="muted">Sube el Excel o CSV del proveedor (con EAN y precio de coste) y Seller Notes calcula ROI, BSR, competencia y si puedes venderlo en Amazon.es.</p>
+  </div>
+</div>
+
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+
+<section class="card upload">
+  <form method="post" action="{{ url_for('subir_catalogo') }}" enctype="multipart/form-data">
+    <label class="drop">
+      <input type="file" name="archivo" accept=".xlsx,.xlsm,.csv,.txt" required
+             onchange="this.closest('label').querySelector('.drop-name').textContent = this.files[0] ? this.files[0].name : ''">
+      <strong>Elige el catálogo</strong>
+      <span class="muted small">.xlsx o .csv · se lee la primera hoja</span>
+      <span class="drop-name"></span>
+    </label>
+    <button type="submit">Continuar</button>
+  </form>
+  <p class="muted small">Cálculo: precio de la Buy Box sin IVA ({{ '%g' % iva }}% por defecto) − comisiones de Amazon y FBA − coste sin IVA − envío a FBA por unidad. Los catálogos se guardan solo en tu ordenador.</p>
+</section>
+
+<h3>Análisis anteriores</h3>
+{% if jobs %}
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Fecha</th><th>Proveedor / archivo</th><th class="r">Productos</th><th>Estado</th><th></th></tr></thead>
+  <tbody>
+  {% for j in jobs %}
+    <tr>
+      <td>{{ j.ts | local }}</td>
+      <td><a href="{{ url_for('catalogo', job_id=j.id) }}"><strong>{{ j.proveedor or j.archivo }}</strong></a>
+        <div class="muted small">{{ j.archivo }}</div></td>
+      <td class="r">{{ j.n or '—' }}</td>
+      <td>
+        {% if j.estado == 'terminado' %}<span class="pill ok">Terminado</span>
+        {% elif j.estado == 'en_curso' %}<span class="pill warn">En curso · {{ j.progreso | int }}%</span>
+        {% else %}<span class="pill bad" title="{{ j.mensaje }}">Error</span>{% endif %}
+      </td>
+      <td class="r">{% if j.estado == 'terminado' %}<a href="{{ url_for('catalogo_excel', job_id=j.id) }}">Excel ↓</a>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty">Todavía no has analizado ningún catálogo.</p>
+{% endif %}
+{% endblock %}

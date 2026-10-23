@@ -56,7 +56,7 @@ SELLERS_CSV = BASE / "sellers.csv"
 
 # ---------------------------------------------------------------- base de datos
 def db():
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(DB_PATH, timeout=30)  # el monitor, el panel y el analizador escriben a la vez
     con.executescript(
         """
         CREATE TABLE IF NOT EXISTS snapshots (
