@@ -218,6 +218,11 @@ def store(con, asin, ts, total, offers, raw=None, my_stock=None):
     bb = next((o for o in offers if o["is_bb"]), None)
     bb_seller = bb["seller_id"] if bb else None
     bb_price = bb["landed"] if bb else None
+    if raw is not None:  # la respuesta completa ocupa mucho: solo se guarda la primera de cada día
+        day_start = datetime.fromisoformat(ts).astimezone(TZ).replace(hour=0, minute=0, second=0)
+        if con.execute("SELECT 1 FROM snapshots WHERE asin=? AND ts>=? AND raw IS NOT NULL LIMIT 1",
+                       (asin, day_start.astimezone(timezone.utc).isoformat())).fetchone():
+            raw = None
     cur = con.execute(
         "INSERT INTO snapshots(ts, asin, total_offers, bb_seller, bb_price, raw, my_stock) VALUES (?,?,?,?,?,?,?)",
         (ts, asin, total, bb_seller, bb_price, json.dumps(raw) if raw else None, my_stock),
