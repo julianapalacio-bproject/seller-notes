@@ -1,52 +1,115 @@
 {% extends "base.html" %}
+{% block body_class %}glass{% endblock %}
 {% block content %}
-<div class="head">
+{% set ok_jobs = jobs | selectattr('estado', 'equalto', 'terminado') | list %}
+{% set running = jobs | selectattr('estado', 'equalto', 'en_curso') | list %}
+{% set failed = jobs | selectattr('estado', 'equalto', 'error') | list %}
+{% set productos = ok_jobs | map(attribute='n') | reject('none') | sum %}
+<section class="g-card g-head">
   <div>
-    <h1>Catálogos de proveedor</h1>
-    <p class="muted">Sube el Excel o CSV del proveedor (con EAN y precio de coste) y Seller Notes calcula ROI, BSR, competencia y si puedes venderlo en Amazon.es.</p>
+    <div class="g-title"><h1>Catálogos de proveedor</h1>
+      {% if running %}<span class="pill warn"><i class="dot bad"></i> {{ running | length }} análisis en curso</span>{% endif %}</div>
+    <p class="muted small">Sube el Excel o CSV del proveedor (con EAN y precio de coste) y Seller Notes calcula ROI, BSR, competencia y si puedes venderlo en Amazon.es.</p>
   </div>
-</div>
+</section>
 
 {% if error %}<div class="alert">{{ error }}</div>{% endif %}
 
-<section class="card upload">
-  <form method="post" action="{{ url_for('subir_catalogo') }}" enctype="multipart/form-data">
-    <label class="drop">
-      <input type="file" name="archivo" accept=".xlsx,.xlsm,.csv,.txt" required
-             onchange="this.closest('label').querySelector('.drop-name').textContent = this.files[0] ? this.files[0].name : ''">
-      <strong>Elige el catálogo</strong>
-      <span class="muted small">.xlsx o .csv · se lee la primera hoja</span>
-      <span class="drop-name"></span>
-    </label>
-    <button type="submit">Continuar</button>
-  </form>
-  <p class="muted small">Cálculo: precio de la Buy Box sin IVA ({{ '%g' % iva }}% por defecto) − comisiones de Amazon y FBA − coste sin IVA − envío a FBA por unidad. Los catálogos se guardan solo en tu ordenador.</p>
-</section>
+<div class="g-row c1">
+  <section class="g-card g-dark ok">
+    <div class="g-label">Tus análisis <i class="dot me"></i></div>
+    <div class="g-big">{{ productos }}</div>
+    <p>productos analizados en {{ ok_jobs | length }} catálogo{{ 's' if ok_jobs | length != 1 }}</p>
+    <ul class="g-checks">
+      <li><b>{{ ok_jobs | length }}</b> terminado{{ 's' if ok_jobs | length != 1 }}</li>
+      <li><b>{{ running | length }}</b> en curso</li>
+      <li><b>{{ failed | length }}</b> con error</li>
+    </ul>
+    <div class="g-foot"><span>Último</span><b>{{ jobs[0].ts | local if jobs else '—' }}</b></div>
+  </section>
 
-<h3>Análisis anteriores</h3>
-{% if jobs %}
-<div class="table-scroll">
-<table>
-  <thead><tr><th>Fecha</th><th>Proveedor / archivo</th><th class="r">Productos</th><th>Estado</th><th></th></tr></thead>
-  <tbody>
-  {% for j in jobs %}
-    <tr>
-      <td>{{ j.ts | local }}</td>
-      <td><a href="{{ url_for('catalogo', job_id=j.id) }}"><strong>{{ j.proveedor or j.archivo }}</strong></a>
-        <div class="muted small">{{ j.archivo }}</div></td>
-      <td class="r">{{ j.n or '—' }}</td>
-      <td>
-        {% if j.estado == 'terminado' %}<span class="pill ok">Terminado</span>
-        {% elif j.estado == 'en_curso' %}<span class="pill warn">En curso · {{ j.progreso | int }}%</span>
-        {% else %}<span class="pill bad" title="{{ j.mensaje }}">Error</span>{% endif %}
-      </td>
-      <td class="r">{% if j.estado == 'terminado' %}<a href="{{ url_for('catalogo_excel', job_id=j.id) }}">Excel ↓</a>{% endif %}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <section class="g-card upload">
+    <div class="g-card-head"><div><h3 class="sec">Analizar un catálogo nuevo</h3><p class="muted small">Después podrás revisar qué columna es el EAN, el coste, etc.</p></div></div>
+    <form method="post" action="{{ url_for('subir_catalogo') }}" enctype="multipart/form-data">
+      <label class="drop">
+        <input type="file" name="archivo" accept=".xlsx,.xlsm,.csv,.txt" required
+               onchange="this.closest('label').querySelector('.drop-name').textContent = this.files[0] ? this.files[0].name : ''">
+        <strong>Elige el catálogo</strong>
+        <span class="muted small">.xlsx o .csv · se lee la primera hoja</span>
+        <span class="drop-name"></span>
+      </label>
+      <button type="submit" class="btn-ink">Continuar</button>
+    </form>
+    <p class="bb-strip muted small">Cálculo: precio de la Buy Box sin IVA ({{ '%g' % iva }} % por defecto) − comisiones de Amazon y FBA − coste sin IVA − envío a FBA por unidad. Los catálogos se guardan solo en tu ordenador.</p>
+  </section>
 </div>
-{% else %}
-<p class="empty">Todavía no has analizado ningún catálogo.</p>
-{% endif %}
+
+<section class="g-card flush">
+  <div class="g-card-head pad">
+    <div><h3 class="sec">Análisis anteriores <span class="pill ink">{{ jobs | length }}</span></h3></div>
+    {% if jobs %}
+    <div class="g-seg tabs">
+      <a href="#" class="on" data-tab="todos">Todos ({{ jobs | length }})</a>
+      <a href="#" data-tab="terminado">Terminados ({{ ok_jobs | length }})</a>
+      <a href="#" data-tab="en_curso">En curso ({{ running | length }})</a>
+      <a href="#" data-tab="error">Con error ({{ failed | length }})</a>
+    </div>
+    <input type="search" id="filtro" placeholder="Filtrar por proveedor o archivo…" aria-label="Filtrar análisis">
+    {% endif %}
+  </div>
+  {% if jobs %}
+  <div class="table-scroll flat">
+  <table id="jobs">
+    <thead><tr><th>Proveedor / archivo</th><th>Fecha</th><th class="r">Productos</th><th>Estado</th><th class="r"></th></tr></thead>
+    <tbody>
+    {% for j in jobs %}
+      <tr data-tags="{{ j.estado }}">
+        <td><a href="{{ url_for('catalogo', job_id=j.id) }}"><strong>{{ j.proveedor or j.archivo }}</strong></a>
+          <div class="muted small mono">{{ j.archivo }}</div></td>
+        <td class="mono">{{ j.ts | local }}</td>
+        <td class="r"><b>{{ j.n or '—' }}</b></td>
+        <td>
+          {% if j.estado == 'terminado' %}<span class="pill ok"><i class="dot me"></i> Terminado</span>
+          {% elif j.estado == 'en_curso' %}<span class="pill warn">En curso · {{ j.progreso | int }} %</span>
+            <span class="g-track"><span style="width: {{ j.progreso | int }}%"></span></span>
+          {% else %}<span class="pill bad" title="{{ j.mensaje }}"><i class="dot bad"></i> Error</span>{% endif %}
+        </td>
+        <td class="r">{% if j.estado == 'terminado' %}<a class="btn-ghost small" href="{{ url_for('catalogo_excel', job_id=j.id) }}">Excel ↓</a>{% endif %}
+          <a class="btn-ghost small" href="{{ url_for('catalogo', job_id=j.id) }}">Ver</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted small ls-count" id="count"></p>
+  {% else %}
+  <p class="empty">Todavía no has analizado ningún catálogo.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const table = document.getElementById('jobs');
+  if (table) {
+    const rows = [...table.tBodies[0].rows], filtro = document.getElementById('filtro'), count = document.getElementById('count');
+    let tab = 'todos';
+    const apply = () => {
+      const q = filtro.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(r => {
+        const ok = (tab === 'todos' || r.dataset.tags === tab) && (!q || r.cells[0].textContent.toLowerCase().includes(q));
+        r.hidden = !ok; shown += ok;
+      });
+      count.textContent = `Mostrando ${shown} de ${rows.length} análisis`;
+    };
+    document.querySelectorAll('[data-tab]').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault(); tab = a.dataset.tab;
+      document.querySelectorAll('.tabs a').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+      apply();
+    }));
+    filtro.addEventListener('input', apply);
+    apply();
+  }
+</script>
 {% endblock %}

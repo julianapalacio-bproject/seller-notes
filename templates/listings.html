@@ -1,57 +1,144 @@
 {% extends "base.html" %}
+{% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
+{% block body_class %}glass{% endblock %}
 {% block content %}
-<div class="head">
+{% set total = rows | length %}
+{% set activos = rows | selectattr('estado', 'equalto', 'ACTIVO') | list | length %}
+{% set con_inc = rows | selectattr('lista_incidencias') | list | length %}
+{% set sin_stock = rows | selectattr('stock', 'equalto', 0) | list | length %}
+{% set unidades = tiles[-1][1] %}
+{% set max_stock = [rows | map(attribute='stock') | reject('none') | max | default(0), 1] | max %}
+<section class="g-card g-head">
   <div>
-    <h1>Mis listings</h1>
-    <p class="muted">
-      {% if ts %}Última consulta: {{ ts | local }}{% else %}Todavía no hay consultas{% endif %}
-      {% if ignored %} · {{ ignored }} SKU ignorados (skus_ignorados.txt){% endif %}
-    </p>
+    <div class="g-title"><h1>Mis listings</h1>
+      {% if ts %}<span class="pill ok"><i class="dot me"></i> Última consulta {{ ts | local }}</span>{% endif %}</div>
+    <p class="muted small">{% if ts %}{{ total }} listing{{ 's' if total != 1 }} en Amazon.es{% else %}Todavía no hay consultas{% endif %}
+      {% if ignored %} · {{ ignored }} SKU ignorados (skus_ignorados.txt){% endif %}</p>
   </div>
   <form method="post" action="{{ url_for('refresh_listings') }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Consultando…'">
-    <button type="submit" {{ 'disabled' if not has_seller_id }}>Actualizar ahora</button>
+    <button type="submit" class="btn-ink" {{ 'disabled' if not has_seller_id }}>Actualizar ahora</button>
   </form>
-</div>
+</section>
 
 {% if error %}<div class="alert">Error al consultar Amazon: {{ error }}</div>{% endif %}
 {% if not has_seller_id %}<div class="alert">Falta MY_SELLER_ID en el archivo .env.</div>{% endif %}
 
-<section class="tiles">
-  {% for label, value, tone in tiles %}
-  <div class="tile {{ tone if value else '' }}"><span class="num">{{ value }}</span><span>{{ label }}</span></div>
-  {% endfor %}
-</section>
-
 {% if rows %}
-<div class="table-scroll">
-<table>
-  <thead>
-    <tr><th>Estado</th><th>SKU / producto</th><th>ASIN</th><th class="r">Precio</th><th>Canal</th><th class="r">Stock</th><th>Incidencias</th></tr>
-  </thead>
-  <tbody>
-  {% for r in rows %}
-    <tr>
-      <td><span class="badge s-{{ r.estado | replace(' ', '') | replace(',', '') | lower }}">{{ r.estado | capitalize }}</span></td>
-      <td><strong>{{ r.sku }}</strong><div class="muted small">{{ r.nombre }}</div></td>
-      <td><a href="https://www.amazon.es/dp/{{ r.asin }}" target="_blank" rel="noopener">{{ r.asin }}</a></td>
-      <td class="r">{{ '%.2f €' % r.precio if r.precio is not none else '—' }}</td>
-      <td>{{ r.canal }}</td>
-      <td class="r {{ 'zero' if r.stock == 0 }}">{{ r.stock if r.stock is not none else '?' }}</td>
-      <td>
-        {% if r.lista_incidencias %}
-        <details>
-          <summary>{% if r.errores %}<span class="pill bad">{{ r.errores }} error{{ 'es' if r.errores > 1 }}</span>{% endif %}
-                   {% if r.avisos %}<span class="pill warn">{{ r.avisos }} aviso{{ 's' if r.avisos > 1 }}</span>{% endif %}</summary>
-          <ul class="issues">{% for i in r.lista_incidencias %}<li>{{ i }}</li>{% endfor %}</ul>
-        </details>
-        {% else %}<span class="muted">—</span>{% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="g-row r1">
+  <section class="g-card g-dark {{ 'ok' if activos == total else 'bad' }}">
+    <div class="g-label">Salud de los listings <i class="dot {{ 'me' if activos == total and not con_inc else 'bad' }}"></i></div>
+    <div class="bb-ring">
+      <svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.915" class="track"></circle>
+        {% if activos %}<circle cx="21" cy="21" r="15.915" class="fill" stroke-dasharray="{{ '%.2f' % (100 * activos / total) }} {{ '%.2f' % (100 - 100 * activos / total) }}"></circle>{% endif %}</svg>
+      <div><b>{{ ('%.0f' % (100 * activos / total)) }} %</b><span>activos</span></div>
+    </div>
+    <ul class="g-checks">
+      <li><b>{{ activos }}/{{ total }}</b> activos y comprables</li>
+      <li><b>{{ con_inc }}</b> con incidencias de Amazon</li>
+      <li><b>{{ sin_stock }}</b> sin stock</li>
+    </ul>
+    <div class="g-foot"><span>Última consulta</span><b>{{ ts | local }}</b></div>
+  </section>
+
+  <section class="g-card">
+    <div class="g-card-head"><div><h3 class="sec">Canal de venta</h3><p class="muted small">Listings por canal y unidades en stock</p></div>
+      <span class="pill ink">{{ unidades }} uds</span></div>
+    <div class="ls-channels">
+      {% for canal, items in rows | groupby('canal', default='') %}
+      {% set uds = items | map(attribute='stock') | reject('none') | sum %}
+      <div><span class="muted small">{{ canal or 'Sin canal' }}</span><b>{{ items | length }} listing{{ 's' if items | length != 1 }} <em>({{ '%.0f' % (100 * items | length / total) }} %)</em></b>
+        <span class="g-track"><span style="width: {{ '%.1f' % (100 * items | length / total) }}%"></span></span>
+        <span class="muted small">{{ uds }} uds en stock</span></div>
+      {% endfor %}
+    </div>
+    <div class="bb-strip">{% if sin_stock %}<span class="neg small"><b>⚠ {{ sin_stock }} listing{{ 's' if sin_stock != 1 }} sin stock</b></span>{% else %}<span class="pos small"><b>Todos tienen stock</b></span>{% endif %}
+      <a href="#" class="small" data-tab="sin-stock">Ver →</a></div>
+  </section>
+
+  <section class="g-card">
+    <div class="g-card-head"><div><h3 class="sec">Estado y avisos</h3><p class="muted small">Según la última consulta a Amazon</p></div></div>
+    <div class="bb-tiles">
+      {% for label, value, tone in tiles[:-1] %}
+      <div class="{{ tone if value else 'calm' }}"><span>{{ label }}</span><b>{{ value }}</b></div>
+      {% endfor %}
+    </div>
+    <div class="bb-bar"><div><span>Listings activos</span><b>{{ activos }} de {{ total }}</b></div><span class="g-track"><span style="width: {{ '%.1f' % (100 * activos / total) }}%"></span></span></div>
+  </section>
 </div>
+
+<section class="g-card flush">
+  <div class="g-card-head pad">
+    <div class="g-seg tabs">
+      <a href="#" class="on" data-tab="todos">Todos ({{ total }})</a>
+      <a href="#" data-tab="activo">Activos ({{ activos }})</a>
+      <a href="#" data-tab="incidencias">Con incidencias ({{ con_inc }})</a>
+      <a href="#" data-tab="sin-stock">Sin stock ({{ sin_stock }})</a>
+      <a href="#" data-tab="no-activo">No activos ({{ total - activos }})</a>
+    </div>
+    <input type="search" id="filtro" placeholder="Filtrar por ASIN, SKU o nombre…" aria-label="Filtrar listings">
+  </div>
+  <div class="table-scroll flat">
+  <table id="listings">
+    <thead>
+      <tr><th>Producto / ASIN</th><th>SKU</th><th class="r">Precio</th><th>Stock</th><th>Incidencias</th><th>Estado</th></tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr class="{{ 'warn-row' if r.stock == 0 or r.estado != 'ACTIVO' }}"
+          data-tags="{{ 'activo' if r.estado == 'ACTIVO' else 'no-activo' }}{{ ' incidencias' if r.lista_incidencias }}{{ ' sin-stock' if r.stock == 0 }}">
+        <td><div class="ls-prod"><span class="pill {{ 'ink' if r.canal == 'FBA' else 'warn' }}">{{ r.canal }}</span>
+          <a class="mono" href="https://www.amazon.es/dp/{{ r.asin }}" target="_blank" rel="noopener">{{ r.asin }}</a></div>
+          <div class="ls-name">{{ r.nombre }}</div></td>
+        <td class="mono"><b>{{ r.sku }}</b></td>
+        <td class="r"><b>{{ n(r.precio) ~ ' €' if r.precio is not none else '—' }}</b></td>
+        <td class="ls-stock">{% if r.stock is none %}<span class="muted">?</span>{% else %}
+          <b class="{{ 'neg' if r.stock == 0 }}">{{ r.stock }} uds</b>
+          <span class="g-track {{ 'bad' if r.stock == 0 }}"><span style="width: {{ '%.1f' % ([100 * r.stock / max_stock, 3 if r.stock else 0] | max) }}%"></span></span>{% endif %}</td>
+        <td>
+          {% if r.lista_incidencias %}
+          <details>
+            <summary>{% if r.errores %}<span class="pill bad">{{ r.errores }} error{{ 'es' if r.errores > 1 }}</span>{% endif %}
+                     {% if r.avisos %}<span class="pill warn">{{ r.avisos }} aviso{{ 's' if r.avisos > 1 }}</span>{% endif %}</summary>
+            <ul class="issues">{% for i in r.lista_incidencias %}<li>{{ i }}</li>{% endfor %}</ul>
+          </details>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td><span class="pill {{ 'ok' if r.estado == 'ACTIVO' else 'warn' if r.estado == 'VISIBLE, NO COMPRABLE' else 'bad' }}"><i class="dot {{ 'me' if r.estado == 'ACTIVO' else 'bad' }}"></i> {{ r.estado | capitalize }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted small ls-count" id="count"></p>
+</section>
 {% else %}
 <p class="empty">No hay datos de listings. Pulsa «Actualizar ahora».</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const table = document.getElementById('listings');
+  if (table) {
+    const rows = [...table.tBodies[0].rows], filtro = document.getElementById('filtro'), count = document.getElementById('count');
+    let tab = 'todos';
+    const apply = () => {
+      const q = filtro.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(r => {
+        const ok = (tab === 'todos' || r.dataset.tags.split(' ').includes(tab)) && (!q || r.textContent.toLowerCase().includes(q));
+        r.hidden = !ok; shown += ok;
+      });
+      count.textContent = `Mostrando ${shown} de ${rows.length} listings`;
+    };
+    document.querySelectorAll('[data-tab]').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault(); tab = a.dataset.tab;
+      document.querySelectorAll('.tabs a').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+      if (!a.closest('.tabs')) table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      apply();
+    }));
+    filtro.addEventListener('input', apply);
+    apply();
+  }
+</script>
 {% endblock %}
