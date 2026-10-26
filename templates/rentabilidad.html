@@ -192,7 +192,7 @@
     new Chart(c, {
       type: 'bar',
       data: { labels: d.map(x => x.l), datasets: [
-        { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--ink-2'), borderRadius: 4 },
+        { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--ink-3'), borderRadius: 4 },
         { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--ink'), borderRadius: 4 } ] },
       options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                  plugins: { legend: { align: 'end', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } },
@@ -219,8 +219,10 @@
     let acc = 0; const d = JSON.parse(cv.dataset.chart).map(x => ({ l: x.l, y: acc = Math.round((acc + x.n) * 100) / 100 }));
     new Chart(cv, {
       type: 'line',
-      data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.y), borderColor: v('--ink'), borderWidth: 2.5, tension: .4,
-              pointRadius: d.map((x, i) => i === d.length - 1 ? 5 : 0), pointBackgroundColor: v('--ink'), pointBorderColor: v('--card'), pointBorderWidth: 2 }] },
+      data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.y), borderWidth: 3, tension: .4, borderCapStyle: 'round',
+              borderColor: ({ chart }) => { const a = chart.chartArea; if (!a) return v('--ink');
+                const gr = chart.ctx.createLinearGradient(a.left, 0, a.right, 0); gr.addColorStop(0, v('--ink-3')); gr.addColorStop(1, v('--ink')); return gr; },
+              pointRadius: d.map((x, i) => i === d.length - 1 ? 5 : 0), pointBackgroundColor: v('--ink'), pointBorderColor: 'rgba(129, 172, 241, .35)', pointBorderWidth: 5 }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false },
                  tooltip: { displayColors: false, callbacks: { label: t => 'Acumulado: ' + eur(t.parsed.y) } } },
                  scales: { x: { grid: { display: false }, border: { display: false }, ticks: { maxTicksLimit: 5 } }, y: { display: false } } }
