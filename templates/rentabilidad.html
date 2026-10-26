@@ -1,142 +1,169 @@
 {% extends "base.html" %}
+{% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
+{% macro eur(v) %}{{ n(v) }} €{% endmacro %}
+{% block body_class %}glass{% endblock %}
 {% block content %}
-<div class="head">
+<section class="g-card g-head">
   <div>
-    <h1>Rentabilidad real</h1>
-    <p class="muted">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido{% if last %} · Amazon liquidado hasta {{ last | local }}{% endif %} · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
+    <div class="g-title"><h1>Rentabilidad real</h1>
+      {% if last %}<span class="pill ok"><i class="dot me"></i> Amazon liquidado hasta {{ last | local }}</span>{% endif %}</div>
+    <p class="muted small">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
   </div>
   <form method="post" action="{{ url_for('rentabilidad_actualizar') }}">
     <input type="hidden" name="volver" value="{{ request.full_path }}">
-    <button type="submit" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
+    <button type="submit" class="btn-ink" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
   </form>
-</div>
+</section>
 
 {% if sync.running or sync.msg %}<div class="{{ 'alert' if sync.msg.startswith('Error') else 'info' }}" id="sync-msg" data-running="{{ 1 if sync.running else 0 }}">{{ sync.msg }}</div>{% endif %}
 
-<section class="card range-bar">
-  <div class="seg presets">
+<section class="g-filters">
+  <div class="g-seg">
     {% for key, (label, a, b) in presets.items() %}
     <a href="{{ url_for('rentabilidad', rango=key) }}" class="{{ 'on' if key == preset }}">{{ label }}</a>
     {% endfor %}
   </div>
-  <form method="get" class="range-form">
-    <label><span>Desde</span><input type="date" name="desde" value="{{ start.isoformat() }}" min="2026-07-01"></label>
-    <label><span>Hasta</span><input type="date" name="hasta" value="{{ end.isoformat() }}" min="2026-07-01"></label>
-    <label><span>Agrupar por</span>
-      <select name="agrupar">{% for k, v in groups.items() %}<option value="{{ k }}" {{ 'selected' if k == group }}>{{ v }}</option>{% endfor %}</select>
-    </label>
-    <button type="submit">Ver</button>
+  <form method="get" class="g-range">
+    <label>Desde <input type="date" name="desde" value="{{ start.isoformat() }}" min="2026-07-01"></label>
+    <label>Hasta <input type="date" name="hasta" value="{{ end.isoformat() }}" min="2026-07-01"></label>
+    <label>Agrupar <select name="agrupar">{% for k, v in groups.items() %}<option value="{{ k }}" {{ 'selected' if k == group }}>{{ v }}</option>{% endfor %}</select></label>
+    <button type="submit" class="btn-ghost">Ver</button>
   </form>
 </section>
 
 {% if not rows and not acc %}
 <p class="empty">Sin ventas ni gastos en estas fechas.</p>
 {% else %}
-<section class="kpis">
-  <div class="kpi hero {{ 'ok' if tot.neto > 0 else 'bad' }}">
-    <div class="kpi-top"><span class="kpi-label">Beneficio neto</span>
-      {% if tot.margen is not none %}<span class="pill {{ 'ok' if tot.margen >= 0 else 'bad' }}">Margen {{ '%.1f' % tot.margen }}%</span>{% endif %}</div>
-    <span class="num">{{ '%.2f €' % tot.neto }}</span>
-    <span class="muted small">Después de costes de producto, comisiones, FBA y gastos de la cuenta</span>
-    {% if periods | length > 1 %}<div class="spark"><span class="muted small">Neto por {{ groups[group] | lower }}</span><canvas id="spark" data-chart='{{ chart }}'></canvas></div>{% endif %}
-    <div class="kpi-foot"><span>Productos <strong class="{{ 'pos' if tot.producto > 0 else 'neg' }}">{{ '%.2f €' % tot.producto }}</strong></span>
-      <span>Cuenta <strong class="neg">{{ '%.2f €' % tot.cuenta }}</strong></span></div>
-  </div>
-  <div class="kpi"><span class="kpi-label">Ventas con IVA</span><span class="num">{{ '%.2f €' % tot.ventas }}</span>
-    <span class="muted small">{% if tot.devoluciones %}Reembolsado {{ '%.2f €' % -tot.devoluciones }}{% else %}Sin reembolsos{% endif %}</span></div>
-  <div class="kpi"><span class="kpi-label">Unidades</span><span class="num">{{ tot.uds }}</span>
-    <span class="muted small">{% if tot.estimadas %}{{ tot.estimadas }} sin liquidar{% endif %}{% if tot.estimadas and tot.devueltas %} · {% endif %}{% if tot.devueltas %}{{ tot.devueltas }} reembolsadas{% endif %}{% if not tot.estimadas and not tot.devueltas %}Todas liquidadas{% endif %}</span></div>
-  <div class="kpi {{ 'ok' if tot.producto > 0 else 'bad' }}"><span class="kpi-label">Beneficio de productos</span><span class="num">{{ '%.2f €' % tot.producto }}</span>
-    <span class="muted small">Antes de los gastos de la cuenta</span></div>
-  <div class="kpi bad"><span class="kpi-label">Gastos de la cuenta</span><span class="num">{{ '%.2f €' % tot.cuenta }}</span>
-    <span class="muted small">{{ acc | length }} concepto{{ 's' if acc | length != 1 }}</span></div>
-</section>
+{% set unidad = groups[group] | lower %}
+{% set unidades = unidad ~ ('es' if group == 'mes' else 's') %}
+{% set ingresos = rows | sum(attribute='ingresos') %}
+{% set partes = [('Beneficio de productos', tot.producto), ('Coste de producto', rows | sum(attribute='coste')),
+                 ('Comisiones de Amazon', -(rows | sum(attribute='comisiones'))), ('Tarifas FBA', -(rows | sum(attribute='fba')))] %}
 
-<section class="card">
-  <div class="card-head"><h3 class="sec">Evolución por {{ groups[group] | lower }}</h3></div>
+<div class="g-row r1">
+  <section class="g-card g-dark {{ 'ok' if tot.neto > 0 else 'bad' }}">
+    <div class="g-label">Beneficio neto <i class="dot {{ 'me' if tot.neto > 0 else 'bad' }}"></i></div>
+    <div class="g-big">{{ eur(tot.neto) }}</div>
+    <p>{% if tot.margen is not none %}Margen {{ n(tot.margen)[:-1] }} %{% endif %}<br>Después de costes de producto, comisiones, FBA y gastos de la cuenta</p>
+    <div class="g-foot"><span>Productos <b>{{ eur(tot.producto) }}</b></span><span>Cuenta <b>{{ eur(tot.cuenta) }}</b></span></div>
+  </section>
+
+  <section class="g-card">
+    <div class="g-card-head">
+      <div><h3 class="sec">Ventas con IVA</h3><p class="muted small">Por {{ unidad }}</p></div>
+      <div class="g-num">{{ eur(tot.ventas) }}</div>
+    </div>
+    <div class="g-minibars"><canvas id="ventas-bars" data-l='{{ periods | map(attribute="label") | list | tojson }}' data-v='{{ periods | map(attribute="ventas") | list | tojson }}'></canvas></div>
+    <div class="g-stats">
+      <div><span class="muted small">Unidades vendidas</span><b>{{ tot.uds }} uds</b>{% if tot.estimadas %}<span class="muted small">{{ tot.estimadas }} sin liquidar</span>{% endif %}</div>
+      <div><span class="muted small">Reembolsado</span><b>{{ eur(-tot.devoluciones) if tot.devoluciones else '—' }}</b>{% if tot.devueltas %}<span class="muted small">{{ tot.devueltas }} uds</span>{% endif %}</div>
+    </div>
+  </section>
+
+  <section class="g-card">
+    <div class="g-card-head">
+      <div><h3 class="sec">Adónde va cada euro</h3><p class="muted small">Sobre {{ eur(ingresos) }} de ingresos sin IVA</p></div>
+      {% if tot.margen is not none %}<span class="pill ink">Margen {{ n(tot.margen)[:-1] }} %</span>{% endif %}
+    </div>
+    <ul class="g-split">
+      {% for label, v in partes %}
+      {% set pct = (100 * v / ingresos) if ingresos else 0 %}
+      <li class="{{ 'neg' if loop.first and v < 0 }}"><div><span>{{ label }}</span><b>{{ eur(v) }} <em>{{ '%.0f' % pct }} %</em></b></div>
+        <span class="g-track"><span style="width: {{ [[pct, 0] | max, 100] | min }}%"></span></span></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="g-row r2">
+  <section class="g-card">
+    <div class="g-card-head"><div><h3 class="sec">Curva de beneficio</h3><p class="muted small">Neto acumulado por {{ unidad }}</p></div></div>
+    <div class="g-curve"><canvas id="curve" data-chart='{{ chart }}'></canvas></div>
+    <div class="g-box"><div><span class="muted small">Margen</span><b>{{ n(tot.margen)[:-1] ~ ' %' if tot.margen is not none else '—' }}</b></div>
+      <div><span class="muted small">Neto total</span><b>{{ eur(tot.neto) }}</b></div></div>
+  </section>
+
+  <section class="g-card">
+    <div class="g-card-head"><div><h3 class="sec">Por {{ unidad }}</h3><p class="muted small">Ventas, beneficio de productos y gastos de la cuenta</p></div>
+      <span class="pill ink">{{ periods | length }} {{ unidad if periods | length == 1 else unidades }}</span></div>
+    <ul class="g-list">
+      {% for p in periods | reverse %}
+      <li>
+        <span class="g-when">{% if group == 'dia' %}<a href="{{ url_for('rentabilidad', desde=p.key, hasta=p.key, agrupar='dia') }}">{{ p.label }}</a>{% else %}{{ p.label }}{% endif %}</span>
+        <span class="g-meta"><span class="pill ink">{{ eur(p.ventas) }} ventas</span><span class="muted small">{{ p.uds }} uds{% if p.cuenta %} · {{ eur(p.cuenta) }} cuenta{% endif %}</span></span>
+        <span class="g-neto {{ 'pos' if p.neto > 0 else 'neg' if p.neto < 0 }}">{{ '+' if p.neto > 0 }}{{ eur(p.neto) }}<small>Productos {{ eur(p.producto) }}</small></span>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="g-total"><span class="muted small">{{ tot.uds }} uds · {{ eur(tot.ventas) }} ventas</span><b>Total neto: <span class="{{ 'pos' if tot.neto > 0 else 'neg' }}">{{ '+' if tot.neto > 0 }}{{ eur(tot.neto) }}</span></b></div>
+  </section>
+
+  <section class="g-card">
+    <div class="g-card-head"><div><h3 class="sec">Gastos de la cuenta</h3><p class="muted small">No se reparten entre productos</p></div>
+      <span class="pill bad">{{ eur(tot.cuenta) }}</span></div>
+    {% if acc %}
+    <div class="g-donut"><canvas id="gastos" data-l='{{ acc | map(attribute=0) | list | tojson }}' data-v='{{ acc | map(attribute=1) | list | tojson }}'></canvas>
+      <div><b>{{ eur(-tot.cuenta) }}</b><span>{{ acc | length }} concepto{{ 's' if acc | length != 1 }}</span></div></div>
+    <ul class="g-legend">
+      {% for k, v in acc %}<li><i style="--i: {{ loop.index0 }}"></i><span>{{ k }}</span><b>{{ eur(v) }}</b></li>{% endfor %}
+    </ul>
+    {% else %}<p class="muted">Sin gastos de cuenta en estas fechas.</p>{% endif %}
+    <p class="muted small">Amazon no fecha la suscripción, los envíos a sus almacenes ni el almacenamiento: aparecen el primer día del mes en que se cobran.</p>
+  </section>
+</div>
+
+<section class="g-card">
+  <div class="g-card-head"><div><h3 class="sec">Evolución por {{ unidad }}</h3><p class="muted small">Beneficio de productos y beneficio neto</p></div></div>
   <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}'></canvas></div>
 </section>
 
-<div class="grid2 cards2">
-  <section class="card">
-    <div class="card-head"><h3 class="sec">Por {{ groups[group] | lower }}</h3><span class="muted small">{{ periods | length }} {{ groups[group] | lower }}{{ 's' if periods | length != 1 and group != 'mes' }}{{ 'es' if periods | length != 1 and group == 'mes' }}</span></div>
-    <div class="table-scroll flat periods">
-    <table class="compact">
-      <thead><tr><th>{{ groups[group] }}</th><th class="r">Uds</th><th class="r">Ventas</th><th class="r">Productos</th><th class="r">Cuenta</th><th class="r">Neto</th></tr></thead>
-      <tbody>
-      {% for p in periods | reverse %}
-        <tr>
-          <td>{% if group == 'dia' %}<a href="{{ url_for('rentabilidad', desde=p.key, hasta=p.key, agrupar='dia') }}">{{ p.label }}</a>{% else %}{{ p.label }}{% endif %}</td>
-          <td class="r">{{ p.uds }}</td><td class="r">{{ '%.2f' % p.ventas }}</td>
-          <td class="r {{ 'pos' if p.producto > 0 else 'neg' if p.producto < 0 }}">{{ '%.2f' % p.producto }}</td>
-          <td class="r {{ 'neg' if p.cuenta < 0 }}">{{ '%.2f' % p.cuenta if p.cuenta else '—' }}</td>
-          <td class="r {{ 'pos' if p.neto > 0 else 'neg' if p.neto < 0 }}"><strong>{{ '%.2f' % p.neto }}</strong></td>
-        </tr>
-      {% endfor %}
-      </tbody>
-      <tfoot><tr><td>Total</td><td class="r">{{ tot.uds }}</td><td class="r">{{ '%.2f' % tot.ventas }}</td>
-        <td class="r {{ 'pos' if tot.producto > 0 else 'neg' if tot.producto < 0 }}">{{ '%.2f' % tot.producto }}</td>
-        <td class="r {{ 'neg' if tot.cuenta < 0 }}">{{ '%.2f' % tot.cuenta }}</td>
-        <td class="r {{ 'pos' if tot.neto > 0 else 'neg' if tot.neto < 0 }}">{{ '%.2f' % tot.neto }}</td></tr></tfoot>
-    </table>
-    </div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h3 class="sec">Gastos de la cuenta</h3></div>
-    {% if acc %}
-    <table class="compact ledger">
-      <tbody>
-      {% for k, v in acc %}<tr><td>{{ k }}</td><td class="r neg">{{ '%.2f €' % v }}</td></tr>{% endfor %}
-      </tbody>
-      <tfoot><tr><td>Total</td><td class="r neg">{{ '%.2f €' % tot.cuenta }}</td></tr></tfoot>
-    </table>
-    {% else %}<p class="muted">Sin gastos de cuenta en estas fechas.</p>{% endif %}
-    <p class="muted small">No se reparten entre productos. Amazon no fecha la suscripción, los envíos a sus almacenes ni el almacenamiento: aparecen el primer día del mes en que se cobran.</p>
-  </section>
-</div>
-
-<section class="card flush">
-<div class="card-head pad"><h3 class="sec">Por producto <span class="pill count">{{ rows | length }}</span></h3>
-  <input type="search" id="filtro" placeholder="Filtrar por SKU o nombre…" aria-label="Filtrar productos"></div>
-<div class="table-scroll flat">
-<table id="results" class="sortable">
-  <thead>
-    <tr>
-      <th data-sort="text">SKU</th><th data-sort="num" class="r">Uds</th><th data-sort="num" class="r">Reemb.</th>
-      <th data-sort="num" class="r">Ventas con IVA</th><th data-sort="num" class="r">Ingresos sin IVA</th><th data-sort="num" class="r">Comisiones</th><th data-sort="num" class="r">FBA</th>
-      <th data-sort="num" class="r">Reembolsos Amazon</th><th data-sort="num" class="r">Coste producto</th>
-      <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">/ud</th><th data-sort="num" class="r">Margen</th><th data-sort="num" class="r">ROI</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for r in rows %}
-    <tr>
-      <td data-v="{{ r.sku }}"><strong>{{ r.sku }}</strong><div class="muted small">{{ r.nombre[:60] }}</div>
-        {% if r.sin_coste %}<div class="note small">Falta el coste de este SKU: <a href="{{ url_for('costes') }}">añadirlo</a></div>{% endif %}</td>
-      <td class="r" data-v="{{ r.uds }}">{{ r.uds }}{% if r.estimadas %}<div class="muted small">{{ r.estimadas }} sin liquidar</div>{% endif %}</td>
-      <td class="r" data-v="{{ r.devueltas }}">{{ r.devueltas or '—' }}{% if r.vendibles %}<div class="muted small">{{ r.vendibles }} vendible{{ 's' if r.vendibles > 1 }}</div>{% endif %}</td>
-      <td class="r" data-v="{{ r.ventas }}">{{ '%.2f €' % r.ventas }}</td>
-      <td class="r" data-v="{{ r.ingresos }}">{{ '%.2f €' % r.ingresos }}</td>
-      <td class="r" data-v="{{ r.comisiones }}">{{ '%.2f €' % r.comisiones }}</td>
-      <td class="r" data-v="{{ r.fba }}">{{ '%.2f €' % r.fba }}</td>
-      <td class="r" data-v="{{ r.reembolsos }}">{{ '%.2f €' % r.reembolsos if r.reembolsos else '—' }}</td>
-      <td class="r" data-v="{{ r.coste }}">{{ '%.2f €' % r.coste }}</td>
-      <td class="r {{ 'pos' if r.beneficio > 0 else 'neg' }}" data-v="{{ r.beneficio }}">{{ '%.2f €' % r.beneficio }}</td>
-      <td class="r" data-v="{{ r.por_ud if r.por_ud is not none else -9999 }}">{{ '%.2f €' % r.por_ud if r.por_ud is not none else '—' }}</td>
-      <td class="r" data-v="{{ r.margen if r.margen is not none else -9999 }}">{% if r.margen is not none %}<span class="roi {{ 'good' if r.margen >= 20 else 'mid' if r.margen >= 10 else 'low' }}">{{ '%.0f' % r.margen }}%</span>{% else %}—{% endif %}</td>
-      <td class="r" data-v="{{ r.roi if r.roi is not none else -9999 }}">{{ '%.0f%%' % r.roi if r.roi is not none else '—' }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-</div>
+<section class="g-card flush">
+  <div class="g-card-head pad">
+    <div><h3 class="sec">Rentabilidad por producto <span class="pill ink">{{ rows | length }} SKU</span></h3>
+      <p class="muted small">Pulsa en una columna para ordenar</p></div>
+    <input type="search" id="filtro" placeholder="Filtrar por SKU o nombre…" aria-label="Filtrar productos">
+  </div>
+  <div class="table-scroll flat">
+  <table id="results" class="sortable">
+    <thead>
+      <tr>
+        <th data-sort="text">SKU / Producto</th><th data-sort="num" class="r">Uds</th><th data-sort="num" class="r">Reemb.</th>
+        <th data-sort="num" class="r">Ventas con IVA</th><th data-sort="num" class="r">Ingresos sin IVA</th><th data-sort="num" class="r">Comisiones</th><th data-sort="num" class="r">FBA</th>
+        <th data-sort="num" class="r">Reembolsos Amazon</th><th data-sort="num" class="r">Coste producto</th>
+        <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">/ud</th><th data-sort="num" class="r">Margen</th><th data-sort="num" class="r">ROI</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td data-v="{{ r.sku }}"><strong class="mono">{{ r.sku }}</strong><div class="muted small">{{ r.nombre[:60] }}</div>
+          {% if r.sin_coste %}<div class="note small">Falta el coste de este SKU: <a href="{{ url_for('costes') }}">añadirlo</a></div>{% endif %}</td>
+        <td class="r" data-v="{{ r.uds }}"><b>{{ r.uds }}</b>{% if r.estimadas %}<div class="muted small">{{ r.estimadas }} sin liquidar</div>{% endif %}</td>
+        <td class="r" data-v="{{ r.devueltas }}">{{ r.devueltas or '—' }}{% if r.vendibles %}<div class="muted small">{{ r.vendibles }} vendible{{ 's' if r.vendibles > 1 }}</div>{% endif %}</td>
+        <td class="r" data-v="{{ r.ventas }}"><b>{{ eur(r.ventas) }}</b></td>
+        <td class="r" data-v="{{ r.ingresos }}">{{ eur(r.ingresos) }}</td>
+        <td class="r mono neg" data-v="{{ r.comisiones }}">{{ eur(r.comisiones) }}</td>
+        <td class="r mono neg" data-v="{{ r.fba }}">{{ eur(r.fba) }}</td>
+        <td class="r mono" data-v="{{ r.reembolsos }}">{{ eur(r.reembolsos) if r.reembolsos else '—' }}</td>
+        <td class="r mono neg" data-v="{{ r.coste }}">{{ eur(-r.coste) }}</td>
+        <td class="r mono {{ 'pos' if r.beneficio > 0 else 'neg' }}" data-v="{{ r.beneficio }}"><b>{{ eur(r.beneficio) }}</b></td>
+        <td class="r mono" data-v="{{ r.por_ud if r.por_ud is not none else -9999 }}">{{ eur(r.por_ud) if r.por_ud is not none else '—' }}</td>
+        <td class="r" data-v="{{ r.margen if r.margen is not none else -9999 }}">{% if r.margen is not none %}<span class="roi {{ 'good' if r.margen >= 20 else 'mid' if r.margen >= 10 else 'low' }}">{{ '%.0f' % r.margen }} %</span>{% else %}—{% endif %}</td>
+        <td class="r" data-v="{{ r.roi if r.roi is not none else -9999 }}">{{ ('%.0f' % r.roi) ~ ' %' if r.roi is not none else '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
 </section>
-<p class="info small">
+
+<section class="g-card g-note small">
+  <b>Cómo se calcula.</b>
   Las ventas cuentan el día del pedido, como en Sellerboard. Las de pedidos que Amazon aún no ha liquidado usan comisiones
   y tarifas FBA estimadas con el histórico del SKU. Los reembolsos cuentan el día en que se devuelve el dinero, y una unidad
   reembolsada solo recupera su coste si Amazon la recibe como vendible.
   Beneficio = ventas sin IVA − reembolsos − comisiones − FBA + reembolsos de Amazon − coste de producto.
-</p>
+</section>
 {% endif %}
 {% endblock %}
 
@@ -153,40 +180,64 @@
     setTimeout(tick, 2000);
   }
 
+  const css = getComputedStyle(document.body), v = n => css.getPropertyValue(n).trim();
+  const eur = x => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  Chart.defaults.color = v('--muted');
+  const bare = { x: { display: false }, y: { display: false } };
+
   const c = document.getElementById('profit-chart');
   if (c) {
-    const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
     const d = JSON.parse(c.dataset.chart);
     new Chart(c, {
       type: 'bar',
       data: { labels: d.map(x => x.l), datasets: [
-        { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--accent') },
-        { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--ok') } ] },
+        { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--ink-2'), borderRadius: 4 },
+        { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--ink'), borderRadius: 4 } ] },
       options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-                 plugins: { legend: { labels: { color: v('--muted') } },
-                            tooltip: { callbacks: { label: t => `${t.dataset.label}: ${t.parsed.y.toFixed(2)} €` } } },
-                 scales: { x: { ticks: { color: v('--muted'), maxTicksLimit: 16 }, grid: { display: false } },
-                           y: { ticks: { color: v('--muted'), callback: n => n + ' €' }, grid: { color: v('--line') } } } }
+                 plugins: { legend: { align: 'end', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } },
+                            tooltip: { callbacks: { label: t => `${t.dataset.label}: ${eur(t.parsed.y)}` } } },
+                 scales: { x: { ticks: { maxTicksLimit: 16 }, grid: { display: false }, border: { display: false } },
+                           y: { ticks: { callback: n => n + ' €' }, grid: { color: v('--line') }, border: { display: false } } } }
     });
   }
 
-  const sp = document.getElementById('spark');
-  if (sp) {
-    const css = getComputedStyle(sp), d = JSON.parse(sp.dataset.chart), col = css.getPropertyValue('--spark').trim();
-    new Chart(sp, {
+  const vb = document.getElementById('ventas-bars');
+  if (vb) {
+    const vals = JSON.parse(vb.dataset.v), top = Math.max(...vals);
+    new Chart(vb, {
+      type: 'bar',
+      data: { labels: JSON.parse(vb.dataset.l), datasets: [{ data: vals, borderRadius: 99, borderSkipped: false, maxBarThickness: 14,
+              backgroundColor: vals.map(x => x === top ? v('--ink') : v('--ink-2')) }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false },
+                 tooltip: { displayColors: false, callbacks: { label: t => eur(t.parsed.y) } } }, scales: bare }
+    });
+  }
+
+  const cv = document.getElementById('curve');
+  if (cv) {
+    let acc = 0; const d = JSON.parse(cv.dataset.chart).map(x => ({ l: x.l, y: acc = Math.round((acc + x.n) * 100) / 100 }));
+    new Chart(cv, {
       type: 'line',
-      data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.n), borderColor: col, borderWidth: 2, pointRadius: 0,
-              tension: .35, fill: true, backgroundColor: col + '22' }] },
-      options: { maintainAspectRatio: false, events: [], plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                 scales: { x: { display: false }, y: { display: false } } }
+      data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.y), borderColor: v('--ink'), borderWidth: 2.5, tension: .4,
+              pointRadius: d.map((x, i) => i === d.length - 1 ? 5 : 0), pointBackgroundColor: v('--ink'), pointBorderColor: v('--card'), pointBorderWidth: 2 }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false },
+                 tooltip: { displayColors: false, callbacks: { label: t => 'Acumulado: ' + eur(t.parsed.y) } } },
+                 scales: { x: { grid: { display: false }, border: { display: false }, ticks: { maxTicksLimit: 5 } }, y: { display: false } } }
     });
   }
 
-  const filtro = document.getElementById('filtro');
-  if (filtro) filtro.addEventListener('input', () => {
-    const q = filtro.value.trim().toLowerCase();
-    document.querySelectorAll('#results tbody tr').forEach(r => r.hidden = q && !r.cells[0].textContent.toLowerCase().includes(q));
-  });
+  const g = document.getElementById('gastos');
+  if (g) {
+    const shades = [...Array(8).keys()].map(i => v('--shade-' + i));
+    new Chart(g, {
+      type: 'doughnut',
+      data: { labels: JSON.parse(g.dataset.l), datasets: [{ data: JSON.parse(g.dataset.v).map(Math.abs), backgroundColor: shades,
+              borderColor: v('--card'), borderWidth: 3, borderRadius: 4 }] },
+      options: { cutout: '72%', maintainAspectRatio: false, plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: t => `${t.label}: ${eur(-t.parsed)}` } } } }
+    });
+  }
 
   const table = document.getElementById('results');
   if (table) {
@@ -203,5 +254,11 @@
       }).forEach(r => table.tBodies[0].appendChild(r));
     }));
   }
+
+  const filtro = document.getElementById('filtro');
+  if (filtro) filtro.addEventListener('input', () => {
+    const q = filtro.value.trim().toLowerCase();
+    document.querySelectorAll('#results tbody tr').forEach(r => r.hidden = q && !r.cells[0].textContent.toLowerCase().includes(q));
+  });
 </script>
 {% endblock %}
