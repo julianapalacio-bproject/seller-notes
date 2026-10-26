@@ -24,45 +24,30 @@
 {% if not has_seller_id %}<div class="alert">Falta MY_SELLER_ID en el archivo .env.</div>{% endif %}
 
 {% if rows %}
-<div class="g-row r1">
-  <section class="g-card g-dark {{ 'ok' if activos == total else 'bad' }}">
-    <div class="g-label">Salud de los listings <i class="dot {{ 'me' if activos == total and not con_inc else 'bad' }}"></i></div>
-    <div class="bb-ring">
-      <svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.915" class="track"></circle>
-        {% if activos %}<circle cx="21" cy="21" r="15.915" class="fill" stroke-dasharray="{{ '%.2f' % (100 * activos / total) }} {{ '%.2f' % (100 - 100 * activos / total) }}"></circle>{% endif %}</svg>
-      <div><b>{{ ('%.0f' % (100 * activos / total)) }} %</b><span>activos</span></div>
-    </div>
-    <ul class="g-checks">
-      <li><b>{{ activos }}/{{ total }}</b> activos y comprables</li>
-      <li><b>{{ con_inc }}</b> con incidencias de Amazon</li>
-      <li><b>{{ sin_stock }}</b> sin stock</li>
-    </ul>
-    <div class="g-foot"><span>Última consulta</span><b>{{ ts | local }}</b></div>
+<div class="g-row k3">
+  <section class="g-card kpi3">
+    <div><span class="kpi3-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Cantidad de listings</span>
+      <div class="kpi3-num"><b>{{ total }}</b> <span>en Amazon.es</span></div>
+      <p class="kpi3-sub"><span class="pos">● {{ activos }} activo{{ 's' if activos != 1 }}</span>
+        {% if sin_stock %}<span class="neg">● {{ sin_stock }} sin stock</span>{% endif %}
+        {% if total - activos %}<span class="muted">{{ total - activos }} no activo{{ 's' if total - activos != 1 }}</span>{% endif %}</p></div>
+    <span class="kpi3-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
   </section>
-
-  <section class="g-card">
-    <div class="g-card-head"><div><h3 class="sec">Canal de venta</h3><p class="muted small">Listings por canal y unidades en stock</p></div>
-      <span class="pill ink">{{ unidades }} uds</span></div>
-    <div class="ls-channels">
-      {% for canal, items in rows | groupby('canal', default='') %}
-      {% set uds = items | map(attribute='stock') | reject('none') | sum %}
-      <div><span class="muted small">{{ canal or 'Sin canal' }}</span><b>{{ items | length }} listing{{ 's' if items | length != 1 }} <em>({{ '%.0f' % (100 * items | length / total) }} %)</em></b>
-        <span class="g-track"><span style="width: {{ '%.1f' % (100 * items | length / total) }}%"></span></span>
-        <span class="muted small">{{ uds }} uds en stock</span></div>
-      {% endfor %}
-    </div>
-    <div class="bb-strip">{% if sin_stock %}<span class="neg small"><b>⚠ {{ sin_stock }} listing{{ 's' if sin_stock != 1 }} sin stock</b></span>{% else %}<span class="pos small"><b>Todos tienen stock</b></span>{% endif %}
-      <a href="#" class="small" data-tab="sin-stock">Ver →</a></div>
+  <section class="g-card kpi3">
+    <div><span class="kpi3-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6v10H3z"/><path d="M9 20v-6h6v6"/></svg> Unidades en stock</span>
+      <div class="kpi3-num"><b>{{ '{:,}'.format(unidades).replace(',', '.') }}</b> <span>unidades</span></div>
+      <p class="kpi3-sub"><span class="accent">{{ total - sin_stock }} listing{{ 's' if total - sin_stock != 1 }} con stock</span>
+        {% if sin_stock %}<a href="#" class="neg" data-tab="sin-stock">{{ sin_stock }} sin stock →</a>{% else %}<span class="muted">Ninguno agotado</span>{% endif %}</p></div>
+    <span class="kpi3-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span>
   </section>
-
-  <section class="g-card">
-    <div class="g-card-head"><div><h3 class="sec">Estado y avisos</h3><p class="muted small">Según la última consulta a Amazon</p></div></div>
-    <div class="bb-tiles">
-      {% for label, value, tone in tiles[:-1] %}
-      <div class="{{ tone if value else 'calm' }}"><span>{{ label }}</span><b>{{ value }}</b></div>
-      {% endfor %}
-    </div>
-    <div class="bb-bar"><div><span>Listings activos</span><b>{{ activos }} de {{ total }}</b></div><span class="g-track"><span style="width: {{ '%.1f' % (100 * activos / total) }}%"></span></span></div>
+  <section class="g-card kpi3">
+    {% set salud = 100 * activos / total %}
+    <div><span class="kpi3-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg> Estado del catálogo</span>
+      <div class="kpi3-num"><b class="accent">{{ ('%.1f' % salud).replace('.', ',') }} %</b>
+        <span class="pill {{ 'ok' if salud == 100 and not con_inc else 'warn' }}">{{ 'Óptimo' if salud == 100 and not con_inc else 'Revisar' }}</span></div>
+      <p class="kpi3-sub"><span class="accent">✓ {{ activos }} de {{ total }} activos</span>
+        <span class="{{ 'neg' if con_inc else 'muted' }}">{{ con_inc }} con incidencias</span></p></div>
+    <span class="kpi3-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M12 9v6M9 12h6"/></svg></span>
   </section>
 </div>
 

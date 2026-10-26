@@ -6,15 +6,14 @@
   --ok: #157347; --ok-bg: #e1f4e9; --warn: #8f5b00; --warn-bg: #fdf0d5;
   --bad: #b3261e; --bad-bg: #fbe4e2; --me: #e6eefc;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Modo oscuro desactivado: solo se aplica con <html data-theme="dark"> */
+  :root[data-theme="dark"] {
     --bg: #0a1124; --card: #111b33; --text: #e5ecfb; --muted: #93a2c3; --line: #22304f;
     --accent: #6b9bff; --accent-soft: #1a2a50;
     --header: linear-gradient(120deg, #07163d 0%, #123a9c 100%); --header-text: #ffffff;
     --ok: #6fd39a; --ok-bg: #133325; --warn: #f1c26b; --warn-bg: #3a2c10;
     --bad: #ff8f86; --bad-bg: #42201d; --me: #1a2a50;
   }
-}
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
        font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -200,8 +199,8 @@ body.glass {
   background-attachment: fixed;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  body.glass {
+/* Modo oscuro desactivado: solo se aplica con <html data-theme="dark"> */
+  [data-theme="dark"] body.glass {
     --bg: #0b0f18; --card: rgba(22, 27, 38, .86); --text: #eef1f6; --muted: #8d95a5; --line: #252c3b;
     --navy: #dbe6ff; --ink: #81acf1; --on-ink: #0b0f18; --ink-2: #333a49; --ink-3: #305f9e;
     --ok: #4ccf86; --ok-bg: #12311f; --bad: #ff7a8a; --bad-bg: #3a1a22;
@@ -211,7 +210,6 @@ body.glass {
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -8px rgba(0, 0, 0, .5);
     background: radial-gradient(700px 600px at 15% -10%, #16213a 0%, transparent 65%), var(--bg);
   }
-}
 body.glass .top { background: transparent; box-shadow: none; color: var(--text); }
 body.glass .brand { color: var(--text); }
 body.glass .brand img { box-shadow: none; }
@@ -232,7 +230,8 @@ body.glass .pill.bad { background: var(--bad-bg); color: var(--bad); }
 
 .g-card { background: var(--card); border: 1px solid rgba(255, 255, 255, .7); border-radius: var(--radius); box-shadow: var(--shadow);
           padding: 20px 22px; margin-bottom: 18px; min-width: 0; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-@media (prefers-color-scheme: dark) { .g-card { border-color: var(--line); } }
+/* Modo oscuro desactivado: solo se aplica con <html data-theme="dark"> */
+ [data-theme="dark"] .g-card { border-color: var(--line); } 
 .g-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .g-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .g-title h1 { font-size: 24px; }
@@ -269,7 +268,8 @@ body.glass h3.sec { margin: 0; font-size: 15px; font-weight: 700; color: var(--t
           box-shadow: 0 12px 30px -4px rgba(0, 0, 0, .35), inset 0 1px 1px rgba(255, 255, 255, .2); position: relative; overflow: hidden; }
 .g-dark::before { content: ""; position: absolute; top: -64px; right: -64px; width: 176px; height: 176px; border-radius: 50%;
                   background: rgba(129, 172, 241, .22); filter: blur(32px); pointer-events: none; }
-@media (prefers-color-scheme: dark) { .g-dark { background-color: #000; border-color: #2a2d34; } }
+/* Modo oscuro desactivado: solo se aplica con <html data-theme="dark"> */
+ [data-theme="dark"] .g-dark { background-color: #000; border-color: #2a2d34; } 
 .g-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #a8c8ff;
            display: flex; justify-content: space-between; align-items: center; }
 .g-label .dot.me { background: #4ccf86; box-shadow: 0 0 10px #4ccf86; }
@@ -457,7 +457,8 @@ body.glass .head { background: var(--card); border: 1px solid rgba(255, 255, 255
 body.glass .head h1 { font-size: 24px; }
 body.glass .card { background: var(--card); border: 1px solid rgba(255, 255, 255, .7); border-radius: var(--radius); box-shadow: var(--shadow);
                    padding: 20px 22px; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-@media (prefers-color-scheme: dark) { body.glass .head, body.glass .card { border-color: var(--line); } }
+/* Modo oscuro desactivado: solo se aplica con <html data-theme="dark"> */
+ [data-theme="dark"] body.glass .head, [data-theme="dark"] body.glass .card { border-color: var(--line); } 
 body.glass h3 { color: var(--text); text-transform: none; letter-spacing: -.01em; font-size: 15px; }
 body.glass .tile { background: var(--card); border: 1px solid var(--accent-line); border-top: 3px solid var(--ink); border-radius: 16px; box-shadow: var(--shadow); }
 body.glass .tile .num { color: var(--navy); }
@@ -478,3 +479,21 @@ body.glass .info { background: var(--accent-soft); color: var(--accent); border-
 body.glass .alert { border-radius: 14px; }
 
 @media (max-width: 900px) { .g-row.c1 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Mis listings · tres tarjetas (pantalla Stitch «Mis listings · Sin módulo canales de venta») */
+.g-row.k3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.kpi3 { flex-direction: row !important; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.kpi3-label { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: .07em;
+              text-transform: uppercase; color: var(--accent); }
+.kpi3-label svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.kpi3-num { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 10px 0 8px; }
+.kpi3-num b { font-size: 34px; font-weight: 800; letter-spacing: -.03em; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1; }
+.kpi3-num b.accent { color: var(--accent); }
+.kpi3-num > span:not(.pill) { font-size: 15px; font-weight: 600; color: var(--accent); }
+.kpi3-sub { display: flex; gap: 12px; flex-wrap: wrap; margin: 0; font-size: 13px; }
+.kpi3-sub .accent, .kpi3-sub a.accent { color: var(--accent); }
+body.glass .kpi3-sub a { text-decoration: none; }
+.kpi3-icon { flex: none; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center;
+             background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent); }
+.kpi3-icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 900px) { .g-row.k3 { grid-template-columns: minmax(0, 1fr); } }
