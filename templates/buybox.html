@@ -1,8 +1,12 @@
 {% extends "base.html" %}
+{% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
+{% macro eur(v) %}{{ n(v) }} €{% endmacro %}
+{% macro pct(v) %}{{ ('%.1f' % v).replace('.', ',') }} %{% endmacro %}
+{% block body_class %}glass{% endblock %}
 {% block content %}
 <div class="bb-layout">
-  <aside class="bb-menu">
-    <h3>Productos vigilados</h3>
+  <aside class="g-card bb-menu">
+    <h3 class="sec">Productos vigilados <span class="pill ink">{{ menu | length }}</span></h3>
     <ul>
       {% for m in menu %}
       <li>
@@ -10,8 +14,8 @@
           <span class="dot {{ 'me' if m.bb_is_me else ('other' if m.has_data else 'none') }}"
                 title="{{ 'Tienes la Buy Box' if m.bb_is_me else ('La Buy Box la tiene otro' if m.has_data else 'Sin datos aún') }}"></span>
           <span class="m-text">
-            <strong>{{ m.sku or m.asin }}</strong>
-            <span class="muted small">{{ m.asin }}{% if m.bb_price is not none %} · {{ '%.2f €' % m.bb_price }}{% endif %}</span>
+            <strong class="mono">{{ m.sku or m.asin }}</strong>
+            <span class="muted small">{{ m.asin }}{% if m.bb_price is not none %} · {{ eur(m.bb_price) }}{% endif %}</span>
           </span>
         </a>
       </li>
@@ -24,92 +28,115 @@
   {% if not a %}
     <p class="empty">No hay ASIN configurados en ASINS (archivo .env).</p>
   {% else %}
-    <div class="head">
+    <section class="g-card g-head">
       <div>
-        <h1>{{ a.sku or a.asin }}</h1>
-        <p class="muted">
-          <a href="https://www.amazon.es/dp/{{ a.asin }}" target="_blank" rel="noopener">{{ a.asin }}</a>
-          {% if a.nombre %} · {{ a.nombre }}{% endif %}
-        </p>
+        <div class="g-title"><h1 class="mono-title">{{ a.sku or a.asin }}</h1>
+          {% if a.snaps %}<span class="pill {{ 'ok' if a.bb_is_me else 'bad' }}"><i class="dot {{ 'me' if a.bb_is_me else 'bad' }}"></i>
+            {{ 'Tienes la Buy Box' if a.bb_is_me else 'La Buy Box la tiene otro' }}</span>{% endif %}</div>
+        <p class="muted small"><a href="https://www.amazon.es/dp/{{ a.asin }}" target="_blank" rel="noopener">{{ a.asin }}</a>{% if a.nombre %} · {{ a.nombre }}{% endif %}</p>
       </div>
-    </div>
-
-    <div class="toolbar">
-      <div class="seg">
-        {% for key, (label, n) in periods.items() %}
-        <a href="{{ url_for('buybox', asin=asin, periodo=key, dia=day.isoformat()) }}" class="{{ 'on' if key == period }}">{{ label }}</a>
-        {% endfor %}
+      <div class="bb-nav">
+        <div class="g-seg">
+          {% for key, (label, _n) in periods.items() %}
+          <a href="{{ url_for('buybox', asin=asin, periodo=key, dia=day.isoformat()) }}" class="{{ 'on' if key == period }}">{{ label }}</a>
+          {% endfor %}
+        </div>
+        <div class="daynav">
+          <a class="btn-ghost" href="{{ url_for('buybox', asin=asin, periodo=period, dia=prev_day.isoformat()) }}" aria-label="Anterior">←</a>
+          <span class="range">{% if period == 'dia' %}{{ day.strftime('%d/%m/%Y') }}{% else %}{{ first_day.strftime('%d/%m') }} – {{ day.strftime('%d/%m/%Y') }}{% endif %}</span>
+          {% if not is_today %}
+          <a class="btn-ghost" href="{{ url_for('buybox', asin=asin, periodo=period, dia=next_day.isoformat()) }}" aria-label="Siguiente">→</a>
+          <a class="btn-ghost" href="{{ url_for('buybox', asin=asin, periodo=period) }}">Hoy</a>
+          {% endif %}
+        </div>
       </div>
-      <div class="daynav">
-        <a class="btn" href="{{ url_for('buybox', asin=asin, periodo=period, dia=prev_day.isoformat()) }}">←</a>
-        <span class="range">{% if period == 'dia' %}{{ day.strftime('%d/%m/%Y') }}{% else %}{{ first_day.strftime('%d/%m') }} – {{ day.strftime('%d/%m/%Y') }}{% endif %}</span>
-        {% if not is_today %}
-        <a class="btn" href="{{ url_for('buybox', asin=asin, periodo=period, dia=next_day.isoformat()) }}">→</a>
-        <a class="btn" href="{{ url_for('buybox', asin=asin, periodo=period) }}">Hoy</a>
-        {% endif %}
-      </div>
-    </div>
+    </section>
 
     {% if not a.snaps %}
     <p class="empty">Sin datos en este periodo.{% if is_today %} El monitor («2 - Iniciar monitor») empieza a recogerlos en cuanto está en marcha.{% endif %}</p>
     {% else %}
-    <section class="tiles">
-      <div class="tile {{ 'ok' if a.bb_is_me else '' }}"><span class="num sm">{{ a.bb_seller }}</span><span>Tiene la Buy Box ({{ a.ts | local }})</span></div>
-      <div class="tile"><span class="num">{{ '%.2f €' % a.bb_price if a.bb_price is not none else '—' }}</span>
-        <span>Precio Buy Box{% if a.price_min is not none and a.price_min != a.price_max %} · mín {{ '%.2f' % a.price_min }} · máx {{ '%.2f' % a.price_max }}{% endif %}</span></div>
-      <div class="tile"><span class="num">{{ a.bb_changes }}</span><span>Cambios de ganador</span></div>
-      <div class="tile"><span class="num">{{ a.offers_n }}</span><span>Ofertas</span></div>
-      <div class="tile"><span class="num">{{ a.my_stock if a.my_stock is not none else '—' }}</span><span>Mi stock FBA</span></div>
-    </section>
+    {% set mine = a.share | selectattr(2) | map(attribute=1) | sum %}
+    <div class="g-row b1">
+      <section class="g-card g-dark {{ 'ok' if a.bb_is_me else 'bad' }}">
+        <div class="g-label">Tu Buy Box · {{ periods[period][0] | lower }} <i class="dot {{ 'me' if a.bb_is_me else 'bad' }}"></i></div>
+        <div class="bb-ring">
+          <svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.915" class="track"></circle>
+            {% if mine > 0 %}<circle cx="21" cy="21" r="15.915" class="fill" stroke-dasharray="{{ '%.2f' % mine }} {{ '%.2f' % (100 - mine) }}"></circle>{% endif %}</svg>
+          <div><b>{{ pct(mine) }}</b><span>del tiempo</span></div>
+        </div>
+        <div class="bb-now"><span>Ahora la tiene</span><b>{{ a.bb_seller }}</b></div>
+        <div class="g-foot"><span>Precio <b>{{ eur(a.bb_price) if a.bb_price is not none else '—' }}</b></span><span>{{ a.ts | local }}</span></div>
+      </section>
 
-    <section class="card">
-      <div class="grid2">
-        <div>
-          <h3>Precio de la Buy Box · {{ a.snaps }} consultas</h3>
-          <div class="chart"><canvas data-chart='{{ a.chart }}'></canvas></div>
+      <section class="g-card">
+        <div class="g-card-head">
+          <div><h3 class="sec">Precio de la Buy Box</h3>
+            <p class="muted small">{% if a.price_min is not none and a.price_min != a.price_max %}Mín {{ eur(a.price_min) }} · máx {{ eur(a.price_max) }}{% else %}Sin cambios de precio{% endif %}</p></div>
+          <div class="g-num">{{ eur(a.bb_price) if a.bb_price is not none else '—' }}</div>
         </div>
-        <div>
-          <h3>Quién tuvo la Buy Box</h3>
-          <ul class="bars">
-            {% for who, pct, me in a.share %}
-            <li class="{{ 'me' if me }}"><span class="bar" style="width: {{ '%.1f' % pct }}%"></span>
-              <span class="bar-label">{{ '%.1f' % pct }}% · {{ who }}</span></li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </section>
+        <div class="chart"><canvas id="price-chart" data-chart='{{ a.chart }}'></canvas></div>
+        <div class="bb-strip"><span class="muted small">{{ a.snaps }} consultas en el periodo</span><span class="muted small">Última: {{ a.ts | local }}</span></div>
+      </section>
 
-    <section class="card">
-      <div class="grid2">
-        <div>
-          <h3>Ofertas en la última consulta</h3>
-          <div class="table-scroll">
-          <table class="compact">
-            <thead><tr><th>Vendedor</th><th class="r">Precio + envío</th><th>Canal</th></tr></thead>
-            <tbody>
-            {% for o in a.offers %}
-              <tr class="{{ 'me' if o.is_me }}">
-                <td>{% if o.is_bb %}<span class="pill ok">Buy Box</span> {% endif %}{{ o.seller }}</td>
-                <td class="r">{{ '%.2f €' % o.landed }}</td>
-                <td>{{ 'FBA' if o.fba else 'FBM' }}</td>
-              </tr>
-            {% endfor %}
-            </tbody>
-          </table>
-          </div>
+      <section class="g-card">
+        <div class="g-card-head"><div><h3 class="sec">Diagnóstico</h3><p class="muted small">Última consulta del periodo</p></div></div>
+        <div class="bb-tiles">
+          <div class="{{ 'warn' if a.bb_changes else 'calm' }}"><span>Cambios de ganador</span><b>{{ a.bb_changes }}</b></div>
+          <div class="calm"><span>Ofertas</span><b>{{ a.offers_n }}</b></div>
+          <div class="{{ 'bad' if a.my_stock == 0 else 'ok' if a.my_stock else 'calm' }}"><span>Mi stock FBA</span><b>{{ a.my_stock if a.my_stock is not none else '—' }}</b></div>
         </div>
-        <div>
-          <h3>Historial de movimientos</h3>
-          {% if a.events %}
-          <ul class="events">
-            {% for e in a.events %}
-            <li><span class="muted">{{ e.ts | local }}</span> <span class="pill ev-{{ e.type }}">{{ e.label }}</span>
-              {{ e.seller }}{% if e.old or e.new %} <span class="muted">{{ e.old or '' }} → {{ e.new or '' }}</span>{% endif %}</li>
-            {% endfor %}
-          </ul>
-          {% else %}<p class="muted">Sin movimientos en este periodo.</p>{% endif %}
-        </div>
+        <div class="bb-bar"><div><span>Tu tiempo con la Buy Box</span><b>{{ pct(mine) }}</b></div><span class="g-track"><span style="width: {{ '%.1f' % mine }}%"></span></span></div>
+      </section>
+    </div>
+
+    <div class="g-row b2">
+      <section class="g-card">
+        <div class="g-card-head"><div><h3 class="sec">Historial de movimientos</h3><p class="muted small">Del más reciente al más antiguo</p></div>
+          <span class="pill ink">{{ a.events | length }} movimiento{{ 's' if a.events | length != 1 }}</span></div>
+        {% if a.events %}
+        <ul class="bb-events">
+          {% for e in a.events %}
+          <li>
+            <time>{{ e.ts | local('%H:%M' if period == 'dia' else '%d/%m %H:%M') }}</time>
+            <div class="ev ev-row-{{ e.type }}"><i></i><span><b>{{ e.label }}</b> · {{ e.seller }}</span>
+              {% if e.old or e.new %}{% set money = e.type.startswith('cambio_precio') %}
+              <span class="pill ink">{% for x in (e.old, e.new) %}{% if not loop.first %} → {% endif %}{% if not x %}—{% elif money %}{{ x | replace('.', ',') }} €{% else %}{{ x }}{% endif %}{% endfor %}</span>{% endif %}</div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="muted">Sin movimientos en este periodo.</p>{% endif %}
+      </section>
+
+      <section class="g-card">
+        <div class="g-card-head"><div><h3 class="sec">Quién tuvo la Buy Box</h3><p class="muted small">Porcentaje del tiempo con el monitor en marcha</p></div></div>
+        <div class="g-donut"><canvas id="share" data-l='{{ a.share | map(attribute=0) | list | tojson }}' data-v='{{ a.share | map(attribute=1) | list | tojson }}' data-me='{{ a.share | map(attribute=2) | list | tojson }}'></canvas>
+          <div><b>{{ a.share | length }}</b><span>vendedor{{ 'es' if a.share | length != 1 }}</span></div></div>
+        <ul class="g-legend">
+          {% for who, p, me in a.share %}<li class="{{ 'me' if me }}"><i></i><span>{{ who }}{% if me %} (tú){% endif %}</span><b>{{ pct(p) }}</b></li>{% endfor %}
+        </ul>
+      </section>
+    </div>
+
+    <section class="g-card flush">
+      <div class="g-card-head pad"><div><h3 class="sec">Ofertas en la última consulta <span class="pill ink">{{ a.offers | length }}</span></h3>
+        <p class="muted small">Ordenadas por precio con envío · {{ a.ts | local }}</p></div></div>
+      <div class="table-scroll flat">
+      <table>
+        <thead><tr><th>Vendedor</th><th class="r">Precio</th><th class="r">Envío</th><th class="r">Precio + envío</th><th class="r">Diferencia con la Buy Box</th><th>Canal</th></tr></thead>
+        <tbody>
+        {% for o in a.offers %}
+          <tr class="{{ 'me' if o.is_me }}">
+            <td><b>{{ o.seller }}</b>{% if o.is_me %} <span class="pill ink">Tú</span>{% endif %}{% if o.is_bb %} <span class="pill ok"><i class="dot me"></i> Buy Box</span>{% endif %}</td>
+            <td class="r mono">{{ eur(o.price) if o.price is not none else '—' }}</td>
+            <td class="r mono">{{ eur(o.shipping) if o.shipping else '—' }}</td>
+            <td class="r"><b>{{ eur(o.landed) }}</b></td>
+            {% set dif = (o.landed - a.bb_price) if a.bb_price is not none else none %}
+            <td class="r mono {{ 'pos' if dif is not none and dif < 0 else 'neg' if dif else '' }}">{% if dif is none %}—{% elif dif == 0 %}0,00 € (igual){% else %}{{ '+' if dif > 0 }}{{ eur(dif) }} ({{ '+' if dif > 0 }}{{ ('%.1f' % (100 * dif / a.bb_price)).replace('.', ',') }} %){% endif %}</td>
+            <td><span class="pill {{ 'ink' if o.fba else 'warn' }}">{{ 'FBA' if o.fba else 'FBM' }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
       </div>
     </section>
     {% endif %}
@@ -122,21 +149,40 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   document.querySelector('.bb-menu a.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
-  const css = getComputedStyle(document.documentElement);
-  const accent = css.getPropertyValue('--accent').trim();
-  const muted = css.getPropertyValue('--muted').trim();
-  const grid = css.getPropertyValue('--line').trim();
-  document.querySelectorAll('canvas[data-chart]').forEach(c => {
+  const css = getComputedStyle(document.body), v = n => css.getPropertyValue(n).trim();
+  const eur = x => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  Chart.defaults.font.family = css.fontFamily;
+  Chart.defaults.color = v('--muted');
+
+  const c = document.getElementById('price-chart');
+  if (c) {
     const d = JSON.parse(c.dataset.chart);
     new Chart(c, {
       type: 'line',
-      data: { labels: d.labels, datasets: [{ label: 'Precio Buy Box (€)', data: d.prices, borderColor: accent,
-              backgroundColor: accent, stepped: true, pointRadius: 0, borderWidth: 2, spanGaps: false }] },
-      options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+      data: { labels: d.labels, datasets: [{ label: 'Precio Buy Box', data: d.prices, borderColor: v('--ink'), borderWidth: 2.5,
+              stepped: true, pointRadius: 0, spanGaps: false, fill: true,
+              backgroundColor: ({ chart }) => { const a = chart.chartArea; if (!a) return 'transparent';
+                const g = chart.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, v('--ink-3') + '55'); g.addColorStop(1, v('--ink-3') + '00'); return g; } }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false },
+                 tooltip: { displayColors: false, callbacks: { label: t => eur(t.parsed.y) } } },
                  interaction: { mode: 'index', intersect: false },
-                 scales: { x: { ticks: { color: muted, maxTicksLimit: 8 }, grid: { color: grid } },
-                           y: { ticks: { color: muted, callback: v => v.toFixed(2) + ' €' }, grid: { color: grid }, grace: '5%' } } }
+                 scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
+                           y: { ticks: { callback: n => eur(n) }, grid: { color: v('--line') }, border: { display: false }, grace: '5%' } } }
     });
-  });
+  }
+
+  const s = document.getElementById('share');
+  if (s) {
+    const me = JSON.parse(s.dataset.me), others = [...Array(8).keys()].map(i => v('--shade-' + i));
+    let k = 0; const colors = me.map(m => m ? v('--ok') : others[k++ % others.length]);
+    document.querySelectorAll('.g-legend li i').forEach((i, n) => i.style.background = colors[n]);
+    new Chart(s, {
+      type: 'doughnut',
+      data: { labels: JSON.parse(s.dataset.l), datasets: [{ data: JSON.parse(s.dataset.v), backgroundColor: colors,
+              borderColor: v('--card'), borderWidth: 3, borderRadius: 4 }] },
+      options: { cutout: '72%', maintainAspectRatio: false, plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: t => `${t.label}: ${t.parsed.toFixed(1).replace('.', ',')} %` } } } }
+    });
+  }
 </script>
 {% endblock %}
