@@ -607,6 +607,7 @@ def main():
     print(f"Seller Notes · vigilando {', '.join(ASINS)} cada {INTERVAL_MINUTES:g} min. Ctrl+C para parar.", flush=True)
     last_report_day = datetime.now(TZ).date()
     last_listings = 0.0
+    last_finances = 0.0
     while True:
         started = time.time()
         poll_once(con)
@@ -616,6 +617,14 @@ def main():
             except Exception as e:
                 print(f"    (Error leyendo tus listings: {e})", flush=True)
             last_listings = started
+        if started - last_finances >= 24 * 3600:  # movimientos de dinero y devoluciones, una vez al día
+            try:
+                import rentabilidad
+                rentabilidad.sync(progress=lambda m: None)
+                print(f"[{datetime.now(TZ):%H:%M}] Rentabilidad: movimientos de Amazon actualizados", flush=True)
+            except Exception as e:
+                print(f"    (Error actualizando la rentabilidad: {e})", flush=True)
+            last_finances = started
         today = datetime.now(TZ).date()
         if today != last_report_day:  # al cambiar de día, genera el informe del día anterior
             report(last_report_day.isoformat())

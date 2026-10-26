@@ -135,6 +135,14 @@ td.pos { color: var(--ok); font-weight: 600; } td.neg { color: var(--bad); font-
 .note { color: var(--warn); margin-top: 3px; }
 #results td:first-child { min-width: 280px; }
 
+/* Rentabilidad */
+.info { background: var(--accent-soft); color: var(--accent); padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
+.toolbar .seg { flex-wrap: wrap; }
+.inline-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.inline-form input { padding: 6px 8px; }
+.inline-form button { padding: 6px 12px; }
+input[type=date] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
 /* Buy Box: menú de productos + historial */
 .bb-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
 .bb-layout > * { min-width: 0; }

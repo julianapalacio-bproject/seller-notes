@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Rentabilidad real</h1>
+    <p class="muted">Datos de Amazon (Finances API){% if last %} hasta {{ last | local }}{% endif %} · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
+  </div>
+  <form method="post" action="{{ url_for('rentabilidad_actualizar') }}">
+    <input type="hidden" name="mes" value="{{ mes }}">
+    <button type="submit" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
+  </form>
+</div>
+
+{% if sync.running or sync.msg %}<div class="{{ 'alert' if sync.msg.startswith('Error') else 'info' }}" id="sync-msg" data-running="{{ 1 if sync.running else 0 }}">{{ sync.msg }}</div>{% endif %}
+
+<div class="toolbar">
+  <div class="seg">
+    {% for m in months %}<a href="{{ url_for('rentabilidad', mes=m) }}" class="{{ 'on' if m == mes }}">{{ month_label(m) }}</a>{% endfor %}
+    <a href="{{ url_for('rentabilidad', mes='todo') }}" class="{{ 'on' if mes == 'todo' }}">Todo</a>
+  </div>
+</div>
+
+{% if not rows and not acc %}
+<p class="empty">Sin datos todavía. Pulsa «Actualizar desde Amazon».</p>
+{% else %}
+<section class="tiles">
+  <div class="tile"><span class="num">{{ '%.0f €' % tot.ventas }}</span><span>Ventas con IVA (netas de devoluciones)</span></div>
+  <div class="tile"><span class="num">{{ tot.uds }}</span><span>Unidades · {{ tot.devueltas }} reembolsadas</span></div>
+  <div class="tile {{ 'ok' if tot.producto > 0 else 'bad' }}"><span class="num">{{ '%.2f €' % tot.producto }}</span><span>Beneficio de productos</span></div>
+  <div class="tile bad"><span class="num">{{ '%.2f €' % tot.cuenta }}</span><span>Gastos de la cuenta</span></div>
+  <div class="tile {{ 'ok' if tot.neto > 0 else 'bad' }}"><span class="num">{{ '%.2f €' % tot.neto }}</span>
+    <span>Beneficio neto{% if tot.margen is not none %} · margen {{ '%.1f' % tot.margen }}%{% endif %}</span></div>
+</section>
+
+<section class="card">
+  <div class="grid2">
+    <div>
+      <h3>Beneficio por mes</h3>
+      <div class="chart"><canvas id="profit-chart" data-chart='{{ chart }}'></canvas></div>
+    </div>
+    <div>
+      <h3>Gastos de la cuenta · {{ month_label(mes) }}</h3>
+      <table class="compact">
+        <tbody>
+        {% for k, v in acc %}<tr><td>{{ k }}</td><td class="r neg">{{ '%.2f €' % v }}</td></tr>{% endfor %}
+        <tr><td><strong>Total</strong></td><td class="r"><strong>{{ '%.2f €' % tot.cuenta }}</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="muted small">No se reparten entre productos: la API de finanzas da la publicidad y los envíos a Amazon en total, no por SKU.</p>
+    </div>
+  </div>
+</section>
+
+<h3>Por producto · {{ month_label(mes) }}</h3>
+<div class="table-scroll">
+<table id="results" class="sortable">
+  <thead>
+    <tr>
+      <th data-sort="text">SKU</th><th data-sort="num" class="r">Uds</th><th data-sort="num" class="r">Reemb.</th>
+      <th data-sort="num" class="r">Ingresos sin IVA</th><th data-sort="num" class="r">Comisiones</th><th data-sort="num" class="r">FBA</th>
+      <th data-sort="num" class="r">Reembolsos Amazon</th><th data-sort="num" class="r">Coste producto</th>
+      <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">/ud</th><th data-sort="num" class="r">Margen</th><th data-sort="num" class="r">ROI</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td data-v="{{ r.sku }}"><strong>{{ r.sku }}</strong><div class="muted small">{{ r.nombre[:60] }}</div>
+        {% if r.sin_coste %}<div class="note small">Falta el coste de este SKU: <a href="{{ url_for('costes') }}">añadirlo</a></div>{% endif %}</td>
+      <td class="r" data-v="{{ r.uds }}">{{ r.uds }}</td>
+      <td class="r" data-v="{{ r.devueltas }}">{{ r.devueltas or '—' }}{% if r.vendibles %}<div class="muted small">{{ r.vendibles }} vendible{{ 's' if r.vendibles > 1 }}</div>{% endif %}</td>
+      <td class="r" data-v="{{ r.ingresos }}">{{ '%.2f €' % r.ingresos }}</td>
+      <td class="r" data-v="{{ r.comisiones }}">{{ '%.2f €' % r.comisiones }}</td>
+      <td class="r" data-v="{{ r.fba }}">{{ '%.2f €' % r.fba }}</td>
+      <td class="r" data-v="{{ r.reembolsos }}">{{ '%.2f €' % r.reembolsos if r.reembolsos else '—' }}</td>
+      <td class="r" data-v="{{ r.coste }}">{{ '%.2f €' % r.coste }}</td>
+      <td class="r {{ 'pos' if r.beneficio > 0 else 'neg' }}" data-v="{{ r.beneficio }}">{{ '%.2f €' % r.beneficio }}</td>
+      <td class="r" data-v="{{ r.por_ud if r.por_ud is not none else -9999 }}">{{ '%.2f €' % r.por_ud if r.por_ud is not none else '—' }}</td>
+      <td class="r" data-v="{{ r.margen if r.margen is not none else -9999 }}">{% if r.margen is not none %}<span class="roi {{ 'good' if r.margen >= 20 else 'mid' if r.margen >= 10 else 'low' }}">{{ '%.0f' % r.margen }}%</span>{% else %}—{% endif %}</td>
+      <td class="r" data-v="{{ r.roi if r.roi is not none else -9999 }}">{{ '%.0f%%' % r.roi if r.roi is not none else '—' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted small">
+  Beneficio = ventas sin IVA (menos devoluciones) − comisiones − tarifas FBA + reembolsos de Amazon − coste de producto.
+  Las unidades reembolsadas solo recuperan su coste si Amazon las recibe como vendibles. Las ventas cuentan cuando Amazon
+  registra el envío: los pedidos de los últimos días pueden no aparecer todavía.
+</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const msg = document.getElementById('sync-msg');
+  if (msg && msg.dataset.running === '1') {
+    const tick = async () => {
+      const s = await (await fetch('{{ url_for("rentabilidad_estado") }}')).json();
+      if (!s.running) return location.reload();
+      msg.textContent = s.msg; setTimeout(tick, 2000);
+    };
+    setTimeout(tick, 2000);
+  }
+
+  const c = document.getElementById('profit-chart');
+  if (c) {
+    const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
+    const d = JSON.parse(c.dataset.chart);
+    new Chart(c, {
+      type: 'bar',
+      data: { labels: d.map(x => x.mes), datasets: [
+        { label: 'Beneficio de productos', data: d.map(x => x.producto), backgroundColor: v('--accent') },
+        { label: 'Beneficio neto', data: d.map(x => x.neto), backgroundColor: v('--ok') } ] },
+      options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: v('--muted') } } },
+                 scales: { x: { ticks: { color: v('--muted') }, grid: { display: false } },
+                           y: { ticks: { color: v('--muted'), callback: n => n + ' €' }, grid: { color: v('--line') } } } }
+    });
+  }
+
+  const table = document.getElementById('results');
+  if (table) {
+    const rows = [...table.tBodies[0].rows];
+    table.querySelectorAll('th[data-sort]').forEach((th, col) => th.addEventListener('click', () => {
+      const asc = th.dataset.dir !== 'asc';
+      table.querySelectorAll('th').forEach(h => delete h.dataset.dir);
+      th.dataset.dir = asc ? 'asc' : 'desc';
+      const num = th.dataset.sort === 'num';
+      rows.sort((a, b) => {
+        const x = a.cells[col].dataset.v, y = b.cells[col].dataset.v;
+        const r = num ? (+x) - (+y) : x.localeCompare(y, 'es');
+        return asc ? r : -r;
+      }).forEach(r => table.tBodies[0].appendChild(r));
+    }));
+  }
+</script>
+{% endblock %}

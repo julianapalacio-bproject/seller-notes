@@ -23,6 +23,7 @@ from flask import Flask, jsonify, redirect, render_template, request, send_file,
 from werkzeug.utils import secure_filename
 
 import analizador as an
+import rentabilidad as rt
 import seller_notes as sn
 
 PORT = 5050
@@ -39,7 +40,7 @@ EVENT_LABELS = {
 
 
 def local(ts, fmt="%d/%m %H:%M"):
-    return datetime.fromisoformat(ts).astimezone(sn.TZ).strftime(fmt) if ts else ""
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(sn.TZ).strftime(fmt) if ts else ""
 
 
 def day_range(day):
@@ -310,6 +311,113 @@ def catalogo_excel(job_id):
     name = f"analisis_{secure_filename(job['proveedor'] or Path(job['archivo']).stem)}_{local(job['ts'], '%Y-%m-%d')}.xlsx"
     return send_file(io.BytesIO(an.to_excel(items, job["archivo"])), as_attachment=True, download_name=name,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ---------------------------------------------------------------- rentabilidad real
+MONTHS_ES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre",
+             "Octubre", "Noviembre", "Diciembre"]
+_sync_state = {"running": False, "msg": ""}
+
+
+def month_label(m):
+    return f"{MONTHS_ES[int(m[5:])]} {m[:4]}" if m and m != "todo" else "Desde julio (todo)"
+
+
+def profit_view(con, mes):
+    """Filas por SKU, gastos de cuenta y totales del mes elegido (o de todo el periodo)."""
+    skus, account = rt.monthly(con)
+    months = sorted(set(skus) | set(account))
+    sel = months if mes == "todo" else [mes]
+    names = {r[0]: r[6] for r in rt.costs_table(con)}
+    agg = {}
+    for m in sel:
+        for sku, r in skus.get(m, {}).items():
+            a = agg.setdefault(sku, {k: (0 if not isinstance(v, str) else v) for k, v in r.items()})
+            for k, v in r.items():
+                if isinstance(v, (int, float)) and not isinstance(v, bool) and k not in ("margen", "roi"):
+                    a[k] += v
+            a["sin_coste"] = a.get("sin_coste") or r["sin_coste"]
+    rows = []
+    for sku, a in agg.items():
+        a["sku"], a["nombre"] = sku, names.get(sku, "")
+        a["margen"] = 100 * a["beneficio"] / a["ingresos"] if a["ingresos"] else None
+        a["roi"] = 100 * a["beneficio"] / a["coste"] if a["coste"] > 0 else None
+        a["por_ud"] = a["beneficio"] / a["uds"] if a["uds"] else None
+        rows.append(a)
+    rows.sort(key=lambda r: -r["beneficio"])
+    acc = {}
+    for m in sel:
+        for k, v in account.get(m, {}).items():
+            acc[k] = acc.get(k, 0.0) + v
+    prod = sum(r["beneficio"] for r in rows)
+    tot = dict(ventas=sum(r["ventas"] + r["devoluciones"] for r in rows), ingresos=sum(r["ingresos"] for r in rows),
+               uds=sum(r["uds"] for r in rows), devueltas=sum(r["devueltas"] for r in rows),
+               producto=prod, cuenta=sum(acc.values()), neto=prod + sum(acc.values()))
+    tot["margen"] = 100 * tot["neto"] / tot["ingresos"] if tot["ingresos"] else None
+    chart = []
+    for m in months:
+        p = sum(r["beneficio"] for r in skus.get(m, {}).values())
+        chart.append(dict(mes=MONTHS_ES[int(m[5:])][:3], producto=round(p, 2), neto=round(p + sum(account.get(m, {}).values()), 2)))
+    return months, rows, sorted(acc.items(), key=lambda x: x[1]), tot, chart
+
+
+@app.route("/rentabilidad")
+def rentabilidad():
+    con = sn.db()
+    rt.ensure_tables(con)
+    months = sorted({r[0] for r in con.execute("SELECT DISTINCT mes FROM fin_lineas")})
+    mes = request.args.get("mes") or (months[-1] if months else "todo")
+    months, rows, acc, tot, chart = profit_view(con, mes)
+    last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
+    return render_template("rentabilidad.html", page="rentabilidad", months=months, mes=mes, rows=rows, acc=acc,
+                           tot=tot, chart=json.dumps(chart), month_label=month_label, last=last,
+                           sync=_sync_state, error=request.args.get("error"))
+
+
+@app.route("/rentabilidad/actualizar", methods=["POST"])
+def rentabilidad_actualizar():
+    if not _sync_state["running"]:
+        def job():
+            _sync_state.update(running=True, msg="Empezando…")
+            try:
+                rt.sync(progress=lambda m: _sync_state.update(msg=m))
+                _sync_state["msg"] = ""
+            except Exception as e:
+                _sync_state["msg"] = f"Error: {e}"
+            _sync_state["running"] = False
+        Thread(target=job, daemon=True).start()
+    return redirect(url_for("rentabilidad", mes=request.form.get("mes")))
+
+
+@app.route("/rentabilidad/estado")
+def rentabilidad_estado():
+    return jsonify(_sync_state)
+
+
+@app.route("/rentabilidad/costes", methods=["GET", "POST"])
+def costes():
+    con = sn.db()
+    if request.method == "POST":
+        f = request.form
+        sku = f["sku"].strip()
+        coste = an.parse_money(f.get("coste"))
+        if sku and coste is not None:
+            prev = con.execute("SELECT asin, nombre FROM costes WHERE sku=? ORDER BY desde DESC LIMIT 1", (sku,)).fetchone() or ("", "")
+            con.execute("INSERT OR REPLACE INTO costes(sku, desde, coste, envio_fba, iva, asin, nombre) VALUES (?,?,?,?,?,?,?)",
+                        (sku, f.get("desde") or datetime.now(sn.TZ).date().isoformat(), coste,
+                         an.parse_money(f.get("envio")) or 0.0, an.parse_money(f.get("iva")) or 21.0,
+                         f.get("asin", "").strip() or prev[0], f.get("nombre", "").strip() or prev[1]))
+            con.commit()
+        return redirect(url_for("costes"))
+    rows = rt.costs_table(con)
+    latest = {}
+    for sku, desde, coste, envio, iva, asin, nombre in rows:
+        latest[sku] = dict(sku=sku, desde=desde, coste=coste, envio=envio, iva=iva, asin=asin, nombre=nombre,
+                           historial=latest.get(sku, {}).get("historial", 0) + 1)
+    sold = {r[0] for r in con.execute("SELECT DISTINCT sku FROM fin_lineas WHERE tipo='venta' AND sku IS NOT NULL")}
+    missing = sorted(sold - set(latest))
+    return render_template("costes.html", page="rentabilidad", costs=sorted(latest.values(), key=lambda c: c["sku"]),
+                           missing=missing, today=datetime.now(sn.TZ).date().isoformat())
 
 
 def mark_interrupted_jobs():

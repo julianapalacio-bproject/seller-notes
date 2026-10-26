@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head">
+  <div>
+    <h1>Costes por SKU</h1>
+    <p class="muted">Coste de compra sin IVA de cada producto. Si un proveedor cambia el precio, guarda el nuevo coste con su fecha «desde»: las ventas anteriores siguen usando el coste antiguo. · <a href="{{ url_for('rentabilidad') }}">Volver a Rentabilidad</a></p>
+  </div>
+</div>
+
+{% if missing %}<div class="alert">SKU vendidos sin coste: {{ missing | join(', ') }}. Añádelos abajo para que su beneficio sea correcto.</div>{% endif %}
+
+<div class="table-scroll">
+<table>
+  <thead><tr><th>SKU</th><th>Desde</th><th class="r">Coste/u</th><th class="r">Envío FBA/u</th><th class="r">IVA</th><th>Cambiar coste</th></tr></thead>
+  <tbody>
+  {% for c in costs %}
+    <tr>
+      <td><strong>{{ c.sku }}</strong><div class="muted small">{{ c.asin }} · {{ c.nombre[:55] }}</div></td>
+      <td>{{ c.desde }}{% if c.historial > 1 %}<div class="muted small">{{ c.historial }} cambios</div>{% endif %}</td>
+      <td class="r">{{ '%.2f €' % c.coste }}</td>
+      <td class="r">{{ '%.2f €' % c.envio }}</td>
+      <td class="r">{{ '%g' % c.iva }}%</td>
+      <td>
+        <form method="post" class="inline-form">
+          <input type="hidden" name="sku" value="{{ c.sku }}">
+          <input type="text" name="coste" value="{{ '%.2f' % c.coste }}" inputmode="decimal" title="Coste/u sin IVA" size="6">
+          <input type="text" name="envio" value="{{ '%.2f' % c.envio }}" inputmode="decimal" title="Envío a FBA por unidad" size="5">
+          <input type="text" name="iva" value="{{ '%g' % c.iva }}" inputmode="decimal" title="IVA %" size="3">
+          <input type="date" name="desde" value="{{ today }}" title="Desde qué fecha vale">
+          <button type="submit">Guardar</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<section class="card" style="margin-top: 20px">
+  <h3>Añadir un SKU nuevo</h3>
+  <form method="post" class="form-grid">
+    <label><span>SKU</span><input type="text" name="sku" required list="missing-skus"></label>
+    <datalist id="missing-skus">{% for s in missing %}<option value="{{ s }}">{% endfor %}</datalist>
+    <label><span>ASIN</span><input type="text" name="asin"></label>
+    <label><span>Producto</span><input type="text" name="nombre"></label>
+    <label><span>Coste/u sin IVA (€)</span><input type="text" name="coste" required inputmode="decimal"></label>
+    <label><span>Envío a FBA/u (€)</span><input type="text" name="envio" value="0" inputmode="decimal"></label>
+    <label><span>IVA (%)</span><input type="text" name="iva" value="21" inputmode="decimal"></label>
+    <label><span>Desde</span><input type="date" name="desde" value="2026-07-01"></label>
+    <label><span>&nbsp;</span><button type="submit">Añadir</button></label>
+  </form>
+</section>
+{% endblock %}
