@@ -3,29 +3,38 @@
 <div class="head">
   <div>
     <h1>Rentabilidad real</h1>
-    <p class="muted">Datos de Amazon (Finances API){% if last %} hasta {{ last | local }}{% endif %} · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
+    <p class="muted">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido{% if last %} · Amazon liquidado hasta {{ last | local }}{% endif %} · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
   </div>
   <form method="post" action="{{ url_for('rentabilidad_actualizar') }}">
-    <input type="hidden" name="mes" value="{{ mes }}">
+    <input type="hidden" name="volver" value="{{ request.full_path }}">
     <button type="submit" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
   </form>
 </div>
 
 {% if sync.running or sync.msg %}<div class="{{ 'alert' if sync.msg.startswith('Error') else 'info' }}" id="sync-msg" data-running="{{ 1 if sync.running else 0 }}">{{ sync.msg }}</div>{% endif %}
 
-<div class="toolbar">
-  <div class="seg">
-    {% for m in months %}<a href="{{ url_for('rentabilidad', mes=m) }}" class="{{ 'on' if m == mes }}">{{ month_label(m) }}</a>{% endfor %}
-    <a href="{{ url_for('rentabilidad', mes='todo') }}" class="{{ 'on' if mes == 'todo' }}">Todo</a>
+<section class="card range-bar">
+  <div class="seg presets">
+    {% for key, (label, a, b) in presets.items() %}
+    <a href="{{ url_for('rentabilidad', rango=key) }}" class="{{ 'on' if key == preset }}">{{ label }}</a>
+    {% endfor %}
   </div>
-</div>
+  <form method="get" class="range-form">
+    <label><span>Desde</span><input type="date" name="desde" value="{{ start.isoformat() }}" min="2026-07-01"></label>
+    <label><span>Hasta</span><input type="date" name="hasta" value="{{ end.isoformat() }}" min="2026-07-01"></label>
+    <label><span>Agrupar por</span>
+      <select name="agrupar">{% for k, v in groups.items() %}<option value="{{ k }}" {{ 'selected' if k == group }}>{{ v }}</option>{% endfor %}</select>
+    </label>
+    <button type="submit">Ver</button>
+  </form>
+</section>
 
 {% if not rows and not acc %}
-<p class="empty">Sin datos todavía. Pulsa «Actualizar desde Amazon».</p>
+<p class="empty">Sin ventas ni gastos en estas fechas.</p>
 {% else %}
 <section class="tiles">
-  <div class="tile"><span class="num">{{ '%.0f €' % tot.ventas }}</span><span>Ventas con IVA (netas de devoluciones)</span></div>
-  <div class="tile"><span class="num">{{ tot.uds }}</span><span>Unidades · {{ tot.devueltas }} reembolsadas</span></div>
+  <div class="tile"><span class="num">{{ '%.2f €' % tot.ventas }}</span><span>Ventas con IVA{% if tot.devoluciones %} · reembolsado {{ '%.2f €' % -tot.devoluciones }}{% endif %}</span></div>
+  <div class="tile"><span class="num">{{ tot.uds }}</span><span>Unidades{% if tot.estimadas %} · {{ tot.estimadas }} sin liquidar{% endif %}{% if tot.devueltas %} · {{ tot.devueltas }} reembolsadas{% endif %}</span></div>
   <div class="tile {{ 'ok' if tot.producto > 0 else 'bad' }}"><span class="num">{{ '%.2f €' % tot.producto }}</span><span>Beneficio de productos</span></div>
   <div class="tile bad"><span class="num">{{ '%.2f €' % tot.cuenta }}</span><span>Gastos de la cuenta</span></div>
   <div class="tile {{ 'ok' if tot.neto > 0 else 'bad' }}"><span class="num">{{ '%.2f €' % tot.neto }}</span>
@@ -33,31 +42,51 @@
 </section>
 
 <section class="card">
-  <div class="grid2">
-    <div>
-      <h3>Beneficio por mes</h3>
-      <div class="chart"><canvas id="profit-chart" data-chart='{{ chart }}'></canvas></div>
-    </div>
-    <div>
-      <h3>Gastos de la cuenta · {{ month_label(mes) }}</h3>
-      <table class="compact">
-        <tbody>
-        {% for k, v in acc %}<tr><td>{{ k }}</td><td class="r neg">{{ '%.2f €' % v }}</td></tr>{% endfor %}
-        <tr><td><strong>Total</strong></td><td class="r"><strong>{{ '%.2f €' % tot.cuenta }}</strong></td></tr>
-        </tbody>
-      </table>
-      <p class="muted small">No se reparten entre productos: la API de finanzas da la publicidad y los envíos a Amazon en total, no por SKU.</p>
-    </div>
-  </div>
+  <h3>Evolución por {{ groups[group] | lower }}</h3>
+  <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}'></canvas></div>
 </section>
 
-<h3>Por producto · {{ month_label(mes) }}</h3>
+<div class="grid2 cards2">
+  <section class="card">
+    <h3>Por {{ groups[group] | lower }}</h3>
+    <div class="table-scroll flat periods">
+    <table class="compact">
+      <thead><tr><th>{{ groups[group] }}</th><th class="r">Uds</th><th class="r">Ventas</th><th class="r">Productos</th><th class="r">Cuenta</th><th class="r">Neto</th></tr></thead>
+      <tbody>
+      {% for p in periods | reverse %}
+        <tr>
+          <td>{% if group == 'dia' %}<a href="{{ url_for('rentabilidad', desde=p.key, hasta=p.key, agrupar='dia') }}">{{ p.label }}</a>{% else %}{{ p.label }}{% endif %}</td>
+          <td class="r">{{ p.uds }}</td><td class="r">{{ '%.2f' % p.ventas }}</td>
+          <td class="r {{ 'pos' if p.producto > 0 else 'neg' if p.producto < 0 }}">{{ '%.2f' % p.producto }}</td>
+          <td class="r {{ 'neg' if p.cuenta < 0 }}">{{ '%.2f' % p.cuenta if p.cuenta else '—' }}</td>
+          <td class="r {{ 'pos' if p.neto > 0 else 'neg' if p.neto < 0 }}"><strong>{{ '%.2f' % p.neto }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  <section class="card">
+    <h3>Gastos de la cuenta</h3>
+    {% if acc %}
+    <table class="compact">
+      <tbody>
+      {% for k, v in acc %}<tr><td>{{ k }}</td><td class="r neg">{{ '%.2f €' % v }}</td></tr>{% endfor %}
+      <tr><td><strong>Total</strong></td><td class="r"><strong>{{ '%.2f €' % tot.cuenta }}</strong></td></tr>
+      </tbody>
+    </table>
+    {% else %}<p class="muted">Sin gastos de cuenta en estas fechas.</p>{% endif %}
+    <p class="muted small">No se reparten entre productos. Amazon no fecha la suscripción, los envíos a sus almacenes ni el almacenamiento: aparecen el primer día del mes en que se cobran.</p>
+  </section>
+</div>
+
+<h3>Por producto</h3>
 <div class="table-scroll">
 <table id="results" class="sortable">
   <thead>
     <tr>
       <th data-sort="text">SKU</th><th data-sort="num" class="r">Uds</th><th data-sort="num" class="r">Reemb.</th>
-      <th data-sort="num" class="r">Ingresos sin IVA</th><th data-sort="num" class="r">Comisiones</th><th data-sort="num" class="r">FBA</th>
+      <th data-sort="num" class="r">Ventas con IVA</th><th data-sort="num" class="r">Ingresos sin IVA</th><th data-sort="num" class="r">Comisiones</th><th data-sort="num" class="r">FBA</th>
       <th data-sort="num" class="r">Reembolsos Amazon</th><th data-sort="num" class="r">Coste producto</th>
       <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">/ud</th><th data-sort="num" class="r">Margen</th><th data-sort="num" class="r">ROI</th>
     </tr>
@@ -67,8 +96,9 @@
     <tr>
       <td data-v="{{ r.sku }}"><strong>{{ r.sku }}</strong><div class="muted small">{{ r.nombre[:60] }}</div>
         {% if r.sin_coste %}<div class="note small">Falta el coste de este SKU: <a href="{{ url_for('costes') }}">añadirlo</a></div>{% endif %}</td>
-      <td class="r" data-v="{{ r.uds }}">{{ r.uds }}</td>
+      <td class="r" data-v="{{ r.uds }}">{{ r.uds }}{% if r.estimadas %}<div class="muted small">{{ r.estimadas }} sin liquidar</div>{% endif %}</td>
       <td class="r" data-v="{{ r.devueltas }}">{{ r.devueltas or '—' }}{% if r.vendibles %}<div class="muted small">{{ r.vendibles }} vendible{{ 's' if r.vendibles > 1 }}</div>{% endif %}</td>
+      <td class="r" data-v="{{ r.ventas }}">{{ '%.2f €' % r.ventas }}</td>
       <td class="r" data-v="{{ r.ingresos }}">{{ '%.2f €' % r.ingresos }}</td>
       <td class="r" data-v="{{ r.comisiones }}">{{ '%.2f €' % r.comisiones }}</td>
       <td class="r" data-v="{{ r.fba }}">{{ '%.2f €' % r.fba }}</td>
@@ -84,9 +114,10 @@
 </table>
 </div>
 <p class="muted small">
-  Beneficio = ventas sin IVA (menos devoluciones) − comisiones − tarifas FBA + reembolsos de Amazon − coste de producto.
-  Las unidades reembolsadas solo recuperan su coste si Amazon las recibe como vendibles. Las ventas cuentan cuando Amazon
-  registra el envío: los pedidos de los últimos días pueden no aparecer todavía.
+  Las ventas cuentan el día del pedido, como en Sellerboard. Las de pedidos que Amazon aún no ha liquidado usan comisiones
+  y tarifas FBA estimadas con el histórico del SKU. Los reembolsos cuentan el día en que se devuelve el dinero, y una unidad
+  reembolsada solo recupera su coste si Amazon la recibe como vendible.
+  Beneficio = ventas sin IVA − reembolsos − comisiones − FBA + reembolsos de Amazon − coste de producto.
 </p>
 {% endif %}
 {% endblock %}
@@ -110,11 +141,13 @@
     const d = JSON.parse(c.dataset.chart);
     new Chart(c, {
       type: 'bar',
-      data: { labels: d.map(x => x.mes), datasets: [
-        { label: 'Beneficio de productos', data: d.map(x => x.producto), backgroundColor: v('--accent') },
-        { label: 'Beneficio neto', data: d.map(x => x.neto), backgroundColor: v('--ok') } ] },
-      options: { maintainAspectRatio: false, plugins: { legend: { labels: { color: v('--muted') } } },
-                 scales: { x: { ticks: { color: v('--muted') }, grid: { display: false } },
+      data: { labels: d.map(x => x.l), datasets: [
+        { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--accent') },
+        { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--ok') } ] },
+      options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                 plugins: { legend: { labels: { color: v('--muted') } },
+                            tooltip: { callbacks: { label: t => `${t.dataset.label}: ${t.parsed.y.toFixed(2)} €` } } },
+                 scales: { x: { ticks: { color: v('--muted'), maxTicksLimit: 16 }, grid: { display: false } },
                            y: { ticks: { color: v('--muted'), callback: n => n + ' €' }, grid: { color: v('--line') } } } }
     });
   }

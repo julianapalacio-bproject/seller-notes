@@ -39,6 +39,10 @@ def ensure_tables(con):
         CREATE TABLE IF NOT EXISTS devoluciones_fba (
             fecha TEXT, mes TEXT, pedido TEXT, sku TEXT, cantidad INTEGER, estado TEXT, motivo TEXT,
             clave TEXT PRIMARY KEY);  -- pedido|etiqueta|fecha: Amazon reutiliza etiquetas entre devoluciones
+        CREATE TABLE IF NOT EXISTS pedidos (
+            pedido TEXT PRIMARY KEY, compra TEXT, estado TEXT, total REAL, actualizado TEXT);
+        CREATE TABLE IF NOT EXISTS pedido_items (  -- solo pedidos aún sin liquidar (para estimarlos)
+            pedido TEXT, sku TEXT, cantidad INTEGER, precio REAL, promo REAL);
         CREATE TABLE IF NOT EXISTS gastos_manual (
             mes TEXT, concepto TEXT, importe REAL, PRIMARY KEY (mes, concepto));
     """)
@@ -153,6 +157,54 @@ def sync_returns(progress=print):
     return len(rows)
 
 
+def _get(path, params=None):
+    for attempt in range(8):
+        r = requests.get(f"{sn.ENDPOINT}{path}", params=params, timeout=60,
+                         headers={"x-amz-access-token": sn.access_token()})
+        if r.status_code != 429:  # la API de pedidos permite ráfagas cortas y luego 1 petición/minuto
+            r.raise_for_status()
+            return r.json()["payload"]
+        time.sleep(min(10 * (attempt + 1), 60))
+    raise RuntimeError("Amazon sigue limitando las peticiones (429)")
+
+
+def sync_orders(full=False, progress=print):
+    """Pedidos con su fecha de compra (Orders API) y artículos de los que aún no se han liquidado."""
+    con = sn.db()
+    ensure_tables(con)
+    has = con.execute("SELECT COUNT(*) FROM pedidos").fetchone()[0]
+    after = DEFAULT_FROM + "T00:00:00Z"
+    if has and not full:
+        after = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    progress("Descargando pedidos…")
+    params, orders = {"MarketplaceIds": sn.MARKETPLACE_ID, "CreatedAfter": after, "MaxResultsPerPage": 100}, []
+    while True:
+        p = _get("/orders/v0/orders", params)
+        orders += p.get("Orders", [])
+        if not p.get("NextToken"):
+            break
+        params = {"MarketplaceIds": sn.MARKETPLACE_ID, "NextToken": p["NextToken"]}
+        time.sleep(1)
+    with con:
+        con.executemany("INSERT OR REPLACE INTO pedidos VALUES (?,?,?,?,?)", [
+            (o["AmazonOrderId"], o["PurchaseDate"], o["OrderStatus"],
+             float((o.get("OrderTotal") or {}).get("Amount") or 0), o.get("LastUpdateDate")) for o in orders])
+    settled = {r[0] for r in con.execute("SELECT DISTINCT pedido FROM fin_lineas WHERE tipo='venta'")}
+    pending = [r[0] for r in con.execute("SELECT pedido FROM pedidos WHERE estado != 'Canceled'") if r[0] not in settled]
+    items = []
+    for i, pedido in enumerate(pending):
+        for it in _get(f"/orders/v0/orders/{pedido}/orderItems").get("OrderItems", []):
+            items.append((pedido, it.get("SellerSKU"), int(it.get("QuantityOrdered") or 0),
+                          float((it.get("ItemPrice") or {}).get("Amount") or 0),
+                          float((it.get("PromotionDiscount") or {}).get("Amount") or 0)))
+        time.sleep(2.1)  # 0,5 peticiones/segundo
+    with con:
+        con.execute("DELETE FROM pedido_items")
+        con.executemany("INSERT INTO pedido_items VALUES (?,?,?,?,?)", items)
+    progress(f"{len(orders)} pedidos · {len(pending)} aún sin liquidar")
+    return len(orders)
+
+
 def sync(full=False, progress=print):
     """Descarga los movimientos nuevos (los últimos 45 días, o todo desde julio) y reemplaza ese tramo."""
     con = sn.db()
@@ -160,8 +212,11 @@ def sync(full=False, progress=print):
     last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
     start = DEFAULT_FROM + "T00:00:00Z"
     if last and not full:
-        start = max(start, (datetime.fromisoformat(last.replace("Z", "+00:00")) - timedelta(days=45))
-                    .strftime("%Y-%m-%dT%H:%M:%SZ"))
+        # Siempre desde el día 1 de un mes: los cargos de servicio no traen fecha y se fechan al inicio del
+        # tramo descargado, así que hay que reemplazar meses completos para no duplicarlos.
+        back = (datetime.fromisoformat(last.replace("Z", "+00:00")) - timedelta(days=45)).astimezone(sn.TZ)
+        month_start = back.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+        start = max(start, month_start.strftime("%Y-%m-%dT%H:%M:%SZ"))
     now = datetime.now(timezone.utc) - timedelta(minutes=5)
     progress(f"Descargando movimientos de Amazon desde {start[:10]}…")
     # Se descarga mes a mes (hora de España) para poder fechar los cargos de servicio, que no traen fecha
@@ -180,6 +235,7 @@ def sync(full=False, progress=print):
         con.execute("DELETE FROM fin_lineas WHERE posted >= ?", (start,))
         con.executemany("INSERT INTO fin_lineas VALUES (?,?,?,?,?,?,?,?)", rows)
     progress(f"{len(rows)} líneas guardadas")
+    sync_orders(full, progress)
     sync_returns(progress)
     return len(rows)
 
@@ -197,30 +253,83 @@ ACCOUNT_LABELS = {
 }
 
 
-def _sku_row(skus, mes, sku):
-    return skus.setdefault(mes, {}).setdefault(sku, dict(
-        sku=sku, uds=0, devueltas=0, vendibles=0, ventas=0.0, devoluciones=0.0, ingresos=0.0, comisiones=0.0,
-        fba=0.0, reembolsos=0.0, coste=0.0, sin_coste=False))
+def _sku_row(skus, period, sku):
+    return skus.setdefault(period, {}).setdefault(sku, dict(
+        sku=sku, uds=0, estimadas=0, devueltas=0, vendibles=0, ventas=0.0, devoluciones=0.0, ingresos=0.0,
+        comisiones=0.0, fba=0.0, reembolsos=0.0, coste=0.0, sin_coste=False))
 
 
-def monthly(con, mes=None):
-    """({mes: {sku: fila}}, {mes: {concepto: importe}}) con el beneficio por SKU y los gastos de la cuenta."""
+def local_date(ts):
+    """Fecha en hora de España de una marca de tiempo ISO de Amazon."""
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(sn.TZ).date()
+
+
+def period_key(d, group):
+    """Clave del periodo: día (AAAA-MM-DD), semana (lunes AAAA-MM-DD) o mes (AAAA-MM)."""
+    if group == "dia":
+        return d.isoformat()
+    if group == "semana":
+        return (d - timedelta(days=d.weekday())).isoformat()
+    return d.strftime("%Y-%m")
+
+
+def fee_rates(con):
+    """Por SKU: (comisión / venta con IVA, tarifa FBA por unidad) según sus ventas ya liquidadas.
+    Sirve para estimar los pedidos que Amazon aún no ha liquidado."""
+    acc = {}
+    for sku, concepto, qty, importe in con.execute(
+            "SELECT sku, concepto, cantidad, importe FROM fin_lineas WHERE tipo='venta' AND sku IS NOT NULL"):
+        a = acc.setdefault(sku, [0.0, 0.0, 0.0, 0])
+        if concepto in INCOME:
+            a[0] += importe
+        elif concepto in REFERRAL:
+            a[1] += importe
+        elif concepto in FBA:
+            a[2] += importe
+        elif concepto == "UNIDADES":
+            a[3] += qty
+    total = [sum(x[i] for x in acc.values()) for i in range(4)]
+    default = (total[1] / total[0] if total[0] else -0.155, total[2] / total[3] if total[3] else -3.0)
+    rates = {sku: (a[1] / a[0], a[2] / a[3]) for sku, a in acc.items() if a[0] and a[3]}
+    return rates, default
+
+
+def aggregate(con, start=None, end=None, group="mes"):
+    """Beneficio por periodo y SKU entre dos fechas (date, incluidas) agrupado por «dia», «semana» o «mes».
+    Devuelve ({periodo: {sku: fila}}, {periodo: {concepto: importe}}).
+    Las ventas cuentan en la fecha del pedido (como Sellerboard); devoluciones, reembolsos y gastos de la
+    cuenta en la fecha en que Amazon los registra. Los pedidos aún sin liquidar se estiman."""
     ensure_tables(con)
-    where, args = ("WHERE mes=?", (mes,)) if mes else ("", ())
+    purchase = dict(con.execute("SELECT pedido, compra FROM pedidos"))
+    costs = {}
+
+    def cost(sku, d):
+        if (sku, d) not in costs:
+            costs[(sku, d)] = cost_on(con, sku, d.isoformat())
+        return costs[(sku, d)]
+
+    def take(ts):
+        d = local_date(ts)
+        return None if (start and d < start) or (end and d > end) else d
+
     skus, account = {}, {}
-    for posted, m, tipo, sku, qty, concepto, importe in con.execute(
-            f"SELECT posted, mes, tipo, sku, cantidad, concepto, importe FROM fin_lineas {where}", args):
+    for posted, tipo, pedido, sku, qty, concepto, importe in con.execute(
+            "SELECT posted, tipo, pedido, sku, cantidad, concepto, importe FROM fin_lineas"):
+        d = take(purchase.get(pedido, posted) if tipo == "venta" else posted)
+        if d is None:
+            continue
+        k = period_key(d, group)
         if tipo in ("venta", "devolucion", "ajuste") and sku:
-            r = _sku_row(skus, m, sku)
-            cost, iva = cost_on(con, sku, posted[:10])
+            r = _sku_row(skus, k, sku)
+            c, iva = cost(sku, d)
             iva = 21.0 if iva is None else iva
             if concepto == "UNIDADES":
                 if tipo == "venta":
                     r["uds"] += qty
-                    if cost is None:
+                    if c is None:
                         r["sin_coste"] = True
                     else:
-                        r["coste"] += qty * cost
+                        r["coste"] += qty * c
                 else:
                     r["devueltas"] += qty  # reembolsada al cliente (el coste solo se recupera si vuelve vendible)
             elif concepto in INCOME:
@@ -238,17 +347,47 @@ def monthly(con, mes=None):
                 r["comisiones"] += importe  # cualquier otra tarifa por unidad
         elif tipo in ("servicio", "publicidad", "ajuste"):
             label = ACCOUNT_LABELS.get(concepto, concepto)
-            acc = account.setdefault(m, {})
+            acc = account.setdefault(k, {})
             acc[label] = acc.get(label, 0.0) + importe
+
+    # Pedidos enviados que Amazon aún no ha liquidado: comisiones y FBA estimadas con el histórico del SKU
+    settled = {r[0] for r in con.execute("SELECT DISTINCT pedido FROM fin_lineas WHERE tipo='venta'")}
+    rates, default = fee_rates(con)
+    for pedido, compra, sku, qty, precio, promo in con.execute(
+            "SELECT p.pedido, p.compra, i.sku, i.cantidad, i.precio, i.promo FROM pedido_items i "
+            "JOIN pedidos p ON p.pedido = i.pedido WHERE p.estado != 'Canceled'"):
+        d = take(compra)
+        if d is None or pedido in settled:
+            continue
+        r = _sku_row(skus, period_key(d, group), sku)
+        c, iva = cost(sku, d)
+        iva = 21.0 if iva is None else iva
+        gross = (precio or 0) - (promo or 0)
+        comm, fba_ud = rates.get(sku, default)
+        r["uds"] += qty
+        r["estimadas"] += qty
+        r["ventas"] += gross
+        r["ingresos"] += gross / (1 + iva / 100)
+        r["comisiones"] += gross * comm
+        r["fba"] += qty * fba_ud
+        if c is None:
+            r["sin_coste"] = True
+        else:
+            r["coste"] += qty * c
+
     # Unidades devueltas al almacén en estado vendible: vuelven a tu stock, así que su coste se recupera
-    for fecha, m, sku, qty in con.execute(
-            f"SELECT fecha, mes, sku, cantidad FROM devoluciones_fba {where + ' AND' if where else 'WHERE'} estado='SELLABLE'", args):
-        r = _sku_row(skus, m, sku)
-        cost, _ = cost_on(con, sku, fecha[:10])
+    for fecha, sku, qty in con.execute("SELECT fecha, sku, cantidad FROM devoluciones_fba WHERE estado='SELLABLE'"):
+        d = take(fecha)
+        if d is None:
+            continue
+        r = _sku_row(skus, period_key(d, group), sku)
         r["vendibles"] += qty
-        r["coste"] -= qty * (cost or 0)
-    for m, concepto, importe in con.execute(f"SELECT mes, concepto, importe FROM gastos_manual {where}", args):
-        acc = account.setdefault(m, {})
+        r["coste"] -= qty * (cost(sku, d)[0] or 0)
+    for m, concepto, importe in con.execute("SELECT mes, concepto, importe FROM gastos_manual"):
+        d = datetime.strptime(m + "-01", "%Y-%m-%d").date()
+        if (start and d < start.replace(day=1)) or (end and d > end):
+            continue
+        acc = account.setdefault(period_key(d, group), {})
         acc[concepto] = acc.get(concepto, 0.0) - abs(importe)
     for by_sku in skus.values():
         for r in by_sku.values():
@@ -256,6 +395,15 @@ def monthly(con, mes=None):
             r["margen"] = 100 * r["beneficio"] / r["ingresos"] if r["ingresos"] else None
             r["roi"] = 100 * r["beneficio"] / r["coste"] if r["coste"] > 0 else None
     return skus, account
+
+
+def monthly(con, mes=None):
+    """Atajo de aggregate() por meses (mes = «AAAA-MM» para uno solo)."""
+    if not mes:
+        return aggregate(con, group="mes")
+    first = datetime.strptime(mes + "-01", "%Y-%m-%d").date()
+    last = (first + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    return aggregate(con, first, last, "mes")
 
 
 # ---------------------------------------------------------------- costes de producto

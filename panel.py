@@ -319,20 +319,38 @@ MONTHS_ES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
 _sync_state = {"running": False, "msg": ""}
 
 
-def month_label(m):
-    return f"{MONTHS_ES[int(m[5:])]} {m[:4]}" if m and m != "todo" else "Desde julio (todo)"
+GROUPS = {"dia": "Día", "semana": "Semana", "mes": "Mes"}
 
 
-def profit_view(con, mes):
-    """Filas por SKU, gastos de cuenta y totales del mes elegido (o de todo el periodo)."""
-    skus, account = rt.monthly(con)
-    months = sorted(set(skus) | set(account))
-    sel = months if mes == "todo" else [mes]
+def period_label(key, group):
+    if group == "mes":
+        return f"{MONTHS_ES[int(key[5:])][:3]} {key[:4]}"
+    d = datetime.strptime(key, "%Y-%m-%d")
+    return f"{d:%d/%m}" if group == "dia" else f"Sem. {d:%d/%m}"
+
+
+def date_presets(today):
+    first = today.replace(day=1)
+    prev_last = first - timedelta(days=1)
+    return {
+        "hoy": ("Hoy", today, today),
+        "ayer": ("Ayer", today - timedelta(days=1), today - timedelta(days=1)),
+        "7d": ("Últimos 7 días", today - timedelta(days=6), today),
+        "30d": ("Últimos 30 días", today - timedelta(days=29), today),
+        "este_mes": ("Este mes", first, today),
+        "mes_pasado": ("Mes pasado", prev_last.replace(day=1), prev_last),
+        "todo": ("Todo", datetime.strptime(rt.DEFAULT_FROM, "%Y-%m-%d").date(), today),
+    }
+
+
+def profit_view(con, start, end, group):
+    """Filas por SKU y gastos de cuenta del rango, totales y evolución por periodo."""
+    skus, account = rt.aggregate(con, start, end, group)
     names = {r[0]: r[6] for r in rt.costs_table(con)}
     agg = {}
-    for m in sel:
-        for sku, r in skus.get(m, {}).items():
-            a = agg.setdefault(sku, {k: (0 if not isinstance(v, str) else v) for k, v in r.items()})
+    for by_sku in skus.values():
+        for sku, r in by_sku.items():
+            a = agg.setdefault(sku, {k: 0 for k, v in r.items() if isinstance(v, (int, float)) and not isinstance(v, bool)})
             for k, v in r.items():
                 if isinstance(v, (int, float)) and not isinstance(v, bool) and k not in ("margen", "roi"):
                     a[k] += v
@@ -346,32 +364,55 @@ def profit_view(con, mes):
         rows.append(a)
     rows.sort(key=lambda r: -r["beneficio"])
     acc = {}
-    for m in sel:
-        for k, v in account.get(m, {}).items():
+    for by_concept in account.values():
+        for k, v in by_concept.items():
             acc[k] = acc.get(k, 0.0) + v
     prod = sum(r["beneficio"] for r in rows)
-    tot = dict(ventas=sum(r["ventas"] + r["devoluciones"] for r in rows), ingresos=sum(r["ingresos"] for r in rows),
-               uds=sum(r["uds"] for r in rows), devueltas=sum(r["devueltas"] for r in rows),
+    tot = dict(ventas=sum(r["ventas"] for r in rows), devoluciones=sum(r["devoluciones"] for r in rows),
+               ingresos=sum(r["ingresos"] for r in rows), uds=sum(r["uds"] for r in rows),
+               estimadas=sum(r["estimadas"] for r in rows), devueltas=sum(r["devueltas"] for r in rows),
                producto=prod, cuenta=sum(acc.values()), neto=prod + sum(acc.values()))
     tot["margen"] = 100 * tot["neto"] / tot["ingresos"] if tot["ingresos"] else None
-    chart = []
-    for m in months:
-        p = sum(r["beneficio"] for r in skus.get(m, {}).values())
-        chart.append(dict(mes=MONTHS_ES[int(m[5:])][:3], producto=round(p, 2), neto=round(p + sum(account.get(m, {}).values()), 2)))
-    return months, rows, sorted(acc.items(), key=lambda x: x[1]), tot, chart
+    keys, d = set(skus) | set(account), start
+    while d <= end:  # también los periodos sin ventas, para que el gráfico no se salte días
+        keys.add(rt.period_key(d, group))
+        d += timedelta(days=1)
+    periods = []
+    for k in sorted(keys):
+        by = skus.get(k, {}).values()
+        p, c = sum(r["beneficio"] for r in by), sum(account.get(k, {}).values())
+        periods.append(dict(key=k, label=period_label(k, group), uds=sum(r["uds"] for r in by),
+                            ventas=sum(r["ventas"] for r in by), producto=p, cuenta=c, neto=p + c))
+    return rows, sorted(acc.items(), key=lambda x: x[1]), tot, periods
 
 
 @app.route("/rentabilidad")
 def rentabilidad():
     con = sn.db()
     rt.ensure_tables(con)
-    months = sorted({r[0] for r in con.execute("SELECT DISTINCT mes FROM fin_lineas")})
-    mes = request.args.get("mes") or (months[-1] if months else "todo")
-    months, rows, acc, tot, chart = profit_view(con, mes)
+    today = datetime.now(sn.TZ).date()
+    presets = date_presets(today)
+    preset = request.args.get("rango", "" if request.args.get("desde") else "este_mes")
+    if preset in presets:
+        _, start, end = presets[preset]
+    else:
+        try:
+            start = datetime.strptime(request.args["desde"], "%Y-%m-%d").date()
+            end = datetime.strptime(request.args.get("hasta") or today.isoformat(), "%Y-%m-%d").date()
+        except (KeyError, ValueError):
+            preset, (_, start, end) = "este_mes", presets["este_mes"]
+        if end < start:
+            start, end = end, start
+    group = request.args.get("agrupar")
+    if group not in GROUPS:
+        days = (end - start).days
+        group = "dia" if days <= 31 else "semana" if days <= 120 else "mes"
+    rows, acc, tot, periods = profit_view(con, start, end, group)
     last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
-    return render_template("rentabilidad.html", page="rentabilidad", months=months, mes=mes, rows=rows, acc=acc,
-                           tot=tot, chart=json.dumps(chart), month_label=month_label, last=last,
-                           sync=_sync_state, error=request.args.get("error"))
+    return render_template("rentabilidad.html", page="rentabilidad", rows=rows, acc=acc, tot=tot, periods=periods,
+                           chart=json.dumps([dict(l=p["label"], p=round(p["producto"], 2), n=round(p["neto"], 2)) for p in periods]),
+                           start=start, end=end, group=group, groups=GROUPS, preset=preset, presets=presets,
+                           last=last, sync=_sync_state, error=request.args.get("error"))
 
 
 @app.route("/rentabilidad/actualizar", methods=["POST"])
@@ -386,7 +427,8 @@ def rentabilidad_actualizar():
                 _sync_state["msg"] = f"Error: {e}"
             _sync_state["running"] = False
         Thread(target=job, daemon=True).start()
-    return redirect(url_for("rentabilidad", mes=request.form.get("mes")))
+    back = request.form.get("volver") or ""
+    return redirect(back if back.startswith("/rentabilidad") else url_for("rentabilidad"))
 
 
 @app.route("/rentabilidad/estado")

@@ -143,6 +143,15 @@ td.pos { color: var(--ok); font-weight: 600; } td.neg { color: var(--bad); font-
 .inline-form button { padding: 6px 12px; }
 input[type=date] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
 
+.range-bar { display: flex; flex-direction: column; gap: 14px; padding: 14px 18px; }
+.range-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.range-form label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.chart.tall { height: 280px; }
+.cards2 { gap: 20px; }
+.cards2 .card { margin-bottom: 20px; }
+.periods { max-height: 360px; overflow-y: auto; border: 0; }
+.periods th { position: sticky; top: 0; }
+
 /* Buy Box: menú de productos + historial */
 .bb-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
 .bb-layout > * { min-width: 0; }
