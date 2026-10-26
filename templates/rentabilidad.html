@@ -193,7 +193,7 @@
       type: 'bar',
       data: { labels: d.map(x => x.l), datasets: [
         { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--ink-3'), borderRadius: 4 },
-        { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--ink'), borderRadius: 4 } ] },
+        { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--primary'), borderRadius: 4 } ] },
       options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                  plugins: { legend: { align: 'end', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } },
                             tooltip: { callbacks: { label: t => `${t.dataset.label}: ${eur(t.parsed.y)}` } } },
@@ -208,7 +208,7 @@
     new Chart(vb, {
       type: 'bar',
       data: { labels: JSON.parse(vb.dataset.l), datasets: [{ data: vals, borderRadius: 99, borderSkipped: false, maxBarThickness: 14,
-              backgroundColor: vals.map(x => x === top ? v('--ink') : v('--ink-2')) }] },
+              backgroundColor: vals.map(x => x === top ? v('--primary') : v('--ink-2')) }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false },
                  tooltip: { displayColors: false, callbacks: { label: t => eur(t.parsed.y) } } }, scales: bare }
     });
@@ -220,9 +220,9 @@
     new Chart(cv, {
       type: 'line',
       data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.y), borderWidth: 3, tension: .4, borderCapStyle: 'round',
-              borderColor: ({ chart }) => { const a = chart.chartArea; if (!a) return v('--ink');
-                const gr = chart.ctx.createLinearGradient(a.left, 0, a.right, 0); gr.addColorStop(0, v('--ink-3')); gr.addColorStop(1, v('--ink')); return gr; },
-              pointRadius: d.map((x, i) => i === d.length - 1 ? 5 : 0), pointBackgroundColor: v('--ink'), pointBorderColor: 'rgba(129, 172, 241, .35)', pointBorderWidth: 5 }] },
+              borderColor: ({ chart }) => { const a = chart.chartArea; if (!a) return v('--primary');
+                const gr = chart.ctx.createLinearGradient(a.left, 0, a.right, 0); gr.addColorStop(0, v('--ink-3')); gr.addColorStop(1, v('--primary')); return gr; },
+              pointRadius: d.map((x, i) => i === d.length - 1 ? 5 : 0), pointBackgroundColor: v('--primary'), pointBorderColor: v('--primary-glow'), pointBorderWidth: 5 }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false },
                  tooltip: { displayColors: false, callbacks: { label: t => 'Acumulado: ' + eur(t.parsed.y) } } },
                  scales: { x: { grid: { display: false }, border: { display: false }, ticks: { maxTicksLimit: 5 } }, y: { display: false } } }

@@ -159,7 +159,7 @@
     const d = JSON.parse(c.dataset.chart);
     new Chart(c, {
       type: 'line',
-      data: { labels: d.labels, datasets: [{ label: 'Precio Buy Box', data: d.prices, borderColor: v('--ink'), borderWidth: 2.5,
+      data: { labels: d.labels, datasets: [{ label: 'Precio Buy Box', data: d.prices, borderColor: v('--ink-3'), borderWidth: 2.5,
               stepped: true, pointRadius: 0, spanGaps: false, fill: true,
               backgroundColor: ({ chart }) => { const a = chart.chartArea; if (!a) return 'transparent';
                 const g = chart.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, v('--ink-3') + '55'); g.addColorStop(1, v('--ink-3') + '00'); return g; } }] },
