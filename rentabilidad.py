@@ -353,6 +353,17 @@ def aggregate(con, start=None, end=None, group="mes"):
     # Pedidos enviados que Amazon aún no ha liquidado: comisiones y FBA estimadas con el histórico del SKU
     settled = {r[0] for r in con.execute("SELECT DISTINCT pedido FROM fin_lineas WHERE tipo='venta'")}
     rates, default = fee_rates(con)
+    list_price = {}  # pedidos «Pending» llegan sin precio: se usa tu precio actual del SKU o su media vendida
+    try:
+        list_price = dict(con.execute("SELECT sku, precio FROM listings WHERE ts=(SELECT MAX(ts) FROM listings) AND precio > 0"))
+    except Exception:  # aún no se ha consultado el estado de los listings
+        pass
+    for sku, gross, uds in con.execute(
+            "SELECT sku, SUM(CASE WHEN concepto IN ('Principal','Promotion') THEN importe ELSE 0 END), "
+            "SUM(CASE WHEN concepto='UNIDADES' THEN cantidad ELSE 0 END) FROM fin_lineas "
+            "WHERE tipo='venta' AND sku IS NOT NULL GROUP BY sku"):
+        if uds and sku not in list_price:
+            list_price[sku] = gross / uds
     for pedido, compra, sku, qty, precio, promo in con.execute(
             "SELECT p.pedido, p.compra, i.sku, i.cantidad, i.precio, i.promo FROM pedido_items i "
             "JOIN pedidos p ON p.pedido = i.pedido WHERE p.estado != 'Canceled'"):
@@ -363,6 +374,8 @@ def aggregate(con, start=None, end=None, group="mes"):
         c, iva = cost(sku, d)
         iva = 21.0 if iva is None else iva
         gross = (precio or 0) - (promo or 0)
+        if not precio:
+            gross = qty * list_price.get(sku, 0.0)
         comm, fba_ud = rates.get(sku, default)
         r["uds"] += qty
         r["estimadas"] += qty
