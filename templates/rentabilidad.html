@@ -32,23 +32,34 @@
 {% if not rows and not acc %}
 <p class="empty">Sin ventas ni gastos en estas fechas.</p>
 {% else %}
-<section class="tiles">
-  <div class="tile"><span class="num">{{ '%.2f €' % tot.ventas }}</span><span>Ventas con IVA{% if tot.devoluciones %} · reembolsado {{ '%.2f €' % -tot.devoluciones }}{% endif %}</span></div>
-  <div class="tile"><span class="num">{{ tot.uds }}</span><span>Unidades{% if tot.estimadas %} · {{ tot.estimadas }} sin liquidar{% endif %}{% if tot.devueltas %} · {{ tot.devueltas }} reembolsadas{% endif %}</span></div>
-  <div class="tile {{ 'ok' if tot.producto > 0 else 'bad' }}"><span class="num">{{ '%.2f €' % tot.producto }}</span><span>Beneficio de productos</span></div>
-  <div class="tile bad"><span class="num">{{ '%.2f €' % tot.cuenta }}</span><span>Gastos de la cuenta</span></div>
-  <div class="tile {{ 'ok' if tot.neto > 0 else 'bad' }}"><span class="num">{{ '%.2f €' % tot.neto }}</span>
-    <span>Beneficio neto{% if tot.margen is not none %} · margen {{ '%.1f' % tot.margen }}%{% endif %}</span></div>
+<section class="kpis">
+  <div class="kpi hero {{ 'ok' if tot.neto > 0 else 'bad' }}">
+    <div class="kpi-top"><span class="kpi-label">Beneficio neto</span>
+      {% if tot.margen is not none %}<span class="pill {{ 'ok' if tot.margen >= 0 else 'bad' }}">Margen {{ '%.1f' % tot.margen }}%</span>{% endif %}</div>
+    <span class="num">{{ '%.2f €' % tot.neto }}</span>
+    <span class="muted small">Después de costes de producto, comisiones, FBA y gastos de la cuenta</span>
+    {% if periods | length > 1 %}<div class="spark"><span class="muted small">Neto por {{ groups[group] | lower }}</span><canvas id="spark" data-chart='{{ chart }}'></canvas></div>{% endif %}
+    <div class="kpi-foot"><span>Productos <strong class="{{ 'pos' if tot.producto > 0 else 'neg' }}">{{ '%.2f €' % tot.producto }}</strong></span>
+      <span>Cuenta <strong class="neg">{{ '%.2f €' % tot.cuenta }}</strong></span></div>
+  </div>
+  <div class="kpi"><span class="kpi-label">Ventas con IVA</span><span class="num">{{ '%.2f €' % tot.ventas }}</span>
+    <span class="muted small">{% if tot.devoluciones %}Reembolsado {{ '%.2f €' % -tot.devoluciones }}{% else %}Sin reembolsos{% endif %}</span></div>
+  <div class="kpi"><span class="kpi-label">Unidades</span><span class="num">{{ tot.uds }}</span>
+    <span class="muted small">{% if tot.estimadas %}{{ tot.estimadas }} sin liquidar{% endif %}{% if tot.estimadas and tot.devueltas %} · {% endif %}{% if tot.devueltas %}{{ tot.devueltas }} reembolsadas{% endif %}{% if not tot.estimadas and not tot.devueltas %}Todas liquidadas{% endif %}</span></div>
+  <div class="kpi {{ 'ok' if tot.producto > 0 else 'bad' }}"><span class="kpi-label">Beneficio de productos</span><span class="num">{{ '%.2f €' % tot.producto }}</span>
+    <span class="muted small">Antes de los gastos de la cuenta</span></div>
+  <div class="kpi bad"><span class="kpi-label">Gastos de la cuenta</span><span class="num">{{ '%.2f €' % tot.cuenta }}</span>
+    <span class="muted small">{{ acc | length }} concepto{{ 's' if acc | length != 1 }}</span></div>
 </section>
 
 <section class="card">
-  <h3>Evolución por {{ groups[group] | lower }}</h3>
+  <div class="card-head"><h3 class="sec">Evolución por {{ groups[group] | lower }}</h3></div>
   <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}'></canvas></div>
 </section>
 
 <div class="grid2 cards2">
   <section class="card">
-    <h3>Por {{ groups[group] | lower }}</h3>
+    <div class="card-head"><h3 class="sec">Por {{ groups[group] | lower }}</h3><span class="muted small">{{ periods | length }} {{ groups[group] | lower }}{{ 's' if periods | length != 1 and group != 'mes' }}{{ 'es' if periods | length != 1 and group == 'mes' }}</span></div>
     <div class="table-scroll flat periods">
     <table class="compact">
       <thead><tr><th>{{ groups[group] }}</th><th class="r">Uds</th><th class="r">Ventas</th><th class="r">Productos</th><th class="r">Cuenta</th><th class="r">Neto</th></tr></thead>
@@ -63,25 +74,31 @@
         </tr>
       {% endfor %}
       </tbody>
+      <tfoot><tr><td>Total</td><td class="r">{{ tot.uds }}</td><td class="r">{{ '%.2f' % tot.ventas }}</td>
+        <td class="r {{ 'pos' if tot.producto > 0 else 'neg' if tot.producto < 0 }}">{{ '%.2f' % tot.producto }}</td>
+        <td class="r {{ 'neg' if tot.cuenta < 0 }}">{{ '%.2f' % tot.cuenta }}</td>
+        <td class="r {{ 'pos' if tot.neto > 0 else 'neg' if tot.neto < 0 }}">{{ '%.2f' % tot.neto }}</td></tr></tfoot>
     </table>
     </div>
   </section>
   <section class="card">
-    <h3>Gastos de la cuenta</h3>
+    <div class="card-head"><h3 class="sec">Gastos de la cuenta</h3></div>
     {% if acc %}
-    <table class="compact">
+    <table class="compact ledger">
       <tbody>
       {% for k, v in acc %}<tr><td>{{ k }}</td><td class="r neg">{{ '%.2f €' % v }}</td></tr>{% endfor %}
-      <tr><td><strong>Total</strong></td><td class="r"><strong>{{ '%.2f €' % tot.cuenta }}</strong></td></tr>
       </tbody>
+      <tfoot><tr><td>Total</td><td class="r neg">{{ '%.2f €' % tot.cuenta }}</td></tr></tfoot>
     </table>
     {% else %}<p class="muted">Sin gastos de cuenta en estas fechas.</p>{% endif %}
     <p class="muted small">No se reparten entre productos. Amazon no fecha la suscripción, los envíos a sus almacenes ni el almacenamiento: aparecen el primer día del mes en que se cobran.</p>
   </section>
 </div>
 
-<h3>Por producto</h3>
-<div class="table-scroll">
+<section class="card flush">
+<div class="card-head pad"><h3 class="sec">Por producto <span class="pill count">{{ rows | length }}</span></h3>
+  <input type="search" id="filtro" placeholder="Filtrar por SKU o nombre…" aria-label="Filtrar productos"></div>
+<div class="table-scroll flat">
 <table id="results" class="sortable">
   <thead>
     <tr>
@@ -113,7 +130,8 @@
   </tbody>
 </table>
 </div>
-<p class="muted small">
+</section>
+<p class="info small">
   Las ventas cuentan el día del pedido, como en Sellerboard. Las de pedidos que Amazon aún no ha liquidado usan comisiones
   y tarifas FBA estimadas con el histórico del SKU. Los reembolsos cuentan el día en que se devuelve el dinero, y una unidad
   reembolsada solo recupera su coste si Amazon la recibe como vendible.
@@ -151,6 +169,24 @@
                            y: { ticks: { color: v('--muted'), callback: n => n + ' €' }, grid: { color: v('--line') } } } }
     });
   }
+
+  const sp = document.getElementById('spark');
+  if (sp) {
+    const css = getComputedStyle(sp), d = JSON.parse(sp.dataset.chart), col = css.getPropertyValue('--spark').trim();
+    new Chart(sp, {
+      type: 'line',
+      data: { labels: d.map(x => x.l), datasets: [{ data: d.map(x => x.n), borderColor: col, borderWidth: 2, pointRadius: 0,
+              tension: .35, fill: true, backgroundColor: col + '22' }] },
+      options: { maintainAspectRatio: false, events: [], plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                 scales: { x: { display: false }, y: { display: false } } }
+    });
+  }
+
+  const filtro = document.getElementById('filtro');
+  if (filtro) filtro.addEventListener('input', () => {
+    const q = filtro.value.trim().toLowerCase();
+    document.querySelectorAll('#results tbody tr').forEach(r => r.hidden = q && !r.cells[0].textContent.toLowerCase().includes(q));
+  });
 
   const table = document.getElementById('results');
   if (table) {

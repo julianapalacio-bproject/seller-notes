@@ -151,6 +151,49 @@ input[type=date] { font: inherit; color: var(--text); background: var(--bg); bor
 .cards2 .card { margin-bottom: 20px; }
 .periods { max-height: 360px; overflow-y: auto; border: 0; }
 .periods th { position: sticky; top: 0; }
+.range-bar { flex-direction: row; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
+.presets { border: 0; background: var(--bg); }
+
+/* Rentabilidad: neto destacado + 2x2 (diseño Stitch «Neto destacado») */
+.kpis { display: grid; grid-template-columns: minmax(0, 1.25fr) repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto;
+        gap: 14px; margin-bottom: 20px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
+       display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.kpi .num { color: var(--text); font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kpi.ok .num { color: var(--ok); } .kpi.bad .num { color: var(--bad); }
+.kpi.hero { grid-row: span 2; border: 2px solid color-mix(in srgb, var(--ok) 45%, var(--line)); --spark: #157347;
+            background: linear-gradient(180deg, color-mix(in srgb, var(--ok-bg) 55%, var(--card)) 0%, var(--card) 60%); }
+.kpi.hero.bad { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); --spark: #b3261e;
+                background: linear-gradient(180deg, color-mix(in srgb, var(--bad-bg) 55%, var(--card)) 0%, var(--card) 60%); }
+.kpi.hero .num { font-size: 40px; line-height: 1.1; }
+.kpi-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.spark { margin-top: auto; padding-top: 10px; }
+.spark canvas { height: 64px !important; width: 100% !important; }
+.kpi-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line);
+            padding-top: 10px; font-size: 13px; color: var(--muted); }
+.kpi-foot strong { font-variant-numeric: tabular-nums; }
+.kpi-foot .pos { color: var(--ok); } .kpi-foot .neg { color: var(--bad); }
+h3.sec { margin: 0; color: var(--text); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.card-head .muted { font-size: 12px; }
+tfoot td { font-weight: 700; border-top: 2px solid var(--line); border-bottom: 0; background: var(--bg); }
+.periods tfoot td { position: sticky; bottom: 0; }
+tfoot td.pos { color: var(--ok); } tfoot td.neg { color: var(--bad); }
+.ledger td { border-bottom: 1px dashed var(--line); }
+.card.flush { padding: 0; overflow: hidden; }
+.card.flush .table-scroll { border: 0; border-radius: 0; border-top: 1px solid var(--line); }
+.card-head.pad { padding: 14px 18px 0; margin-bottom: 14px; }
+.pill.count { background: var(--accent-soft); color: var(--accent); text-transform: none; letter-spacing: 0; }
+input[type=search] { font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+                     border-radius: 8px; padding: 7px 10px; width: 260px; max-width: 100%; }
+p.info.small { line-height: 1.55; }
+@media (prefers-color-scheme: dark) {
+  .kpi.hero { --spark: #6fd39a; } .kpi.hero.bad { --spark: #ff8f86; }
+}
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi.hero { grid-column: 1 / -1; grid-row: auto; }
+}
 
 /* Buy Box: menú de productos + historial */
 .bb-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
