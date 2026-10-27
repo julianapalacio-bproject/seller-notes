@@ -75,6 +75,9 @@ def db():
     cols = [r[1] for r in con.execute("PRAGMA table_info(snapshots)")]
     if "my_stock" not in cols:
         con.execute("ALTER TABLE snapshots ADD COLUMN my_stock INTEGER")
+    if "bb_prime" not in cols:  # quién gana para clientes Prime y para el resto (oferta normal)
+        con.execute("ALTER TABLE snapshots ADD COLUMN bb_prime TEXT")
+        con.execute("ALTER TABLE snapshots ADD COLUMN bb_normal TEXT")
     return con
 
 
@@ -140,7 +143,8 @@ def get_item_offers(asin):
 def get_featured_spain(asins):
     """Quién tiene la Buy Box para un cliente en España (competitiveSummary).
     Amazon la reparte por tipo de cliente y código postal; gana el vendedor con más peso en visitas.
-    Devuelve {asin: seller_id}; {} si falla (entonces se usa getItemOffers)."""
+    Devuelve {asin: {"total": seller_id, "prime": seller_id, "normal": seller_id}};
+    {} si falla (entonces se usa getItemOffers)."""
     url = f"{ENDPOINT}/batches/products/pricing/2022-05-01/items/competitiveSummary"
     out = {}
     for i in range(0, len(asins), 20):
@@ -159,16 +163,19 @@ def get_featured_spain(asins):
             continue
         for resp in r.json().get("responses", []):
             body = resp.get("body") or {}
-            weight = {}
+            weight = {"total": {}, "prime": {}, "normal": {}}
             for opt in body.get("featuredBuyingOptions", []):
                 if opt.get("buyingOptionType") != "New":
                     continue
                 for fo in opt.get("segmentedFeaturedOffers", []):
-                    w = sum((seg.get("segmentDetails") or {}).get("glanceViewWeightPercentage", 0)
-                            for seg in fo.get("featuredOfferSegments", []))
-                    weight[fo.get("sellerId")] = weight.get(fo.get("sellerId"), 0) + w
+                    sid = fo.get("sellerId")
+                    for seg in fo.get("featuredOfferSegments", []):
+                        w = (seg.get("segmentDetails") or {}).get("glanceViewWeightPercentage", 0)
+                        group = "prime" if seg.get("customerMembership") == "PRIME" else "normal"
+                        for g in ("total", group):
+                            weight[g][sid] = weight[g].get(sid, 0) + w
             if body.get("asin"):
-                out[body["asin"]] = max(weight, key=weight.get) if weight else None
+                out[body["asin"]] = {g: max(w, key=w.get) if w else None for g, w in weight.items()}
     return out
 
 
@@ -248,7 +255,7 @@ def last_snapshot(con, asin):
     return {"bb_seller": row[1], "bb_price": row[2], "offers": offers}
 
 
-def store(con, asin, ts, total, offers, raw=None, my_stock=None):
+def store(con, asin, ts, total, offers, raw=None, my_stock=None, segments=None):
     prev = last_snapshot(con, asin)
     bb = next((o for o in offers if o["is_bb"]), None)
     bb_seller = bb["seller_id"] if bb else None
@@ -259,8 +266,10 @@ def store(con, asin, ts, total, offers, raw=None, my_stock=None):
                        (asin, day_start.astimezone(timezone.utc).isoformat())).fetchone():
             raw = None
     cur = con.execute(
-        "INSERT INTO snapshots(ts, asin, total_offers, bb_seller, bb_price, raw, my_stock) VALUES (?,?,?,?,?,?,?)",
-        (ts, asin, total, bb_seller, bb_price, json.dumps(raw) if raw else None, my_stock),
+        "INSERT INTO snapshots(ts, asin, total_offers, bb_seller, bb_price, raw, my_stock, bb_prime, bb_normal) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
+        (ts, asin, total, bb_seller, bb_price, json.dumps(raw) if raw else None, my_stock,
+         (segments or {}).get("prime"), (segments or {}).get("normal")),
     )
     sid = cur.lastrowid
     con.executemany(
@@ -304,11 +313,13 @@ def poll_once(con):
             print(f"[{ts}] {asin} ERROR: {e}", flush=True)
             continue
         total, offers = parse_payload(payload)
-        if spain.get(asin) in {o["seller_id"] for o in offers}:  # getItemOffers puede marcar varias ganadoras: manda la de un cliente en España
+        winner = (spain.get(asin) or {}).get("total")
+        if winner in {o["seller_id"] for o in offers}:  # getItemOffers puede marcar varias ganadoras: manda la de un cliente en España
             for o in offers:
-                o["is_bb"] = 1 if o["seller_id"] == spain[asin] else 0
+                o["is_bb"] = 1 if o["seller_id"] == winner else 0
         stock = my_stock.get(asin) if my_stock else None
-        bb_seller, bb_price, total, events = store(con, asin, ts, total, offers, raw=payload, my_stock=stock)
+        bb_seller, bb_price, total, events = store(con, asin, ts, total, offers, raw=payload, my_stock=stock,
+                                                 segments=spain.get(asin))
         local = datetime.fromisoformat(ts).astimezone(TZ).strftime("%H:%M")
         extra = f" | Mi stock: {stock} uds" if stock is not None else ""
         print(f"[{local}] {asin}: {total} ofertas | Buy Box: {name(bb_seller, names)} a {bb_price} €{extra}", flush=True)

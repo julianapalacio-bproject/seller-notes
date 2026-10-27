@@ -391,6 +391,10 @@ body.glass .daynav .range { color: var(--navy); }
 .bb-ring span { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 .bb-now { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; font-size: 13px; color: #94a3b8; }
 .bb-now b { color: #fff; font-size: 15px; overflow-wrap: anywhere; }
+.bb-segs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: -4px 0 14px; }
+.bb-segs > div { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px;
+  background: rgba(255, 255, 255, .06); font-size: 12px; color: #94a3b8; min-width: 0; }
+.bb-segs b { color: #fff; font-size: 13px; overflow-wrap: anywhere; }
 .bb-strip { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px;
             border-radius: 14px; background: var(--card); border: 1px solid var(--accent-line); }
 
