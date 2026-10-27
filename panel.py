@@ -164,14 +164,13 @@ def asin_history(con, asin, start, end, names):
     data["chart"] = json.dumps({"labels": [local(s[1], label_fmt) for s in snaps],
                                 "prices": [s[4] for s in snaps],
                                 "offers": [s[2] for s in snaps]})
-    # Amazon a veces marca varias ofertas como ganadoras; se señala solo la que guardó el monitor
-    data["offers"], bb_marked = [], False
-    for r in con.execute("SELECT seller_id, price, shipping, landed, fba FROM offers "
+    # Amazon puede marcar varias ofertas como ganadoras a la vez (Buy Box compartida)
+    data["offers"] = []
+    for r in con.execute("SELECT seller_id, price, shipping, landed, fba, is_bb FROM offers "
                          "WHERE snapshot_id=? ORDER BY landed", (last[0],)):
-        is_bb = not bb_marked and r[0] == last[3] and r[3] == last[4]
-        bb_marked = bb_marked or is_bb
-        data["offers"].append(dict(seller=sn.name(r[0], names), is_me=bool(sn.MY_SELLER_ID) and r[0] == sn.MY_SELLER_ID,
-                                   price=r[1], shipping=r[2], landed=r[3], fba=r[4], is_bb=is_bb))
+        data["offers"].append(dict(seller_id=r[0], seller=sn.name(r[0], names), is_me=bool(sn.MY_SELLER_ID) and r[0] == sn.MY_SELLER_ID,
+                                   price=r[1], shipping=r[2], landed=r[3], fba=r[4], is_bb=bool(r[5])))
+    data["bb_shared"] = [o["seller"] for o in data["offers"] if o["is_bb"] and o["seller_id"] != last[3]]
     data["events"] = [
         dict(ts=r[0], label=EVENT_LABELS.get(r[1], r[1]), type=r[1], seller=sn.name(r[2], names), old=r[3], new=r[4])
         for r in con.execute("SELECT ts, type, seller_id, old_value, new_value FROM events "

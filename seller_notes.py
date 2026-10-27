@@ -215,7 +215,10 @@ def last_snapshot(con, asin):
 
 def store(con, asin, ts, total, offers, raw=None, my_stock=None):
     prev = last_snapshot(con, asin)
-    bb = next((o for o in offers if o["is_bb"]), None)
+    # Amazon puede tener varias ofertas ganadoras a la vez (p. ej. una Prime y otra más barata sin Prime):
+    # si la tuya es una de ellas, cuenta como que tienes la Buy Box
+    winners = [o for o in offers if o["is_bb"]]
+    bb = next((o for o in winners if MY_SELLER_ID and o["seller_id"] == MY_SELLER_ID), winners[0] if winners else None)
     bb_seller = bb["seller_id"] if bb else None
     bb_price = bb["landed"] if bb else None
     if raw is not None:  # la respuesta completa ocupa mucho: solo se guarda la primera de cada día

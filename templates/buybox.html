@@ -64,7 +64,8 @@
             {% if mine > 0 %}<circle cx="21" cy="21" r="15.915" class="fill" stroke-dasharray="{{ '%.2f' % mine }} {{ '%.2f' % (100 - mine) }}"></circle>{% endif %}</svg>
           <div><b>{{ pct(mine) }}</b><span>del tiempo</span></div>
         </div>
-        <div class="bb-now"><span>Ahora la tiene</span><b>{{ a.bb_seller }}</b></div>
+        <div class="bb-now"><span>Ahora la tiene</span><b>{{ a.bb_seller }}</b>
+          {% if a.bb_shared %}<span class="small">Compartida con {{ a.bb_shared | join(', ') }}: Amazon muestra una u otra según el cliente (p. ej. Prime o no)</span>{% endif %}</div>
         <div class="g-foot"><span>Precio <b>{{ eur(a.bb_price) if a.bb_price is not none else '—' }}</b></span><span>{{ a.ts | local }}</span></div>
       </section>
 
