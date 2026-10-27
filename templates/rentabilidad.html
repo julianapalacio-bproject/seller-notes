@@ -101,7 +101,7 @@
       {% for p in periods | reverse %}
       <li>
         <span class="g-when">{% if group == 'dia' %}<a href="{{ url_for('rentabilidad', desde=p.key, hasta=p.key, agrupar='dia') }}">{{ p.label }}</a>{% else %}{{ p.label }}{% endif %}</span>
-        <span class="g-meta"><span class="pill ink">{{ eur(p.ventas) }} ventas</span><span class="muted small">{{ p.uds }} uds{% if p.cuenta %} · {{ eur(p.cuenta) }} cuenta{% endif %}</span></span>
+        <span class="g-meta"><span class="pill ink">{{ eur(p.ventas) }} ventas</span><span class="muted small">{{ p.uds }} uds</span>{% if p.cuenta %}<span class="g-fijos">{{ eur(p.cuenta) }} cuenta</span>{% endif %}</span>
         <span class="g-neto {{ 'pos' if p.neto > 0 else 'neg' if p.neto < 0 }}">{{ '+' if p.neto > 0 }}{{ eur(p.neto) }}<small>Productos {{ eur(p.producto) }}</small></span>
       </li>
       {% endfor %}
@@ -168,13 +168,13 @@
   </div>
 </section>
 
-<section class="g-card g-note small">
+<section class="g-card g-note small"><div>
   <b>Cómo se calcula.</b>
   Las ventas cuentan el día del pedido, como en Sellerboard. Las de pedidos que Amazon aún no ha liquidado usan comisiones
   y tarifas FBA estimadas con el histórico del SKU. Los reembolsos cuentan el día en que se devuelve el dinero, y una unidad
   reembolsada solo recupera su coste si Amazon la recibe como vendible.
   Beneficio = ventas sin IVA − reembolsos − comisiones − FBA + reembolsos de Amazon − coste de producto.
-</section>
+</div></section>
 {% endif %}
 {% endblock %}
 
@@ -236,7 +236,8 @@
               pointRadius: d.map((x, i) => i === d.length - 1 ? 5 : 0), pointBackgroundColor: v('--primary'), pointBorderColor: v('--primary-glow'), pointBorderWidth: 5 }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false },
                  tooltip: { displayColors: false, callbacks: { label: t => 'Acumulado: ' + eur(t.parsed.y) } } },
-                 scales: { x: { grid: { display: false }, border: { display: false }, ticks: { maxTicksLimit: 5 } }, y: { display: false } } }
+                 scales: { x: { grid: { display: false }, border: { display: false }, ticks: { maxTicksLimit: 5 } },
+                           y: { ticks: { display: false, maxTicksLimit: 4 }, grid: { color: v('--accent-line') }, border: { display: false, dash: [2, 2] } } } }
     });
   }
 
