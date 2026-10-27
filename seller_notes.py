@@ -137,6 +137,41 @@ def get_item_offers(asin):
     raise RuntimeError(f"Demasiados 429 para {asin}")
 
 
+def get_featured_spain(asins):
+    """Quién tiene la Buy Box para un cliente en España (competitiveSummary).
+    Amazon la reparte por tipo de cliente y código postal; gana el vendedor con más peso en visitas.
+    Devuelve {asin: seller_id}; {} si falla (entonces se usa getItemOffers)."""
+    url = f"{ENDPOINT}/batches/products/pricing/2022-05-01/items/competitiveSummary"
+    out = {}
+    for i in range(0, len(asins), 20):
+        reqs = [{"asin": a, "marketplaceId": MARKETPLACE_ID, "includedData": ["featuredBuyingOptions"],
+                 "method": "GET", "uri": "/products/pricing/2022-05-01/items/competitiveSummary"} for a in asins[i:i + 20]]
+        try:
+            for attempt in range(4):
+                r = requests.post(url, json={"requests": reqs}, timeout=30,
+                                  headers={"x-amz-access-token": access_token(), "content-type": "application/json"})
+                if r.status_code != 429:  # admite 1 petición cada 30 s
+                    break
+                time.sleep(30)
+            r.raise_for_status()
+        except Exception as e:
+            print(f"    (Buy Box en España no disponible: {e})", flush=True)
+            continue
+        for resp in r.json().get("responses", []):
+            body = resp.get("body") or {}
+            weight = {}
+            for opt in body.get("featuredBuyingOptions", []):
+                if opt.get("buyingOptionType") != "New":
+                    continue
+                for fo in opt.get("segmentedFeaturedOffers", []):
+                    w = sum((seg.get("segmentDetails") or {}).get("glanceViewWeightPercentage", 0)
+                            for seg in fo.get("featuredOfferSegments", []))
+                    weight[fo.get("sellerId")] = weight.get(fo.get("sellerId"), 0) + w
+            if body.get("asin"):
+                out[body["asin"]] = max(weight, key=weight.get) if weight else None
+    return out
+
+
 _stock_api = {"enabled": True}
 
 
@@ -215,10 +250,7 @@ def last_snapshot(con, asin):
 
 def store(con, asin, ts, total, offers, raw=None, my_stock=None):
     prev = last_snapshot(con, asin)
-    # Amazon puede tener varias ofertas ganadoras a la vez (p. ej. una Prime y otra más barata sin Prime):
-    # si la tuya es una de ellas, cuenta como que tienes la Buy Box
-    winners = [o for o in offers if o["is_bb"]]
-    bb = next((o for o in winners if MY_SELLER_ID and o["seller_id"] == MY_SELLER_ID), winners[0] if winners else None)
+    bb = next((o for o in offers if o["is_bb"]), None)
     bb_seller = bb["seller_id"] if bb else None
     bb_price = bb["landed"] if bb else None
     if raw is not None:  # la respuesta completa ocupa mucho: solo se guarda la primera de cada día
@@ -261,6 +293,7 @@ def store(con, asin, ts, total, offers, raw=None, my_stock=None):
 def poll_once(con):
     names = seller_names()
     my_stock = get_my_stock()
+    spain = get_featured_spain(ASINS)
     for i, asin in enumerate(ASINS):
         if i:
             time.sleep(2.5)  # getItemOffers admite ~0,5 peticiones/segundo
@@ -271,6 +304,9 @@ def poll_once(con):
             print(f"[{ts}] {asin} ERROR: {e}", flush=True)
             continue
         total, offers = parse_payload(payload)
+        if spain.get(asin) in {o["seller_id"] for o in offers}:  # getItemOffers puede marcar varias ganadoras: manda la de un cliente en España
+            for o in offers:
+                o["is_bb"] = 1 if o["seller_id"] == spain[asin] else 0
         stock = my_stock.get(asin) if my_stock else None
         bb_seller, bb_price, total, events = store(con, asin, ts, total, offers, raw=payload, my_stock=stock)
         local = datetime.fromisoformat(ts).astimezone(TZ).strftime("%H:%M")

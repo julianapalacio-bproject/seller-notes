@@ -164,13 +164,12 @@ def asin_history(con, asin, start, end, names):
     data["chart"] = json.dumps({"labels": [local(s[1], label_fmt) for s in snaps],
                                 "prices": [s[4] for s in snaps],
                                 "offers": [s[2] for s in snaps]})
-    # Amazon puede marcar varias ofertas como ganadoras a la vez (Buy Box compartida)
+    # se señala solo la oferta que tiene la Buy Box para un cliente en España (la que guardó el monitor)
     data["offers"] = []
-    for r in con.execute("SELECT seller_id, price, shipping, landed, fba, is_bb FROM offers "
+    for r in con.execute("SELECT seller_id, price, shipping, landed, fba FROM offers "
                          "WHERE snapshot_id=? ORDER BY landed", (last[0],)):
-        data["offers"].append(dict(seller_id=r[0], seller=sn.name(r[0], names), is_me=bool(sn.MY_SELLER_ID) and r[0] == sn.MY_SELLER_ID,
-                                   price=r[1], shipping=r[2], landed=r[3], fba=r[4], is_bb=bool(r[5])))
-    data["bb_shared"] = [o["seller"] for o in data["offers"] if o["is_bb"] and o["seller_id"] != last[3]]
+        data["offers"].append(dict(seller=sn.name(r[0], names), is_me=bool(sn.MY_SELLER_ID) and r[0] == sn.MY_SELLER_ID,
+                                   price=r[1], shipping=r[2], landed=r[3], fba=r[4], is_bb=bool(r[0]) and r[0] == last[3]))
     data["events"] = [
         dict(ts=r[0], label=EVENT_LABELS.get(r[1], r[1]), type=r[1], seller=sn.name(r[2], names), old=r[3], new=r[4])
         for r in con.execute("SELECT ts, type, seller_id, old_value, new_value FROM events "
