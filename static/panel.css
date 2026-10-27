@@ -517,3 +517,73 @@ body.glass .kpi3-sub a { text-decoration: none; }
 .theme-toggle svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .theme-toggle .sun, [data-theme="dark"] .theme-toggle .moon { display: none; }
 [data-theme="dark"] .theme-toggle .sun { display: block; }
+
+/* Rentabilidad · pantalla Stitch «Rentabilidad real · Micro-relieve y Paneles Flotantes Acentuados»:
+   azul marino #305f9e / #0f1c38 con azules claros #81acf1 y #a8c8ff, paneles blancos flotantes. */
+body.glass.navy {
+  --bg: #eef1f6; --card: #ffffff; --text: #0f1c38; --muted: #71717a; --line: #e4e7ec;
+  --navy: #0f1c38; --ink: #305f9e; --on-ink: #ffffff; --ink-ring: rgba(129, 172, 241, .5); --ink-2: #d4d4d8; --ink-3: #81acf1;
+  --primary: #305f9e; --on-primary: #ffffff; --primary-glow: rgba(129, 172, 241, .45);
+  --ok: #059669; --ok-bg: #ecfdf5; --bad: #f43f5e; --bad-bg: #fff1f2;
+  --accent: #305f9e; --accent-soft: #e8edff; --accent-line: #d8e2fd; --card-edge: rgba(255, 255, 255, .9);
+  --shade-0: #305f9e; --shade-1: #81acf1; --shade-2: #a8c8ff; --shade-3: #0f1c38; --shade-4: #d4d4d8;
+  --shade-5: #5b84c4; --shade-6: #c9dbff; --shade-7: #e4e7ec;
+  --shadow: 0 8px 24px -6px rgba(15, 28, 56, .09), inset 0 1px 0 #ffffff;
+  background: radial-gradient(600px 600px at 20% -10%, rgba(220, 228, 240, .8), transparent 70%),
+              radial-gradient(750px 750px at 95% 45%, rgba(215, 225, 238, .7), transparent 75%),
+              linear-gradient(135deg, #f0f2f5 0%, #e6e9ef 35%, #edf1f7 70%, #f4f6fa 100%);
+  background-attachment: fixed;
+}
+[data-theme="dark"] body.glass.navy {
+  --bg: #0a1124; --card: #111b33; --text: #e5ecfb; --muted: #93a2c3; --line: #22304f;
+  --navy: #e5ecfb; --ink: #305f9e; --on-ink: #ffffff; --ink-ring: rgba(129, 172, 241, .45); --ink-2: #2a3a5e; --ink-3: #3f6fb4;
+  --primary: #81acf1; --on-primary: #0a1124; --primary-glow: rgba(129, 172, 241, .45);
+  --ok: #6fd39a; --ok-bg: rgba(111, 211, 154, .12); --bad: #ff8f86; --bad-bg: rgba(255, 143, 134, .12);
+  --accent: #a8c8ff; --accent-soft: rgba(129, 172, 241, .1); --accent-line: rgba(129, 172, 241, .2); --card-edge: rgba(255, 255, 255, .06);
+  --shade-0: #81acf1; --shade-1: #305f9e; --shade-2: #a8c8ff; --shade-3: #5b84c4; --shade-4: #475569;
+  --shade-5: #c9dbff; --shade-6: #1f3a66; --shade-7: #2a3a5e;
+  --shadow: 0 12px 30px -8px rgba(0, 0, 0, .55);
+  background: radial-gradient(900px 500px at 15% -10%, rgba(48, 95, 158, .18), transparent 70%), var(--bg);
+}
+body.glass.navy .g-card, body.glass.navy nav, body.glass.navy .g-seg { -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.glass.navy .btn-ink, body.glass.navy .g-seg a.on, body.glass.navy nav a.on {
+  box-shadow: 0 4px 10px rgba(48, 95, 158, .35), inset 0 1px 0 rgba(255, 255, 255, .4), 0 0 0 1px var(--ink-ring); }
+body.glass.navy .g-dark { background: linear-gradient(160deg, #13284f 0%, #0f1c38 100%); border-color: rgba(129, 172, 241, .3); }
+body.glass.navy .g-dark::before { background: rgba(129, 172, 241, .2); }
+body.glass.navy .g-label { color: #a8c8ff; }
+body.glass.navy .g-dark p, body.glass.navy .g-foot { color: rgba(168, 200, 255, .8); border-color: rgba(129, 172, 241, .2); }
+body.glass.navy .g-dark.ok .g-big { color: #ffffff; }
+body.glass.navy .g-label .dot.me { background: #81acf1; box-shadow: 0 0 8px #81acf1; }
+body.glass.navy .g-box, body.glass.navy .g-legend li, body.glass.navy .g-list li:first-child, body.glass.navy .g-gauge {
+  border-color: var(--card-edge); box-shadow: 0 4px 12px -2px rgba(15, 28, 56, .08), inset 0 1px 0 #ffffff; }
+body.glass.navy .g-list li { background: color-mix(in srgb, var(--card) 70%, transparent); border-color: var(--line);
+  box-shadow: 0 3px 8px -1px rgba(15, 28, 56, .06); margin-bottom: 8px; }
+body.glass.navy .g-list { margin: 0; padding: 2px; }
+body.glass.navy .g-list li:first-child { background: var(--card); }
+body.glass.navy .g-box b, body.glass.navy .g-box div + div b { color: var(--ink); }
+body.glass.navy .g-box div:first-child b { color: var(--navy); }
+[data-theme="dark"] body.glass.navy .g-box, [data-theme="dark"] body.glass.navy .g-legend li,
+[data-theme="dark"] body.glass.navy .g-list li, [data-theme="dark"] body.glass.navy .g-gauge { box-shadow: none; border-color: var(--line); }
+[data-theme="dark"] body.glass.navy .g-box b { color: var(--accent); }
+body.glass.navy .g-split li:first-child .g-track span { background: var(--ink); }
+body.glass.navy .g-split li .g-track span { background: var(--ink-3); }
+body.glass.navy .g-split li.neg .g-track span { background: var(--bad); }
+body.glass.navy .g-card-head > .pill.ink { box-shadow: 0 0 0 1px var(--ink-ring); }
+body.glass.navy th { background: #f4f4f5; }
+[data-theme="dark"] body.glass.navy th { background: var(--accent-soft); }
+body.glass.navy .g-note::before { content: "i"; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+  margin-right: 8px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; font-weight: 700; vertical-align: 1px; }
+
+/* Dos anillos: margen neto y margen de productos */
+.g-gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.g-gauge { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.g-gauge svg { width: 56px; height: 56px; flex: none; transform: rotate(-90deg); }
+.g-gauge circle { fill: none; stroke-width: 4.2; }
+.g-gauge .bg { stroke: var(--line); }
+.g-gauge .fg { stroke: var(--navy); stroke-linecap: round; }
+.g-gauge.alt .fg { stroke: var(--ink-3); }
+.g-gauge.neg .fg { stroke: var(--bad); }
+.g-gauge > div { position: relative; }
+.g-gauge b { display: block; font-size: 13px; }
+.g-gauge .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: var(--navy); }
+.g-gauge-txt span { display: block; font-size: 11px; color: var(--muted); }

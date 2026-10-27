@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
 {% macro eur(v) %}{{ n(v) }} €{% endmacro %}
-{% block body_class %}glass{% endblock %}
+{% block body_class %}glass navy{% endblock %}
 {% block content %}
 <section class="g-card g-head">
   <div>
@@ -64,6 +64,17 @@
     <div class="g-card-head">
       <div><h3 class="sec">Adónde va cada euro</h3><p class="muted small">Sobre {{ eur(ingresos) }} de ingresos sin IVA</p></div>
       {% if tot.margen is not none %}<span class="pill ink">Margen {{ n(tot.margen)[:-1] }} %</span>{% endif %}
+    </div>
+    {% set m_prod = (100 * tot.producto / ingresos) if ingresos else none %}
+    <div class="g-gauges">
+      {% for label, sub, val, cls in [('Margen neto', 'Lo que te queda de cada venta', tot.margen, ''), ('Margen de productos', 'Antes de gastos de la cuenta', m_prod, 'alt')] %}
+      <div class="g-gauge {{ cls }} {{ 'neg' if val is not none and val < 0 }}">
+        <div><svg viewBox="0 0 42 42"><circle class="bg" cx="21" cy="21" r="15.915"/>
+          {% if val is not none and val > 0 %}<circle class="fg" cx="21" cy="21" r="15.915" stroke-dasharray="{{ '%.1f' % ([val, 100] | min) }} 100"/>{% endif %}</svg>
+          <span class="pct">{{ ('%.0f' % val) ~ '%' if val is not none else '—' }}</span></div>
+        <div class="g-gauge-txt"><b>{{ label }}</b><span>{{ sub }}</span></div>
+      </div>
+      {% endfor %}
     </div>
     <ul class="g-split">
       {% for label, v in partes %}
