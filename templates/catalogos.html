@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block body_class %}glass{% endblock %}
+{% block body_class %}glass apex ap-catalogos{% endblock %}
 {% block content %}
 {% set ok_jobs = jobs | selectattr('estado', 'equalto', 'terminado') | list %}
 {% set running = jobs | selectattr('estado', 'equalto', 'en_curso') | list %}

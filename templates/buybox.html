@@ -2,7 +2,7 @@
 {% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
 {% macro eur(v) %}{{ n(v) }} €{% endmacro %}
 {% macro pct(v) %}{{ ('%.1f' % v).replace('.', ',') }} %{% endmacro %}
-{% block body_class %}glass{% endblock %}
+{% block body_class %}glass apex ap-buybox{% endblock %}
 {% block content %}
 <div class="bb-layout">
   <aside class="g-card bb-menu">
@@ -60,7 +60,9 @@
       <section class="g-card g-dark {{ 'ok' if a.bb_is_me else 'bad' }}">
         <div class="g-label">Tu Buy Box · {{ periods[period][0] | lower }} <i class="dot {{ 'me' if a.bb_is_me else 'bad' }}"></i></div>
         <div class="bb-ring">
-          <svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.915" class="track"></circle>
+          <svg viewBox="0 0 42 42" aria-hidden="true"><defs><linearGradient id="bb-zafiro" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#81acf1"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs>
+            <circle cx="21" cy="21" r="15.915" class="track"></circle>
             {% if mine > 0 %}<circle cx="21" cy="21" r="15.915" class="fill" stroke-dasharray="{{ '%.2f' % mine }} {{ '%.2f' % (100 - mine) }}"></circle>{% endif %}</svg>
           <div><b>{{ pct(mine) }}</b><span>del tiempo</span></div>
         </div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
-{% block body_class %}glass{% endblock %}
+{% block body_class %}glass apex ap-listings{% endblock %}
 {% block content %}
 {% set total = rows | length %}
 {% set activos = rows | selectattr('estado', 'equalto', 'ACTIVO') | list | length %}
