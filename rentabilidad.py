@@ -205,8 +205,9 @@ def sync_orders(full=False, progress=print):
     return len(orders)
 
 
-def sync(full=False, progress=print):
-    """Descarga los movimientos nuevos (los últimos 45 días, o todo desde julio) y reemplaza ese tramo."""
+def sync(full=False, progress=print, returns=True):
+    """Descarga los movimientos nuevos (los últimos 45 días, o todo desde julio) y reemplaza ese tramo.
+    returns=False omite el informe de devoluciones, que tarda varios minutos (el monitor lo pide una vez al día)."""
     con = sn.db()
     ensure_tables(con)
     last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
@@ -236,7 +237,8 @@ def sync(full=False, progress=print):
         con.executemany("INSERT INTO fin_lineas VALUES (?,?,?,?,?,?,?,?)", rows)
     progress(f"{len(rows)} líneas guardadas")
     sync_orders(full, progress)
-    sync_returns(progress)
+    if returns:
+        sync_returns(progress)
     return len(rows)
 
 

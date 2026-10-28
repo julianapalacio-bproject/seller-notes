@@ -22,6 +22,7 @@ import random
 import re
 import sqlite3
 import sys
+import threading
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -76,6 +77,7 @@ MARKETPLACE_ID = os.getenv("MARKETPLACE_ID", "A1RKKUPIHCS9HS")  # Amazon.es
 ENDPOINT = os.getenv("SPAPI_ENDPOINT", "https://sellingpartnerapi-eu.amazon.com")
 INTERVAL_MINUTES = float(os.getenv("INTERVAL_MINUTES", "5"))
 LISTINGS_MINUTES = float(os.getenv("LISTINGS_MINUTES", "60"))  # cada cuánto revisar tus listings en "run"
+FINANCES_MINUTES = float(os.getenv("FINANCES_MINUTES", "30"))  # cada cuánto actualizar la rentabilidad en "run"
 DB_PATH = BASE / os.getenv("DB_FILE", "seller_notes.db")
 SELLERS_CSV = BASE / "sellers.csv"
 
@@ -354,6 +356,15 @@ def poll_once(con, asins=None):
         print(f"[{local}] {asin}: {total} ofertas | Buy Box: {name(bb_seller, names)} a {bb_price} €{extra}", flush=True)
         for t, s, a, b in events:
             print(f"    -> {t}: {name(s, names)} {a} → {b}", flush=True)
+
+
+def sync_finances(with_returns):
+    try:
+        import rentabilidad
+        rentabilidad.sync(progress=lambda m: None, returns=with_returns)
+        print(f"[{datetime.now(TZ):%H:%M}] Rentabilidad actualizada{' (con devoluciones)' if with_returns else ''}", flush=True)
+    except Exception as e:
+        print(f"    (Error actualizando la rentabilidad: {e})", flush=True)
 
 
 # ---------------------------------------------------------------- informe diario
@@ -686,7 +697,8 @@ def main():
     print(f"Seller Notes · vigilando {', '.join(ASINS)} cada {INTERVAL_MINUTES:g} min. Ctrl+C para parar.", flush=True)
     last_report_day = datetime.now(TZ).date()
     last_listings = 0.0
-    last_finances = 0.0
+    last_finances, last_returns = 0.0, 0.0
+    finances_job = None
     while True:
         started = time.time()
         poll_once(con)
@@ -696,14 +708,16 @@ def main():
             except Exception as e:
                 print(f"    (Error leyendo tus listings: {e})", flush=True)
             last_listings = started
-        if started - last_finances >= 24 * 3600:  # movimientos de dinero y devoluciones, una vez al día
-            try:
-                import rentabilidad
-                rentabilidad.sync(progress=lambda m: None)
-                print(f"[{datetime.now(TZ):%H:%M}] Rentabilidad: movimientos de Amazon actualizados", flush=True)
-            except Exception as e:
-                print(f"    (Error actualizando la rentabilidad: {e})", flush=True)
+        # rentabilidad (pedidos y movimientos de dinero) cada FINANCES_MINUTES; el informe de devoluciones, una vez
+        # al día. Va en segundo plano para no retrasar la vigilancia de la Buy Box.
+        busy = finances_job is not None and finances_job.is_alive()
+        if not busy and started - last_finances >= FINANCES_MINUTES * 60:
+            with_returns = started - last_returns >= 24 * 3600
+            finances_job = threading.Thread(target=sync_finances, args=(with_returns,), daemon=True)
+            finances_job.start()
             last_finances = started
+            if with_returns:
+                last_returns = started
         today = datetime.now(TZ).date()
         if today != last_report_day:  # al cambiar de día, genera el informe del día anterior
             report(last_report_day.isoformat())
