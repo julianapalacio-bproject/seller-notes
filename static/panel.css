@@ -1092,3 +1092,16 @@ body.glass.apex td.r .btn-ghost + .btn-ghost { margin-left: 4px; }
   body.glass.apex nav { border-left: 0; padding-left: 0; }
   body.glass.apex .g-title h1 { font-size: 26px; }
 }
+
+/* Buy Box · barra para añadir ASIN y botón para dejar de vigilar */
+.bb-add { display: flex; gap: 6px; margin: 0 8px 4px; }
+body.glass .bb-add input { flex: 1; min-width: 0; font-size: 12px; padding: 7px 10px; }
+body.glass .bb-add button { padding: 7px 12px; font-size: 12px; border-radius: 10px; }
+.bb-add-help { margin: 0 8px 12px; font-size: 11px; }
+.bb-remove { margin-left: auto; }
+body.glass.apex .bb-add input { background: var(--soft); border: 1px solid var(--field-edge); border-radius: 12px; color: var(--text); box-shadow: var(--sh-inset); }
+body.glass.apex .bb-add input:focus { outline: none; background: var(--card); border-color: rgba(48, 95, 158, .4); }
+body.glass.apex .bb-add button { background: var(--btn-bg); color: #fff; border: 1px solid rgba(255, 255, 255, .2); border-radius: 12px; font-weight: 600; box-shadow: var(--btn-sh); }
+body.glass.apex .bb-add button:hover { background: var(--btn-hover); }
+body.glass.apex .bb-remove .btn-ghost { color: var(--bad); }
+body.glass.apex .info { background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue-line); border-radius: 12px; font-size: 13px; }

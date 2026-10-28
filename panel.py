@@ -12,6 +12,7 @@ Uso:
 """
 import io
 import json
+import os
 import sys
 import webbrowser
 from collections import defaultdict
@@ -181,8 +182,36 @@ def asin_history(con, asin, start, end, names):
     return data
 
 
+def first_poll(asins):
+    """Primera consulta de los ASIN recién añadidos, sin esperar a la siguiente vuelta del monitor."""
+    try:
+        sn.poll_once(sn.db(), asins)
+    except Exception as e:
+        print(f"    (Primera consulta de {', '.join(asins)}: {e})", flush=True)
+
+
+@app.route("/buybox/asins", methods=["POST"])
+def buybox_asins():
+    sn.ASINS[:] = sn.read_asins()
+    quitar = request.form.get("quitar", "").strip().upper()
+    if quitar:
+        sn.save_asins([a for a in sn.ASINS if a != quitar])
+        return redirect(url_for("buybox"))
+    found = list(dict.fromkeys(sn.ASIN_RE.findall(request.form.get("asins", "").upper())))
+    if not found:
+        return redirect(url_for("buybox", error="No encuentro ningún ASIN. Un ASIN tiene 10 caracteres, p. ej. B0G643D8ZG."))
+    nuevos = [a for a in found if a not in sn.ASINS]
+    if nuevos:
+        sn.save_asins(sn.ASINS + nuevos)
+        if os.getenv("LWA_REFRESH_TOKEN"):
+            Thread(target=first_poll, args=(nuevos,), daemon=True).start()
+    return redirect(url_for("buybox", asin=found[-1], aviso=f"{len(nuevos)} ASIN añadido{'s' if len(nuevos) != 1 else ''}"
+                            if nuevos else "Ese ASIN ya estaba en la lista"))
+
+
 @app.route("/buybox")
 def buybox():
+    sn.ASINS[:] = sn.read_asins()
     con = sn.db()
     names = sn.seller_names()
     labels = product_labels(con)
@@ -208,7 +237,7 @@ def buybox():
     return render_template("buybox.html", page="buybox", menu=menu, a=data, asin=asin,
                            period=period, periods=PERIODS, day=day, first_day=day - timedelta(days=days - 1),
                            prev_day=day - timedelta(days=days), next_day=day + timedelta(days=days),
-                           is_today=day >= today)
+                           is_today=day >= today, error=request.args.get("error"), aviso=request.args.get("aviso"))
 
 
 # ---------------------------------------------------------------- catálogos de proveedor

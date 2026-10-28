@@ -19,6 +19,7 @@ import csv
 import json
 import os
 import random
+import re
 import sqlite3
 import sys
 import time
@@ -45,6 +46,31 @@ def load_env(path=BASE / ".env"):
 
 load_env()
 ASINS = [a.strip() for a in os.getenv("ASINS", "B0G643D8ZG,B0CNCL35CH").split(",") if a.strip()]
+ASIN_RE = re.compile(r"\b(B0[A-Z0-9]{8}|\d{9}[\dX])\b")
+
+
+def read_asins(path=BASE / ".env"):
+    """Lee de nuevo la línea ASINS= del .env (el panel puede cambiarla con el monitor en marcha)."""
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() == "ASINS":
+                return [a.strip() for a in v.strip().strip('"').strip("'").split(",") if a.strip()]
+    return list(ASINS)
+
+
+def save_asins(asins, path=BASE / ".env"):
+    """Reescribe solo la línea ASINS= del .env y actualiza la lista en memoria."""
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    new = "ASINS=" + ",".join(asins)
+    for i, line in enumerate(lines):
+        if line.partition("=")[0].strip() == "ASINS":
+            lines[i] = new
+            break
+    else:
+        lines.append(new)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    ASINS[:] = asins
 MY_SELLER_ID = os.getenv("MY_SELLER_ID", "").strip()
 MARKETPLACE_ID = os.getenv("MARKETPLACE_ID", "A1RKKUPIHCS9HS")  # Amazon.es
 ENDPOINT = os.getenv("SPAPI_ENDPOINT", "https://sellingpartnerapi-eu.amazon.com")
@@ -299,11 +325,14 @@ def store(con, asin, ts, total, offers, raw=None, my_stock=None, segments=None):
     return bb_seller, bb_price, total, events
 
 
-def poll_once(con):
+def poll_once(con, asins=None):
+    if asins is None:
+        ASINS[:] = read_asins()  # recoge los ASIN que se hayan añadido o quitado desde el panel
+        asins = ASINS
     names = seller_names()
     my_stock = get_my_stock()
-    spain = get_featured_spain(ASINS)
-    for i, asin in enumerate(ASINS):
+    spain = get_featured_spain(asins)
+    for i, asin in enumerate(asins):
         if i:
             time.sleep(2.5)  # getItemOffers admite ~0,5 peticiones/segundo
         ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
