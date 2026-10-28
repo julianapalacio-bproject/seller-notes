@@ -450,6 +450,67 @@ def report(day=None):
 
 
 # ---------------------------------------------------------------- nombres pendientes
+_name_tried = {}  # seller_id -> última vez que se buscó su nombre sin éxito (reintenta al día siguiente)
+
+
+def fetch_seller_name(sid):
+    """Nombre de la tienda tal como aparece en su ficha pública de amazon.es."""
+    r = requests.get(f"https://www.amazon.es/sp?seller={sid}", timeout=20, headers={
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/126.0 Safari/537.36",
+        "Accept-Language": "es-ES,es;q=0.9"})
+    m = re.search(r'id="seller-name"[^>]*>([^<]+)<', r.text)
+    if not m:
+        return None
+    import html
+    return html.unescape(m.group(1)).strip() or None
+
+
+def fill_names(con, limit=20, quiet=False):
+    """Busca en amazon.es el nombre de los vendedores vistos que aún no lo tienen y lo guarda en sellers.csv."""
+    known = seller_names()
+    seen = [r[0] for r in con.execute(
+        "SELECT seller_id, MAX(ts) m FROM offers WHERE seller_id<>'' GROUP BY seller_id ORDER BY m DESC")]
+    now = time.time()
+    todo = [sid for sid in seen if (sid not in known or known[sid] == sid)
+            and now - _name_tried.get(sid, 0) > 24 * 3600][:limit]
+    found = {}
+    for i, sid in enumerate(todo):
+        if i:
+            time.sleep(2)  # sin prisas, para que Amazon no lo tome por un robot
+        try:
+            nom = fetch_seller_name(sid)
+        except requests.RequestException:
+            nom = None
+        if nom:
+            found[sid] = nom
+        else:
+            _name_tried[sid] = now
+    if not found:
+        return 0
+    rows = []
+    if SELLERS_CSV.exists():
+        raw = SELLERS_CSV.read_bytes()
+        try:
+            text = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = raw.decode("mac_roman")
+        rows = [[(r.get("seller_id") or "").strip(), (r.get("nombre") or "").strip()]
+                for r in csv.DictReader(text.splitlines())]
+    for row in rows:
+        if row[0] in found and (not row[1] or row[1] == row[0]):
+            row[1] = found.pop(row[0])
+    rows += [[sid, nom] for sid, nom in found.items()]
+    with SELLERS_CSV.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["seller_id", "nombre"])
+        w.writerows(r for r in rows if r[0])
+    n = sum(1 for sid in todo if sid not in _name_tried)
+    if not quiet:
+        print(f"    {n} nombre(s) de tienda encontrados en amazon.es", flush=True)
+    return n
+
+
 def pending_names():
     """Añade a sellers.csv los IDs vistos sin nombre y abre sus fichas en Amazon."""
     con = db()
@@ -677,6 +738,7 @@ def main():
     if cmd == "demo":
         return demo()
     if cmd == "nombres":
+        fill_names(db(), limit=200)
         return pending_names()
     if cmd == "report":
         return report(sys.argv[2] if len(sys.argv) > 2 else None)
@@ -702,6 +764,10 @@ def main():
     while True:
         started = time.time()
         poll_once(con)
+        try:  # nombres de tiendas nuevas, leídos de su ficha en amazon.es
+            fill_names(con)
+        except Exception as e:
+            print(f"    (Error buscando nombres de tiendas: {e})", flush=True)
         if MY_SELLER_ID and started - last_listings >= LISTINGS_MINUTES * 60:
             try:
                 listings_status(con, quiet=True)  # en el bucle solo avisa de cambios de estado
