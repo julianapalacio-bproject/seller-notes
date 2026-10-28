@@ -810,26 +810,29 @@ body.glass.apex.ap-catalogos {
 [data-theme="dark"] body.glass.apex.ap-buybox { --primary: #81acf1; --ink: #81acf1; --btn-bg: linear-gradient(90deg, #305f9e, #2563eb); --btn-hover: linear-gradient(90deg, #2563eb, #1d4ed8); }
 [data-theme="dark"] body.glass.apex.ap-catalogos { --primary: #a8c8ff; --ink: #a8c8ff; --btn-bg: linear-gradient(90deg, #0f244a, #305f9e); --btn-hover: linear-gradient(90deg, #0f244a, #234b82); }
 
-/* Barra superior marino */
-body.glass.apex .top { background: linear-gradient(90deg, #0a162b 0%, #0f244a 50%, #305f9e 100%); color: #fff;
+/* Barra superior marino (también en Rentabilidad) */
+body.glass:is(.apex, .navy) .top { background: linear-gradient(90deg, #0a162b 0%, #0f244a 50%, #305f9e 100%); color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, .1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .1);
   position: sticky; top: 0; z-index: 50; }
-body.glass.apex .top-inner { height: 56px; }
-body.glass.apex .brand { color: #fff; gap: 10px; }
-body.glass.apex .brand img { width: 32px; height: 32px; border-radius: 8px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .2); }
-body.glass.apex .brand-name { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 16px; letter-spacing: .05em; }
-body.glass.apex .brand-sub { font-size: 11px; color: rgba(219, 234, 254, .8); opacity: 1; letter-spacing: -.01em; margin-top: 2px; }
-body.glass.apex nav { background: transparent; border: 0; border-left: 1px solid rgba(255, 255, 255, .15); border-radius: 0;
+body.glass:is(.apex, .navy) .top-inner { height: 56px; }
+body.glass:is(.apex, .navy) .brand { color: #fff; gap: 10px; }
+body.glass:is(.apex, .navy) .brand img { width: 32px; height: 32px; border-radius: 8px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .2); }
+body.glass:is(.apex, .navy) .brand-name { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 16px; letter-spacing: .05em; }
+body.glass:is(.apex, .navy) .brand-sub { font-size: 11px; color: rgba(219, 234, 254, .8); opacity: 1; letter-spacing: -.01em; margin-top: 2px; }
+body.glass:is(.apex, .navy) nav { background: transparent; border: 0; border-left: 1px solid rgba(255, 255, 255, .15); border-radius: 0;
   box-shadow: none; padding: 0 0 0 16px; gap: 4px; }
-body.glass.apex nav a { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; color: rgba(219, 234, 254, .9);
+body.glass:is(.apex, .navy) nav a { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; color: rgba(219, 234, 254, .9);
   border: 1px solid transparent; transition: background .15s, color .15s; }
-body.glass.apex nav a:hover { color: #fff; background: rgba(255, 255, 255, .1); }
-body.glass.apex nav a.on, body.glass.apex nav a.on:hover { padding: 6px 14px; font-weight: 600; color: #fff; background: rgba(255, 255, 255, .2);
+body.glass:is(.apex, .navy) nav a:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+body.glass:is(.apex, .navy) nav a.on, body.glass:is(.apex, .navy) nav a.on:hover { padding: 6px 14px; font-weight: 600; color: #fff; background: rgba(255, 255, 255, .2);
   border-color: rgba(255, 255, 255, .2); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
-body.glass.apex .theme-toggle { width: 32px; height: 32px; border-radius: 999px; background: transparent; border: 0; box-shadow: none; color: #dbeafe; }
-body.glass.apex .theme-toggle:hover { background: rgba(255, 255, 255, .1); color: #fff; }
-body.glass.apex .theme-toggle svg { width: 19px; height: 19px; }
-body.glass.apex main { padding-top: 24px; }
+body.glass:is(.apex, .navy) .theme-toggle { width: 32px; height: 32px; border-radius: 999px; background: transparent; border: 0; box-shadow: none; color: #dbeafe; }
+body.glass:is(.apex, .navy) .theme-toggle:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+body.glass:is(.apex, .navy) .theme-toggle svg { width: 19px; height: 19px; }
+body.glass:is(.apex, .navy) main { padding-top: 24px; }
+
+[data-theme="dark"] body.glass.navy nav { background: transparent; border-color: transparent; border-left-color: rgba(255, 255, 255, .15); }
+[data-theme="dark"] body.glass.navy nav a:hover { color: #fff; background: rgba(255, 255, 255, .1); }
 
 /* Paneles */
 body.glass.apex .g-card { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--card-radius); box-shadow: var(--sh-card);
