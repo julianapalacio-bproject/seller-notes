@@ -182,6 +182,54 @@ def asin_history(con, asin, start, end, names):
     return data
 
 
+_fee_cache = {}  # {asin: (fecha, comisión/precio, tarifa FBA)}: la estimación de Amazon se pide una vez al día
+
+
+def unit_economics(con, asin, sku):
+    """Comisión (fracción del precio con IVA, negativa), tarifa FBA (negativa), coste e IVA de un SKU.
+    Usa las ventas ya liquidadas; si aún no hay, la estimación de comisiones de Amazon."""
+    cost, iva = rt.cost_on(con, sku, datetime.now(sn.TZ).date().isoformat()) if sku else (None, None)
+    if cost is None:
+        return None
+    rates, default = rt.fee_rates(con)
+    rate, fba, source = (*rates[sku], "tus ventas") if sku in rates else (None, None, "")
+    if rate is None:
+        today = datetime.now(sn.TZ).date()
+        cached = _fee_cache.get(asin)
+        if not cached or cached[0] != today:
+            price = con.execute("SELECT bb_price FROM snapshots WHERE asin=? AND bb_price IS NOT NULL "
+                                "ORDER BY ts DESC LIMIT 1", (asin,)).fetchone()
+            try:
+                est = an.fees_batch({asin: price[0]}, lambda x: None).get(asin) if price else None
+            except Exception:
+                est = None
+            cached = (today, -est[1] / price[0], -est[2]) if est else (today, None, None)
+            _fee_cache[asin] = cached
+        rate, fba, source = cached[1], cached[2], "estimación de Amazon"
+    if rate is None:
+        rate, fba, source = default[0], default[1], "media de tu cuenta"
+    net = 1 / (1 + iva / 100) + rate  # lo que te queda de cada euro cobrado, antes de FBA y coste
+    return dict(cost=cost, iva=iva, rate=rate, fba=fba, source=source,
+                breakeven=(cost - fba) / net if net > 0 else None,
+                profit=lambda p: None if p is None else p / (1 + iva / 100) + rate * p + fba - cost)
+
+
+def price_war(con, asin, names):
+    """Señales de guerra de precios: caída del precio de la Buy Box en 7 días y vendedores que
+    cambian de precio sin parar en las últimas 24 h (suele ser un programa automático)."""
+    now = datetime.now(timezone.utc)
+    week = con.execute("SELECT bb_price FROM snapshots WHERE asin=? AND ts>=? AND bb_price IS NOT NULL ORDER BY ts LIMIT 1",
+                       (asin, (now - timedelta(days=7)).isoformat())).fetchone()
+    last = con.execute("SELECT bb_price FROM snapshots WHERE asin=? AND bb_price IS NOT NULL ORDER BY ts DESC LIMIT 1",
+                       (asin,)).fetchone()
+    drop = 100 * (week[0] - last[0]) / week[0] if week and last and week[0] else 0.0
+    bots = [(sn.name(sid, names), n, sid == sn.MY_SELLER_ID) for sid, n in con.execute(
+        "SELECT seller_id, COUNT(*) n FROM events WHERE asin=? AND type='cambio_precio' AND ts>=? "
+        "GROUP BY seller_id HAVING n >= 10 ORDER BY n DESC", (asin, (now - timedelta(days=1)).isoformat()))]
+    return dict(active=drop >= 5 or any(not me for _, _, me in bots), drop=drop,
+                week_price=week[0] if week else None, bots=bots)
+
+
 def first_poll(asins):
     """Primera consulta de los ASIN recién añadidos, sin esperar a la siguiente vuelta del monitor."""
     try:
@@ -234,6 +282,13 @@ def buybox():
     data = asin_history(con, asin, start, end, names) if asin else None
     if data is not None:
         data["sku"], data["nombre"] = labels.get(asin, ("", ""))
+        if data.get("snaps"):
+            econ = unit_economics(con, asin, data["sku"])
+            my_price = next((o["landed"] for o in data["offers"] if o["is_me"]), None)
+            if econ:
+                data["econ"] = dict(econ, my_price=my_price, my_profit=econ["profit"](my_price),
+                                    bb_profit=econ["profit"](data["bb_price"]))
+            data["war"] = price_war(con, asin, names)
     return render_template("buybox.html", page="buybox", menu=menu, a=data, asin=asin,
                            period=period, periods=PERIODS, day=day, first_day=day - timedelta(days=days - 1),
                            prev_day=day - timedelta(days=days), next_day=day + timedelta(days=days),

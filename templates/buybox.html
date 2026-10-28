@@ -105,6 +105,42 @@
       </section>
     </div>
 
+    {% if a.econ or a.war %}
+    <div class="g-row b2">
+      <section class="g-card">
+        <div class="g-card-head"><div><h3 class="sec">Tu precio y margen</h3>
+          <p class="muted small">{% if a.econ %}Beneficio por unidad: precio sin IVA − comisión ({{ a.econ.source }}) − FBA − coste{% else %}Añade el coste de este SKU en Rentabilidad → Costes para calcularlo{% endif %}</p></div></div>
+        {% if a.econ %}{% set e = a.econ %}
+        <div class="bb-tiles">
+          <div class="calm"><span>Precio mínimo rentable (beneficio 0 €)</span><b>{{ eur(e.breakeven) if e.breakeven else '—' }}</b></div>
+          <div class="{{ 'ok' if (e.my_profit or 0) > 0 else 'bad' }}"><span>Tu precio{% if e.my_price is not none %} · {{ eur(e.my_price) }}{% endif %}</span>
+            <b>{{ eur(e.my_profit) ~ '/u' if e.my_profit is not none else '—' }}</b></div>
+          <div class="{{ 'ok' if (e.bb_profit or 0) > 0 else 'bad' }}"><span>Si igualas la Buy Box{% if a.bb_price is not none %} · {{ eur(a.bb_price) }}{% endif %}</span>
+            <b>{{ eur(e.bb_profit) ~ '/u' if e.bb_profit is not none else '—' }}</b></div>
+        </div>
+        <p class="muted small">Coste {{ eur(e.cost) }} · comisión {{ ('%.1f' % (-100 * e.rate)).replace('.', ',') }} % · FBA {{ eur(-e.fba) }} · IVA {{ '%g' % e.iva }} %</p>
+        {% endif %}
+      </section>
+
+      {% set w = a.war %}
+      <section class="g-card">
+        <div class="g-card-head"><div><h3 class="sec">Guerra de precios</h3><p class="muted small">Últimos 7 días y últimas 24 h</p></div>
+          <span class="pill {{ 'bad' if w.active else 'ok' }}"><i class="dot {{ 'bad' if w.active else 'me' }}"></i> {{ 'Activa' if w.active else 'Tranquilo' }}</span></div>
+        <div class="bb-tiles">
+          <div class="{{ 'bad' if w.drop >= 5 else 'warn' if w.drop > 0 else 'calm' }}"><span>Caída del precio de la Buy Box en 7 días{% if w.week_price %} · desde {{ eur(w.week_price) }}{% endif %}</span>
+            <b>{{ pct(w.drop) if w.drop > 0 else '0 %' }}</b></div>
+          {% for seller, n, me in w.bots %}
+          <div class="{{ 'calm' if me else 'warn' }}"><span>{{ 'Tú' if me else seller }} cambió de precio (24 h)</span><b>{{ n }} veces</b></div>
+          {% else %}
+          <div class="calm"><span>Nadie cambia de precio más de 10 veces al día</span><b>✓</b></div>
+          {% endfor %}
+        </div>
+        {% if w.active %}<p class="muted small">{% if a.econ and a.econ.breakeven and a.bb_price is not none and a.bb_price < a.econ.breakeven %}<b class="neg">La Buy Box ya está por debajo de tu precio mínimo rentable:</b> igualarla te haría perder dinero.
+          {% else %}Un vendedor con precio automático baja detrás de cada bajada tuya. Antes de igualar, mira tu precio mínimo rentable: a veces compensa esperar a que se quede sin stock.{% endif %}</p>{% endif %}
+      </section>
+    </div>
+    {% endif %}
+
     <div class="g-row b2">
       <section class="g-card">
         <div class="g-card-head"><div><h3 class="sec">Historial de movimientos</h3><p class="muted small">Del más reciente al más antiguo</p></div>
