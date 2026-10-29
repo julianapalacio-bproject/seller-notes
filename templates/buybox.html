@@ -6,7 +6,7 @@
 {% block content %}
 <div class="bb-layout">
   <aside class="g-card bb-menu">
-    <h3 class="sec">Productos vigilados <span class="pill ink">{{ menu | length }}</span></h3>
+    <h2 class="sec">Productos vigilados <span class="pill ink">{{ menu | length }}</span></h2>
     <form class="bb-add" method="post" action="{{ url_for('buybox_asins') }}" onsubmit="this.querySelector('button').disabled=true">
       <input type="text" name="asins" placeholder="Añadir ASIN o enlace…" aria-label="Añadir ASIN o enlace de Amazon" required>
       <button type="submit" title="Añadir a la lista">Añadir</button>
@@ -89,7 +89,7 @@
 
       <section class="g-card">
         <div class="g-card-head">
-          <div><h3 class="sec">Precio de la Buy Box</h3>
+          <div><h2 class="sec">Precio de la Buy Box</h2>
             <p class="muted small">{% if a.price_min is not none and a.price_min != a.price_max %}Mín {{ eur(a.price_min) }} · máx {{ eur(a.price_max) }}{% else %}Sin cambios de precio{% endif %}</p></div>
           <div class="g-num">{{ eur(a.bb_price) if a.bb_price is not none else '—' }}</div>
         </div>
@@ -98,7 +98,7 @@
       </section>
 
       <section class="g-card">
-        <div class="g-card-head"><div><h3 class="sec">Diagnóstico</h3><p class="muted small">Última consulta del periodo</p></div></div>
+        <div class="g-card-head"><div><h2 class="sec">Diagnóstico</h2><p class="muted small">Última consulta del periodo</p></div></div>
         <div class="bb-tiles">
           <div class="{{ 'warn' if a.bb_changes else 'calm' }}"><span>Cambios de ganador</span><b>{{ a.bb_changes }}</b></div>
           <div class="calm"><span>Ofertas</span><b>{{ a.offers_n }}</b></div>
@@ -111,7 +111,7 @@
     {% if a.econ or a.war %}
     <div class="g-row b2">
       <section class="g-card">
-        <div class="g-card-head"><div><h3 class="sec">Tu precio y margen</h3>
+        <div class="g-card-head"><div><h2 class="sec">Tu precio y margen</h2>
           <p class="muted small">{% if a.econ %}Beneficio por unidad: precio sin IVA − comisión ({{ a.econ.source }}) − FBA − coste{% else %}Añade el coste de este SKU en Rentabilidad → Costes para calcularlo{% endif %}</p></div></div>
         {% if a.econ %}{% set e = a.econ %}
         <div class="bb-tiles">
@@ -127,7 +127,7 @@
 
       {% set w = a.war %}
       <section class="g-card">
-        <div class="g-card-head"><div><h3 class="sec">Guerra de precios</h3><p class="muted small">Últimos 7 días y últimas 24 h</p></div>
+        <div class="g-card-head"><div><h2 class="sec">Guerra de precios</h2><p class="muted small">Últimos 7 días y últimas 24 h</p></div>
           <span class="pill {{ 'bad' if w.active else 'ok' }}"><i class="dot {{ 'bad' if w.active else 'me' }}"></i> {{ 'Activa' if w.active else 'Tranquilo' }}</span></div>
         <div class="bb-tiles">
           <div class="{{ 'bad' if w.drop >= 5 else 'warn' if w.drop > 0 else 'calm' }}"><span>Caída del precio de la Buy Box en 7 días{% if w.week_price %} · desde {{ eur(w.week_price) }}{% endif %}</span>
@@ -146,7 +146,7 @@
 
     <div class="g-row b2">
       <section class="g-card">
-        <div class="g-card-head"><div><h3 class="sec">Historial de movimientos</h3><p class="muted small">Del más reciente al más antiguo</p></div>
+        <div class="g-card-head"><div><h2 class="sec">Historial de movimientos</h2><p class="muted small">Del más reciente al más antiguo</p></div>
           <span class="pill ink">{{ a.events | length }} movimiento{{ 's' if a.events | length != 1 }}</span></div>
         {% if a.events %}
         <ul class="bb-events">
@@ -163,7 +163,7 @@
       </section>
 
       <section class="g-card">
-        <div class="g-card-head"><div><h3 class="sec">Quién tuvo la Buy Box</h3><p class="muted small">Porcentaje del tiempo con el monitor en marcha</p></div></div>
+        <div class="g-card-head"><div><h2 class="sec">Quién tuvo la Buy Box</h2><p class="muted small">Porcentaje del tiempo con el monitor en marcha</p></div></div>
         <div class="g-donut"><canvas id="share" data-l='{{ a.share | map(attribute=0) | list | tojson }}' data-v='{{ a.share | map(attribute=1) | list | tojson }}' data-me='{{ a.share | map(attribute=2) | list | tojson }}'></canvas>
           <div><b>{{ a.share | length }}</b><span>vendedor{{ 'es' if a.share | length != 1 }}</span></div></div>
         <ul class="g-legend">
@@ -173,7 +173,7 @@
     </div>
 
     <section class="g-card flush">
-      <div class="g-card-head pad"><div><h3 class="sec">Ofertas en la última consulta <span class="pill ink">{{ a.offers | length }}</span></h3>
+      <div class="g-card-head pad"><div><h2 class="sec">Ofertas en la última consulta <span class="pill ink">{{ a.offers | length }}</span></h2>
         <p class="muted small">Ordenadas por precio con envío · {{ a.ts | local }}</p></div></div>
       <div class="table-scroll flat">
       <table>

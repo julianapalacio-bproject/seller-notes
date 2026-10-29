@@ -50,7 +50,7 @@
 
   <section class="g-card">
     <div class="g-card-head">
-      <div><h3 class="sec">Ventas con IVA</h3><p class="muted small">Por {{ unidad }}</p></div>
+      <div><h2 class="sec">Ventas con IVA</h2><p class="muted small">Por {{ unidad }}</p></div>
       <div class="g-num">{{ eur(tot.ventas) }}</div>
     </div>
     <div class="g-minibars"><canvas id="ventas-bars" data-l='{{ periods | map(attribute="label") | list | tojson }}' data-v='{{ periods | map(attribute="ventas") | list | tojson }}'></canvas></div>
@@ -62,7 +62,7 @@
 
   <section class="g-card">
     <div class="g-card-head">
-      <div><h3 class="sec">Adónde va cada euro</h3><p class="muted small">Sobre {{ eur(ingresos) }} de ingresos sin IVA</p></div>
+      <div><h2 class="sec">Adónde va cada euro</h2><p class="muted small">Sobre {{ eur(ingresos) }} de ingresos sin IVA</p></div>
       {% if tot.margen is not none %}<span class="pill ink">Margen {{ n(tot.margen)[:-1] }} %</span>{% endif %}
     </div>
     {% set m_prod = (100 * tot.producto / ingresos) if ingresos else none %}
@@ -88,14 +88,14 @@
 
 <div class="g-row r2">
   <section class="g-card">
-    <div class="g-card-head"><div><h3 class="sec">Curva de beneficio</h3><p class="muted small">Neto acumulado por {{ unidad }}</p></div></div>
+    <div class="g-card-head"><div><h2 class="sec">Curva de beneficio</h2><p class="muted small">Neto acumulado por {{ unidad }}</p></div></div>
     <div class="g-curve"><canvas id="curve" data-chart='{{ chart }}'></canvas></div>
     <div class="g-box"><div><span class="muted small">Margen</span><b>{{ n(tot.margen)[:-1] ~ ' %' if tot.margen is not none else '—' }}</b></div>
       <div><span class="muted small">Neto total</span><b>{{ eur(tot.neto) }}</b></div></div>
   </section>
 
   <section class="g-card">
-    <div class="g-card-head"><div><h3 class="sec">Por {{ unidad }}</h3><p class="muted small">Ventas, beneficio de productos y gastos de la cuenta</p></div>
+    <div class="g-card-head"><div><h2 class="sec">Por {{ unidad }}</h2><p class="muted small">Ventas, beneficio de productos y gastos de la cuenta</p></div>
       <span class="pill ink">{{ periods | length }} {{ unidad if periods | length == 1 else unidades }}</span></div>
     <ul class="g-list">
       {% for p in periods | reverse %}
@@ -110,7 +110,7 @@
   </section>
 
   <section class="g-card">
-    <div class="g-card-head"><div><h3 class="sec">Gastos de la cuenta</h3><p class="muted small">No se reparten entre productos</p></div>
+    <div class="g-card-head"><div><h2 class="sec">Gastos de la cuenta</h2><p class="muted small">No se reparten entre productos</p></div>
       <span class="pill bad">{{ eur(tot.cuenta) }}</span></div>
     {% if acc %}
     <div class="g-donut"><canvas id="gastos" data-l='{{ acc | map(attribute=0) | list | tojson }}' data-v='{{ acc | map(attribute=1) | list | tojson }}'></canvas>
@@ -124,13 +124,13 @@
 </div>
 
 <section class="g-card">
-  <div class="g-card-head"><div><h3 class="sec">Evolución por {{ unidad }}</h3><p class="muted small">Beneficio de productos y beneficio neto</p></div></div>
+  <div class="g-card-head"><div><h2 class="sec">Evolución por {{ unidad }}</h2><p class="muted small">Beneficio de productos y beneficio neto</p></div></div>
   <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}'></canvas></div>
 </section>
 
 <section class="g-card flush">
   <div class="g-card-head pad">
-    <div><h3 class="sec">Rentabilidad por producto <span class="pill ink">{{ rows | length }} SKU</span></h3>
+    <div><h2 class="sec">Rentabilidad por producto <span class="pill ink">{{ rows | length }} SKU</span></h2>
       <p class="muted small">Pulsa en una columna para ordenar</p></div>
     <input type="search" id="filtro" placeholder="Filtrar por SKU o nombre…" aria-label="Filtrar productos">
   </div>

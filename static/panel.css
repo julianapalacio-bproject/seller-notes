@@ -155,7 +155,7 @@ input[type=date] { font: inherit; color: var(--text); background: var(--bg); bor
 .bb-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
 .bb-layout > * { min-width: 0; }
 .bb-menu { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 6px 8px 10px; position: sticky; top: 16px; }
-.bb-menu h3 { margin: 10px 8px 8px; }
+.bb-menu :is(h2, h3) { margin: 10px 8px 8px; }
 .bb-menu ul { list-style: none; margin: 0; padding: 0; }
 .bb-menu li a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text); }
 .bb-menu li a:hover { background: var(--accent-soft); text-decoration: none; }
@@ -269,7 +269,7 @@ body.glass select:focus, body.glass input:focus { outline: 2px solid var(--ink-2
 .g-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
 .g-card-head.pad { padding: 20px 22px 0; flex-wrap: wrap; align-items: center; }
 .g-card-head p { margin: 2px 0 0; }
-body.glass h3.sec { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -.01em;
+body.glass :is(h2, h3).sec { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -.01em;
                     display: flex; align-items: center; gap: 8px; }
 .g-num { color: var(--navy); font-size: 24px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
@@ -329,7 +329,7 @@ body.glass .g-when a { text-decoration: none; }
 .g-donut { position: relative; height: 150px; margin-bottom: 14px; }
 .g-donut > div { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .g-donut b { font-size: 16px; font-variant-numeric: tabular-nums; }
-.g-donut span { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 600; }
+.g-donut span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 600; }
 .g-donut b { color: var(--navy); }
 .g-legend { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
 .g-legend li { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--accent-line); }
@@ -368,7 +368,7 @@ body.glass .foot { color: var(--muted); }
 /* Buy Box · mismo estilo glass (pantalla Stitch «Buy Box · Glassmorphism Luminoso Apex») */
 body.glass .bb-layout { grid-template-columns: 260px minmax(0, 1fr); gap: 18px; }
 body.glass .bb-menu { padding: 16px 10px 12px; top: 12px; }
-body.glass .bb-menu h3.sec { margin: 0 8px 10px; }
+body.glass .bb-menu :is(h2, h3).sec { margin: 0 8px 10px; }
 body.glass .bb-menu li a { border-radius: 14px; color: var(--text); text-decoration: none; border: 1px solid transparent; }
 body.glass .bb-menu li a:hover { background: var(--card); border-color: var(--accent-line); }
 body.glass .bb-menu li a.on { background: var(--ink); color: var(--on-ink); box-shadow: 0 0 0 1px var(--ink-ring); }
@@ -390,7 +390,7 @@ body.glass .daynav .range { color: var(--navy); }
 .bb-ring .fill { stroke: #10b981; stroke-linecap: round; filter: drop-shadow(0 0 5px rgba(16, 185, 129, .55)); }
 .bb-ring > div { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .bb-ring b { font-size: 26px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.bb-ring span { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+.bb-ring span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 .bb-now { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; font-size: 13px; color: #94a3b8; }
 .bb-now b { color: #fff; font-size: 15px; overflow-wrap: anywhere; }
 .bb-segs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: -4px 0 14px; }
@@ -527,13 +527,13 @@ body.glass .kpi3-sub a { text-decoration: none; }
    Copia su paleta (azul #305f9e, marino #0f1c38, azules claros #81acf1 / #a8c8ff, grises zinc,
    esmeralda-600 y rosa-500), su fuente Inter y sus sombras y botones. */
 body.glass.navy {
-  --bg: #eef1f6; --card: #ffffff; --text: #27272a; --muted: #71717a; --line: #e4e4e7;
-  --strong: #0f1c38; --head: #18181b; --sub: #a1a1aa; --body: #3f3f46; --soft: #f4f4f5;
+  --bg: #eef1f6; --card: #ffffff; --text: #27272a; --muted: #52525b; --line: #e4e4e7;
+  --strong: #0f1c38; --head: #18181b; --sub: #71717a; --body: #3f3f46; --soft: #f4f4f5;
   --navy: #0f1c38; --ink: #305f9e; --ink-hover: #254b7d; --on-ink: #ffffff; --ink-ring: rgba(129, 172, 241, .5);
   --ink-2: #d4d4d8; --ink-3: #81acf1; --ink-4: #a8c8ff;
   --primary: #305f9e; --on-primary: #ffffff; --primary-glow: rgba(129, 172, 241, .35);
-  --ok: #059669; --ok-bg: #ecfdf5; --ok-line: #a7f3d0; --ok-ink: #065f46;
-  --bad: #f43f5e; --bad-bg: #fff1f2; --bad-line: #fecdd3; --bad-ink: #9f1239;
+  --ok: #047857; --ok-bg: #ecfdf5; --ok-line: #a7f3d0; --ok-ink: #065f46;
+  --bad: #e11d48; --bad-bg: #fff1f2; --bad-line: #fecdd3; --bad-ink: #9f1239;
   --warn: #92400e; --warn-bg: #fef3c7;
   --accent: #305f9e; --accent-soft: #e8edff; --accent-line: #d8e2fd; --card-edge: rgba(255, 255, 255, .85);
   --gauge-dark: #18191c; --gauge-track: #e4e7eb;
@@ -580,7 +580,7 @@ body.glass.navy .g-card { border: 1px solid var(--card-edge); border-radius: 16p
 body.glass.navy .g-card.flush { padding: 0; }
 body.glass.navy .g-row { gap: 20px; }
 body.glass.navy .g-row > .g-card { margin-bottom: 20px; }
-body.glass.navy h3.sec { font-size: 14px; font-weight: 700; color: var(--head); letter-spacing: 0; }
+body.glass.navy :is(h2, h3).sec { font-size: 14px; font-weight: 700; color: var(--head); letter-spacing: 0; }
 body.glass.navy .g-card-head p.muted, body.glass.navy .g-card-head .muted.small { color: var(--sub); font-size: 12px; }
 body.glass.navy .g-title h1 { font-size: 20px; font-weight: 700; letter-spacing: -.025em; color: #09090b; }
 [data-theme="dark"] body.glass.navy .g-title h1 { color: var(--head); }
@@ -623,7 +623,7 @@ body.glass.navy select:focus, body.glass.navy input:focus { outline: 2px solid v
 body.glass.navy .pill { font-size: 12px; font-weight: 600; padding: 2px 10px; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 body.glass.navy .pill.ok { background: var(--ok-bg); color: var(--ok-ink); border: 1px solid var(--ok-line); }
 body.glass.navy .pill.ok .dot.me { background: #10b981; }
-body.glass.navy .pill.bad { background: var(--bad-bg); color: var(--bad); border: 1px solid var(--bad-line); font-weight: 700; }
+body.glass.navy .pill.bad { background: var(--bad-bg); color: var(--bad-ink); border: 1px solid var(--bad-line); font-weight: 700; }
 body.glass.navy .pill.ink { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); }
 body.glass.navy .g-card-head > .pill.ink { background: var(--ink); color: #fff; border: 0; border-radius: 12px; font-size: 11px; font-weight: 700;
   padding: 4px 10px; box-shadow: 0 0 0 1px rgba(129, 172, 241, .4), 0 1px 2px rgba(0, 0, 0, .05); }
@@ -649,8 +649,7 @@ body.glass.navy .g-stats b { font-size: 14px; color: var(--head); }
 
 /* Anillos y barras */
 .g-gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 4px 0 14px; }
-.g-gauge { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--card);
-  border: 1px solid var(--card-edge); box-shadow: var(--sh-tile); }
+.g-gauge { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--soft); border: 0; box-shadow: none; }
 .g-gauge > div:first-child { position: relative; flex: none; }
 .g-gauge svg { width: 56px; height: 56px; display: block; transform: rotate(-90deg); }
 .g-gauge circle { fill: none; stroke-width: 4.2; }
@@ -672,8 +671,8 @@ body.glass.navy .g-split li:first-child .g-track span { background: var(--ink); 
 body.glass.navy .g-split li.neg .g-track span { background: var(--bad); }
 
 /* Curva: caja de margen y neto */
-body.glass.navy .g-box { background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 12px; box-shadow: var(--sh-tile); }
-body.glass.navy .g-box .muted.small { font-size: 10px; text-transform: uppercase; font-weight: 600; color: var(--sub); }
+body.glass.navy .g-box { background: var(--soft); border: 0; border-radius: 12px; padding: 12px; box-shadow: none; }
+body.glass.navy .g-box .muted.small { font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--muted); }
 body.glass.navy .g-box b { font-size: 16px; font-weight: 800; color: var(--strong); }
 body.glass.navy .g-box div + div b { color: var(--ink); }
 [data-theme="dark"] body.glass.navy .g-box div + div b { color: var(--accent); }
@@ -689,13 +688,13 @@ body.glass.navy .g-list li:first-child { background: var(--card); border-color: 
 [data-theme="dark"] body.glass.navy .g-list li:first-child { background: var(--card); border-color: var(--accent-line); }
 body.glass.navy .g-when { font-size: 12px; font-weight: 600; color: var(--head); }
 body.glass.navy .g-list li:first-child .g-when { font-weight: 700; color: var(--strong); }
-body.glass.navy .g-meta .pill.ink { font-size: 10px; padding: 2px 8px; border: 0; box-shadow: none; }
+body.glass.navy .g-meta .pill.ink { font-size: 11px; padding: 2px 8px; border: 0; box-shadow: none; }
 body.glass.navy .g-list li:first-child .g-meta .pill.ink { background: var(--ink); color: #fff; font-weight: 700; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 body.glass.navy .g-meta .muted.small { font-size: 11px; color: var(--sub); }
 body.glass.navy .g-fijos { color: var(--bad); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; }
 body.glass.navy .g-neto { font-size: 12px; font-weight: 700; }
 body.glass.navy .g-list li:first-child .g-neto { font-weight: 900; }
-body.glass.navy .g-neto small { font-size: 10px; color: var(--sub); }
+body.glass.navy .g-neto small { font-size: 11px; color: var(--sub); }
 body.glass.navy .g-total { border-top: 1px solid rgba(228, 228, 231, .7); font-size: 12px; color: var(--muted); }
 [data-theme="dark"] body.glass.navy .g-total { border-top-color: var(--line); }
 body.glass.navy .g-total b { color: var(--ink); }
@@ -703,7 +702,7 @@ body.glass.navy .g-total b { color: var(--ink); }
 
 /* Gastos de la cuenta */
 body.glass.navy .g-donut b { color: var(--strong); font-weight: 900; font-size: 13px; }
-body.glass.navy .g-donut span { color: var(--ink); font-size: 9px; letter-spacing: .05em; }
+body.glass.navy .g-donut span { color: var(--ink); font-size: 11px; letter-spacing: .05em; }
 [data-theme="dark"] body.glass.navy .g-donut span { color: var(--accent); }
 body.glass.navy .g-legend { font-size: 12px; gap: 8px; }
 body.glass.navy .g-legend li { padding: 8px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge); box-shadow: var(--sh-btn); color: var(--body); }
@@ -713,11 +712,10 @@ body.glass.navy .g-legend b { color: #09090b; font-family: ui-monospace, SFMono-
 
 /* Tabla por producto */
 body.glass.navy .g-card.flush .g-card-head.pad { padding: 20px 20px 0; }
-body.glass.navy .g-card.flush .table-scroll { margin: 0 20px 20px; background: var(--card); border: 1px solid rgba(228, 232, 240, .95); border-radius: 12px;
-  box-shadow: 0 6px 18px -3px rgba(15, 28, 56, .08), inset 0 1px 0 #ffffff; }
+body.glass.navy .g-card.flush .table-scroll { margin: 0 20px 20px; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
 [data-theme="dark"] body.glass.navy .g-card.flush .table-scroll { border-color: var(--line); box-shadow: none; }
 body.glass.navy table { font-size: 12px; }
-body.glass.navy th { background: #fafafa; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .05em; border-bottom: 1px solid #e4e4e7; padding: 12px; }
+body.glass.navy th { background: #fafafa; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .05em; border-bottom: 1px solid #e4e4e7; padding: 12px; }
 body.glass.navy th:first-child, body.glass.navy th:last-child { border-radius: 0; }
 [data-theme="dark"] body.glass.navy th { background: var(--soft); border-bottom-color: var(--line); }
 body.glass.navy td { border-bottom-color: #f4f4f5; padding: 12px; color: var(--body); font-weight: 500; }
@@ -743,7 +741,7 @@ body.glass.navy .g-note { padding: 16px; font-size: 12px; line-height: 1.65; col
 body.glass.navy .g-note b { color: var(--head); }
 body.glass.navy .g-note::before { content: "i"; flex: none; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px;
   margin-top: 2px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 10px; font-weight: 700; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
-body.glass.navy .g-note > div { flex: 1; }
+body.glass.navy .g-note > div { flex: 1; max-width: 66ch; }
 
 /* Mis listings, Buy Box y Catálogos · pantallas Stitch «… · Estilo Rentabilidad Real».
    Copia su barra superior marino (#0a162b → #0f244a → #305f9e), los títulos en Anton en mayúsculas,
@@ -754,7 +752,7 @@ body.glass.apex {
   --soft: #f2f3fd; --soft-2: #ecedf7; --soft-3: #e6e8f1; --edge: #c1c6d5; --card-edge: rgba(255, 255, 255, .9);
   --navy: #181c22; --ink: #5c5c5c; --on-ink: #ffffff; --ink-2: #c1c6d5; --ink-3: #305f9e;
   --primary: #5c5c5c; --on-primary: #ffffff; --primary-soft: rgba(117, 116, 116, .2);
-  --ok: #059669; --ok-bg: #ecfdf5; --ok-line: #a7f3d0; --ok-ink: #065f46;
+  --ok: #047857; --ok-bg: #ecfdf5; --ok-line: #a7f3d0; --ok-ink: #065f46;
   --bad: #ba1a1a; --bad-bg: #ffdad6; --bad-ink: #93000a; --bad-line: rgba(186, 26, 26, .2);
   --warn: #92400e; --warn-bg: rgba(254, 243, 199, .8); --warn-line: #fde68a; --warn-num: #d97706;
   --blue: #305f9e; --blue-soft: rgba(213, 227, 255, .6); --blue-line: rgba(129, 172, 241, .3);
@@ -855,7 +853,7 @@ body.glass.apex.ap-catalogos .g-title h1 { font-size: 36px; letter-spacing: .025
 body.glass.apex .g-head p.muted { font-size: 14px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
 body.glass.apex.ap-buybox .g-head p.muted { font-size: 12px; }
 body.glass.apex .g-head p.muted a { color: var(--muted); text-decoration-color: var(--edge); }
-body.glass.apex h3.sec { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 20px; line-height: 1.3; letter-spacing: .025em;
+body.glass.apex :is(h2, h3).sec { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 20px; line-height: 1.3; letter-spacing: .025em;
   text-transform: uppercase; color: var(--text); }
 body.glass.apex .g-card-head { margin-bottom: 16px; }
 body.glass.apex .g-card-head p.muted, body.glass.apex .g-card-head .muted.small { font-size: 12px; color: var(--muted); }
@@ -897,7 +895,7 @@ body.glass.apex .pill.ok { background: var(--ok-bg); color: var(--ok-ink); borde
 body.glass.apex .pill.bad { background: var(--bad-bg); color: var(--bad-ink); border-color: var(--bad-line); }
 body.glass.apex .pill.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
 body.glass.apex .pill.ink { background: var(--blue-soft); color: var(--blue); border-color: var(--blue-line); }
-body.glass.apex h3.sec .pill.ink { font-family: "Inter", sans-serif; font-size: 11px; letter-spacing: 0; }
+body.glass.apex :is(h2, h3).sec .pill.ink { font-family: "Inter", sans-serif; font-size: 11px; letter-spacing: 0; }
 body.glass.apex .pill .dot { width: 6px; height: 6px; }
 body.glass.apex .pill.ok .dot.me { background: #10b981; }
 body.glass.apex .pill.bad .dot.bad { background: var(--bad); }
@@ -976,12 +974,12 @@ body.glass.apex .issues { color: var(--muted); font-size: 12px; }
 /* Buy Box */
 body.glass.apex .bb-layout { grid-template-columns: 260px minmax(0, 1fr); gap: 20px; }
 body.glass.apex .bb-menu { padding: 16px 10px 12px; top: 72px; }
-body.glass.apex .bb-menu h3.sec { margin: 0 8px 12px; font-size: 18px; }
+body.glass.apex .bb-menu :is(h2, h3).sec { margin: 0 8px 12px; font-size: 18px; }
 body.glass.apex .bb-menu li a { border-radius: 12px; border: 1px solid transparent; color: var(--text); text-decoration: none; }
 body.glass.apex .bb-menu li a:hover { background: var(--soft); border-color: var(--accent-line); }
 body.glass.apex .bb-menu li a.on { background: linear-gradient(90deg, #305f9e, #2563eb); color: #fff; border-color: rgba(255, 255, 255, .2);
   box-shadow: 0 4px 14px rgba(48, 95, 158, .35); }
-body.glass.apex .bb-menu li a.on .muted { color: rgba(255, 255, 255, .8); opacity: 1; }
+body.glass.apex .bb-menu li a.on .muted { color: rgba(255, 255, 255, .94); opacity: 1; }
 body.glass.apex .bb-menu .mono { font-size: 13px; font-weight: 700; }
 body.glass.apex .bb-menu .muted.small { font-size: 11px; }
 body.glass.apex .dot.me { background: #10b981; } body.glass.apex .dot.other { background: var(--bad); } body.glass.apex .dot.none { background: var(--edge); }
@@ -1004,27 +1002,26 @@ body.glass.apex .bb-ring .track { stroke: rgba(255, 255, 255, .08); }
 body.glass.apex .bb-ring .fill { stroke: url(#bb-zafiro); stroke-width: 3.2; filter: drop-shadow(0 0 6px rgba(129, 172, 241, .4)); }
 body.glass.apex .g-dark.bad .bb-ring .fill { stroke: #fb7185; filter: drop-shadow(0 0 6px rgba(251, 113, 133, .4)); }
 body.glass.apex .bb-ring b { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 26px; letter-spacing: .025em; color: #fff; line-height: 1; }
-body.glass.apex .bb-ring span { font-size: 10px; font-weight: 500; letter-spacing: .05em; color: #a8c8ff; margin-top: 2px; }
+body.glass.apex .bb-ring span { font-size: 11px; font-weight: 500; letter-spacing: .05em; color: #a8c8ff; margin-top: 2px; }
 body.glass.apex .bb-now { color: rgba(208, 218, 245, .9); font-size: 12px; }
 body.glass.apex .bb-now b { font-size: 14px; }
 body.glass.apex .bb-fast { border-radius: 12px; font-size: 11px; color: rgba(208, 218, 245, .8); }
-body.glass.apex .bb-segs > div { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .06); color: rgba(208, 218, 245, .8); font-size: 11px; border-radius: 12px; }
+body.glass.apex .bb-segs > div { background: rgba(255, 255, 255, .07); border: 0; color: rgba(208, 218, 245, .8); font-size: 11px; border-radius: 12px; }
 body.glass.apex .g-foot { border-top-color: rgba(255, 255, 255, .1); color: rgba(208, 218, 245, .7); font-size: 11px; }
 body.glass.apex .g-foot b { color: #fff; }
 
 body.glass.apex .g-num { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 28px; letter-spacing: .025em; color: var(--text); }
-body.glass.apex .bb-strip { background: rgba(242, 243, 253, .7); border: 1px solid rgba(129, 172, 241, .2); border-radius: 12px; padding: 10px 14px; font-size: 12px; }
+body.glass.apex .bb-strip { background: var(--soft); border: 0; border-radius: 12px; padding: 10px 14px; font-size: 12px; }
 [data-theme="dark"] body.glass.apex .bb-strip { background: var(--soft); }
 body.glass.apex .bb-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 18px; }
 body.glass.apex .bb-tiles div { flex-direction: column-reverse; justify-content: flex-end; align-items: center; text-align: center; gap: 4px; padding: 10px 6px;
-  border-radius: 12px; background: rgba(255, 255, 255, .9); border: 1px solid rgba(191, 219, 254, .6);
-  box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(48, 95, 158, .08); }
+  border-radius: 12px; background: var(--soft); border: 0; box-shadow: none; }
 body.glass.apex .bb-tiles b { font-size: 18px; font-weight: 700; color: var(--primary); }
-body.glass.apex .bb-tiles span { font-size: 10px; line-height: 1.25; color: var(--muted); }
-body.glass.apex .bb-tiles .warn { border-color: rgba(253, 230, 138, .6); box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(245, 158, 11, .08); } body.glass.apex .bb-tiles .warn b { color: var(--warn-num); }
-body.glass.apex .bb-tiles .bad { border-color: rgba(254, 202, 202, .6); box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(186, 26, 26, .08); } body.glass.apex .bb-tiles .bad b { color: var(--bad); }
-body.glass.apex .bb-tiles .ok { border-color: rgba(167, 243, 208, .7); box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(5, 150, 105, .08); } body.glass.apex .bb-tiles .ok b { color: var(--ok); }
-[data-theme="dark"] body.glass.apex .bb-tiles div { background: var(--soft); box-shadow: none; }
+body.glass.apex .bb-tiles span { font-size: 11px; line-height: 1.35; color: var(--muted); }
+body.glass.apex .bb-tiles .warn { background: var(--warn-bg); } body.glass.apex .bb-tiles .warn b { color: var(--warn-num); }
+body.glass.apex .bb-tiles .bad { background: var(--bad-bg); } body.glass.apex .bb-tiles .bad b { color: var(--bad); }
+body.glass.apex .bb-tiles .ok { background: var(--ok-bg); } body.glass.apex .bb-tiles .ok b { color: var(--ok); }
+[data-theme="dark"] body.glass.apex .bb-tiles div:not(.ok, .warn, .bad) { background: var(--soft); }
 body.glass.apex .bb-bar > div { font-size: 12px; color: var(--muted); }
 body.glass.apex .bb-bar b { color: var(--primary); font-weight: 700; }
 body.glass.apex .bb-bar .g-track { background: var(--soft-2); }
@@ -1033,9 +1030,8 @@ body.glass.apex .bb-bar .g-track span { background: var(--primary); }
 body.glass.apex .bb-events { gap: 14px; }
 body.glass.apex .bb-events li { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
 body.glass.apex .bb-events time { font-size: 12px; font-weight: 700; color: var(--muted); }
-body.glass.apex .bb-events .ev { padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, .9); border: 1px solid rgba(193, 198, 213, .3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 2px 4px rgba(48, 95, 158, .04); font-size: 12px; transition: border-color .15s, background .15s; }
-body.glass.apex .bb-events .ev:hover { background: #fff; border-color: rgba(129, 172, 241, .5); }
+body.glass.apex .bb-events .ev { padding: 10px; border-radius: 12px; background: var(--soft); border: 0; box-shadow: none; font-size: 12px; transition: background .15s; }
+body.glass.apex .bb-events .ev:hover { background: var(--soft-2); }
 [data-theme="dark"] body.glass.apex .bb-events .ev { background: var(--soft); border-color: var(--line); box-shadow: none; }
 body.glass.apex .bb-events .ev b { font-weight: 600; }
 body.glass.apex .bb-events .ev i { background: var(--blue); }
@@ -1050,14 +1046,14 @@ body.glass.apex .ev-row-vendedor_entra .pill.ink { background: var(--ok-bg); col
 
 body.glass.apex .g-donut { height: 144px; }
 body.glass.apex .g-donut b { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 30px; color: var(--text); line-height: 1; }
-body.glass.apex .g-donut span { font-size: 10px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+body.glass.apex .g-donut span { font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
 body.glass.apex .g-legend { gap: 12px; font-size: 12px; }
 body.glass.apex .g-legend li { padding: 0; background: none; border: 0; box-shadow: none; color: var(--text); font-weight: 500; }
 body.glass.apex .g-legend li.me { border: 0; }
 body.glass.apex .g-legend i { width: 10px; height: 10px; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 body.glass.apex .g-legend b { font-weight: 700; }
 
-body.glass.apex.ap-buybox th { background: linear-gradient(90deg, #eef3ff, #e6edfc); color: #305f9e; font-size: 10px; font-weight: 700;
+body.glass.apex.ap-buybox th { background: linear-gradient(90deg, #eef3ff, #e6edfc); color: #305f9e; font-size: 11px; font-weight: 700;
   border-top: 1px solid #d8e2fd; border-bottom: 1px solid #d8e2fd; }
 body.glass.apex.ap-buybox th:first-child { border-left: 1px solid #d8e2fd; } body.glass.apex.ap-buybox th:last-child { border-right: 1px solid #d8e2fd; }
 [data-theme="dark"] body.glass.apex.ap-buybox th { background: var(--soft); color: var(--blue); border-color: var(--line); }

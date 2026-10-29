@@ -229,6 +229,8 @@ A layered system. Depth comes from three shadow roles plus tonal wells, and ever
 ### Named Rules
 **The Lit Edge Rule.** Anything that floats gets the white inner top highlight. Anything you put something *into* (wells, fields) gets an inset shadow instead.
 
+**The No Card-in-Card Rule.** Inside a card, sub-panels (diagnostic tiles, event rows, margin boxes, gauges, tables) are flat tinted wells: a soft lavender or tone fill with no border and no shadow. Only top-level cards float.
+
 **The Still Card Rule.** Cards don't lift or move on hover. They aren't clickable, so motion would be a false promise.
 
 ## Shapes
