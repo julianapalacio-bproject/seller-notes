@@ -5,5 +5,29 @@
       "maxFindings": 5,
       "maxChars": 8000
     }
+  },
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "space mono",
+        "createdAt": "2026-10-29T15:05:58.855Z",
+        "reason": "Stitch: the user asked to apply the «Sobrio y Elegante» screens, which use this font (2026-10-29)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "space grotesk",
+        "createdAt": "2026-10-29T15:05:58.894Z",
+        "reason": "Stitch: the user asked to apply the «Sobrio y Elegante» screens, which use this font (2026-10-29)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "epilogue",
+        "createdAt": "2026-10-29T15:05:58.932Z",
+        "reason": "Stitch: the user asked to apply the «Sobrio y Elegante» screens, which use this font (2026-10-29)"
+      }
+    ]
   }
 }
