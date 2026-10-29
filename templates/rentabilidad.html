@@ -5,7 +5,7 @@
 {% block content %}
 <section class="g-card g-head">
   <div>
-    <div class="g-title"><h1>Rentabilidad real</h1>
+    <div class="g-title"><h1>Profit</h1>
       {% if last %}<span class="pill ok"><i class="dot me"></i> Amazon liquidado hasta {{ last | local }}</span>{% endif %}</div>
     <p class="muted small">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
   </div>

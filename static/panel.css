@@ -1111,3 +1111,11 @@ body.glass.apex .bb-add button { background: var(--btn-bg); color: #fff; border:
 body.glass.apex .bb-add button:hover { background: var(--btn-hover); }
 body.glass.apex .bb-remove .btn-ghost { color: var(--bad); }
 body.glass.apex .info { background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue-line); border-radius: 12px; font-size: 13px; }
+
+/* Barra superior en el móvil: la barra marino crece y el menú cabe en una línea (se desliza si no cabe) */
+@media (max-width: 820px) {
+  body.glass:is(.apex, .navy) .top-inner { height: auto; padding: 10px 16px; flex-wrap: wrap; row-gap: 8px; }
+  body.glass:is(.apex, .navy) .top-right { width: 100%; min-width: 0; }
+  body.glass:is(.apex, .navy) nav { border-left: 0; padding-left: 0; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  body.glass:is(.apex, .navy) nav a { white-space: nowrap; }
+}
