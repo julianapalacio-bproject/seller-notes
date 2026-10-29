@@ -91,7 +91,7 @@
       "refersTo": "input-search",
       "description": "Well-style search with inline magnifier.",
       "html": "<input class=\"ds-search\" type=\"search\" placeholder=\"Filtrar por ASIN, SKU o nombre…\">",
-      "css": ".ds-search { width: 256px; max-width: 100%; background: #f2f3fd url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23717785' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E\") 10px 50% / 15px no-repeat; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; padding: 6px 12px 6px 32px; font: 400 14px/1.4 Inter, system-ui, sans-serif; color: #181c22; box-shadow: inset 0 2px 4px rgba(0,0,0,.05); } .ds-search::placeholder { color: #414753; } .ds-search:focus { outline: none; background-color: #fff; border-color: rgba(48,95,158,.4); }"
+      "css": ".ds-search { width: 256px; max-width: 100%; background: #f2f3fd url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23646978' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E\") 10px 50% / 15px no-repeat; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; padding: 6px 12px 6px 32px; font: 400 14px/1.4 Inter, system-ui, sans-serif; color: #181c22; box-shadow: inset 0 2px 4px rgba(0,0,0,.05); } .ds-search::placeholder { color: #414753; } .ds-search:focus { outline: none; background-color: #fff; border-color: rgba(48,95,158,.4); }"
     },
     {
       "name": "Status Pills",
@@ -133,7 +133,7 @@
       { "name": "The State-Only Color Rule", "body": "Emerald, crimson and amber never decorate. If a green, red or amber element doesn't mean on course, losing or check, it is a bug.", "section": "colors" },
       { "name": "The One Blue Rule", "body": "Each page has a single primary (graphite on Dashboard, blue on Análisis Productos and Profit, navy gradient on Catálogos). Never put two primaries in one view.", "section": "colors" },
       { "name": "The Anton Ration Rule", "body": "Anton appears only in titles, section heads and headline figures, never in body, labels or buttons. Navy pages (Profit) don't use it at all.", "section": "typography" },
-      { "name": "The 11px Floor Rule", "body": "No readable text below 11px. The 9px channel pill and the 10px table status pill break this today and should go up to 11px.", "section": "typography" },
+      { "name": "The 11px Floor Rule", "body": "No readable text below 11px. This includes channel tags and table status pills.", "section": "typography" },
       { "name": "The Lit Edge Rule", "body": "Anything that floats gets the white inner top highlight. Anything you put something into (wells, fields) gets an inset shadow instead.", "section": "elevation" },
       { "name": "The Still Card Rule", "body": "Cards don't lift or move on hover. They aren't clickable, so motion would be a false promise.", "section": "elevation" }
     ],
@@ -148,7 +148,7 @@
     "donts": [
       "Don't use emerald, crimson or amber for decoration. They only mean on course, losing or check.",
       "Don't set Anton for body text, labels, buttons or table content, or anywhere on Navy (Profit) pages.",
-      "Don't set readable text below 11px or in fog ink (#717785) on lavender.",
+      "Don't set readable text below 11px.",
       "Don't add hover lift or motion to non-clickable cards.",
       "Don't follow prefers-color-scheme. Theme is the user's toggle, stored as tema.",
       "Don't add new pages in the legacy emerald glass style (Hanken Grotesk, #059669 primary). Migrate those pages to Apex."

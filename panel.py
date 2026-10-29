@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Thread, Timer
 
+import requests
 from flask import Flask, jsonify, redirect, render_template, request, send_file, url_for
 from werkzeug.utils import secure_filename
 
@@ -72,6 +73,33 @@ def latest_listings(con):
     return ts, rows
 
 
+REFRESH_ERRORS = {  # lo que pasó al pulsar «Actualizar ahora» y qué hacer; el detalle técnico se queda en el panel, no en la URL
+    "red": "No se pudo conectar con Amazon. Revisa la conexión a internet y vuelve a intentarlo.",
+    "permiso": "Amazon ha rechazado la consulta por falta de permiso. Comprueba que la app tiene el rol "
+               "«Publicación de productos» y que las claves del archivo .env son las actuales.",
+    "claves": "Amazon no acepta las claves del archivo .env (Client ID, Client Secret o Refresh Token). "
+              "Cópialas de nuevo desde Seller Central.",
+    "limite": "Amazon ha frenado las consultas un momento por exceso de peticiones. Espera un minuto y vuelve a intentarlo.",
+    "amazon": "Amazon ha fallado por su lado. Suele arreglarse solo: vuelve a intentarlo en unos minutos.",
+    "otro": "Ha ocurrido un error inesperado. Vuelve a intentarlo; si se repite, guarda el detalle técnico.",
+}
+_refresh_detail = {"text": ""}
+
+
+def refresh_error(e):
+    """Clasifica una excepción de la consulta de listings en una de las claves de REFRESH_ERRORS."""
+    if isinstance(e, (requests.ConnectionError, requests.Timeout)):
+        return "red"
+    status = getattr(getattr(e, "response", None), "status_code", None)
+    if status is not None:
+        if "api.amazon.com/auth" in str(getattr(e.response, "url", "")):
+            return "claves"
+        return {401: "permiso", 403: "permiso", 429: "limite"}.get(status, "amazon" if status >= 500 else "otro")
+    if isinstance(e, KeyError) and str(e).strip("'").startswith("LWA_"):
+        return "claves"
+    return "otro"
+
+
 @app.route("/listings")
 def listings():
     con = sn.db()
@@ -86,18 +114,28 @@ def listings():
         ("Suprimidos", count["SUPRIMIDO"], "bad"),
         ("Unidades en stock", sum(r["stock"] or 0 for r in rows), ""),
     ]
+    error = request.args.get("error")
     return render_template("listings.html", page="listings", ts=ts, rows=rows, tiles=tiles,
-                           ignored=len(sn.ignored_skus()), error=request.args.get("error"),
-                           has_seller_id=bool(sn.MY_SELLER_ID))
+                           ignored=len(sn.ignored_skus()), has_seller_id=bool(sn.MY_SELLER_ID),
+                           fresh=freshness(ts, 3 * 60, 24 * 60), updated=request.args.get("ok") == "1",
+                           error=REFRESH_ERRORS.get(error) if error else None,
+                           error_detail=_refresh_detail["text"] if error == "otro" else "")
 
 
 @app.route("/listings/actualizar", methods=["POST"])
 def refresh_listings():
+    con = sn.db()
+    before = latest_listings(con)[0]
+    sn._listings_api["enabled"] = True  # un 403 anterior no debe bloquear el reintento
     try:
-        sn.listings_status(sn.db(), quiet=True)
+        sn.listings_status(con, quiet=True)
     except Exception as e:
-        return redirect(url_for("listings", error=str(e)[:300]))
-    return redirect(url_for("listings"))
+        _refresh_detail["text"] = f"{type(e).__name__}: {e}"[:500]
+        print(f"    (Actualizar listings: {_refresh_detail['text']})", flush=True)
+        return redirect(url_for("listings", error=refresh_error(e)))
+    if latest_listings(con)[0] == before:  # la consulta no guardó nada: el rol de listings no está activo
+        return redirect(url_for("listings", error="permiso"))
+    return redirect(url_for("listings", ok=1))
 
 
 # ---------------------------------------------------------------- buy box

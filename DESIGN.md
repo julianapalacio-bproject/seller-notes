@@ -14,7 +14,7 @@ colors:
   steel-edge: "#c1c6d5"
   ink: "#181c22"
   slate-ink: "#414753"
-  fog-ink: "#717785"
+  fog-ink: "#646978"
   graphite: "#5c5c5c"
   profit-emerald: "#059669"
   loss-crimson: "#ba1a1a"
@@ -174,7 +174,7 @@ A cool, blue-led palette: navies for structure, lavender for the deck, and three
 - **Card White** (#ffffff at 90% opacity): floating panels.
 - **Lavender Soft / Line / Well** (#f2f3fd / #ecedf7 / #e6e8f1): table headers, row dividers, segmented-control wells, field backgrounds and track bars.
 - **Steel Edge** (#c1c6d5): dashed empty-state borders and middot separators.
-- **Ink** (#181c22): primary text. **Slate Ink** (#414753): secondary text. **Fog Ink** (#717785): tertiary and placeholder text. At small sizes on lavender it falls just below AA (4.1–4.4:1), so don't use it for anything that must be read.
+- **Ink** (#181c22): primary text. **Slate Ink** (#414753): secondary text. **Fog Ink**: tertiary and placeholder text. Darkened from #717785 so it passes AA on every lavender surface (4.5–5.4:1).
 
 ### Semantic
 - **Profit Emerald** (#059669; pill #ecfdf5 / #065f46): profit, active, "you hold the Buy Box".
@@ -205,7 +205,7 @@ A cool, blue-led palette: navies for structure, lavender for the deck, and three
 ### Named Rules
 **The Anton Ration Rule.** Anton appears only in titles, section heads and headline figures, never in body, labels or buttons. Navy pages (Profit) don't use it at all.
 
-**The 11px Floor Rule.** No readable text below 11px. The 9px channel pill and the 10px table status pill break this today and should go up to 11px.
+**The 11px Floor Rule.** No readable text below 11px, including channel tags and table status pills.
 
 ## Layout
 
@@ -258,7 +258,7 @@ Tactile and confident: they sit on a lift shadow and press in when clicked.
 ### Inputs / Fields
 - **Style:** lavender-soft fill, a white or lavender hairline, 12px radius, well shadow. Search has an inline magnifier icon at 10px from the left, 256px wide.
 - **Focus:** the fill turns white and the border becomes bridge blue at 40%, with no outline ring. Profit uses a 2px ink outline.
-- **Placeholder:** fog ink. It currently misses AA and should move to slate ink.
+- **Placeholder:** fog ink, which passes AA on the field fill.
 
 ### Navigation
 - **Top bar:** sticky navy gradient band, 56px, with the logo (32px, 8px radius) and Anton wordmark at 16px. Nav sits after a 15%-white divider: pill links at 12px/500 in pale blue (#dbeafe at 90%). Hover gets a 10% white fill; active gets a 20% white fill, a hairline and 600 weight. The theme toggle is a 32px round ghost icon. On mobile the bar wraps and the nav scrolls sideways.
@@ -286,7 +286,7 @@ A 112px SVG ring on a dark hero card: a 3px track at 8% white, and a fill in a b
 ### Don't:
 - **Don't** use emerald, crimson or amber for decoration. They only mean on course, losing or check.
 - **Don't** set Anton for body text, labels, buttons or table content, or anywhere on Navy (Profit) pages.
-- **Don't** set readable text below 11px or in fog ink (#717785) on lavender.
+- **Don't** set readable text below 11px.
 - **Don't** add hover lift or motion to non-clickable cards.
 - **Don't** follow `prefers-color-scheme`. Theme is the user's toggle, stored as `tema`.
 - **Don't** add new pages in the legacy emerald glass style (Hanken Grotesk, #059669 primary). Migrate those pages to Apex.

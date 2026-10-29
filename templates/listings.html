@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
 {% block body_class %}glass apex ap-listings{% endblock %}
+{# qué hacer con un listing que no se puede vender; vacío si está bien #}
+{% macro next_step(r) -%}
+  {%- set repon = 'envía unidades a FBA' if r.canal == 'FBA' else 'repón stock' -%}
+  {%- if r.estado == 'SUPRIMIDO' -%}Amazon lo ha ocultado: abre las incidencias para ver qué pide.
+  {%- elif r.stock == 0 and r.estado == 'ACTIVO' -%}Agotado: {{ repon }} para volver a vender.
+  {%- elif r.stock == 0 -%}No se puede comprar porque no hay stock: {{ repon }} y se reactivará.
+  {%- elif r.estado == 'VISIBLE, NO COMPRABLE' -%}Tiene stock pero no se puede comprar: revisa las incidencias y el precio.
+  {%- elif r.estado == 'INACTIVO' -%}Inactivo con stock: revisa las incidencias en Seller Central.
+  {%- endif -%}
+{%- endmacro %}
 {% block content %}
 {% set total = rows | length %}
 {% set activos = rows | selectattr('estado', 'equalto', 'ACTIVO') | list | length %}
@@ -11,7 +21,7 @@
 <section class="g-card g-head">
   <div>
     <div class="g-title"><h1>Listings</h1>
-      {% if ts %}<span class="pill ok"><i class="dot me"></i> Última consulta {{ ts | local }}</span>{% endif %}</div>
+      {% if ts %}<span class="pill fresh-pill {{ fresh.tone }}" title="{{ ts | local('%d/%m/%Y %H:%M') }}"><i class="dot"></i> Última consulta {{ fresh.text }}</span>{% endif %}</div>
     <p class="muted small">{% if ts %}{{ total }} listing{{ 's' if total != 1 }} en Amazon.es{% else %}Todavía no hay consultas{% endif %}
       {% if ignored %} · {{ ignored }} SKU ignorados (skus_ignorados.txt){% endif %}</p>
   </div>
@@ -20,7 +30,18 @@
   </form>
 </section>
 
-{% if error %}<div class="alert">Error al consultar Amazon: {{ error }}</div>{% endif %}
+{% if error %}
+<div class="alert notice-row" role="alert">
+  <p><b>No se han actualizado los listings.</b> {{ error }}
+    {% if error_detail %}<details class="tech"><summary>Detalle técnico</summary><code>{{ error_detail }}</code></details>{% endif %}</p>
+  <form method="post" action="{{ url_for('refresh_listings') }}" onsubmit="const b=this.querySelector('button'); b.disabled=true; b.textContent='Consultando…'">
+    <button type="submit" class="btn-ghost">Reintentar</button>
+  </form>
+</div>
+{% elif updated %}
+<div class="info" role="status">Listings actualizados: {{ rows | length }} consultados en Amazon.es ahora mismo.</div>
+{% endif %}
+{% if fresh and fresh.tone == 'bad' and not error %}<div class="alert" role="alert">Estos datos tienen {{ fresh.text | replace('hace ', '') }}: el monitor no los está actualizando. Abre «2 - Iniciar monitor» o pulsa «Actualizar ahora».</div>{% endif %}
 {% if not has_seller_id %}<div class="alert">Falta MY_SELLER_ID en el archivo .env.</div>{% endif %}
 
 {% if rows %}
@@ -74,7 +95,8 @@
           data-tags="{{ 'activo' if r.estado == 'ACTIVO' else 'no-activo' }}{{ ' incidencias' if r.lista_incidencias }}{{ ' sin-stock' if r.stock == 0 }}">
         <td><div class="ls-prod"><span class="pill {{ 'ink' if r.canal == 'FBA' else 'warn' }}">{{ r.canal }}</span>
           <a class="mono" href="https://www.amazon.es/dp/{{ r.asin }}" target="_blank" rel="noopener">{{ r.asin }}</a></div>
-          <div class="ls-name">{{ r.nombre }}</div></td>
+          <div class="ls-name">{{ r.nombre }}</div>
+          {% set step = next_step(r) %}{% if step %}<p class="ls-next {{ 'bad' if r.stock == 0 or r.estado in ('SUPRIMIDO', 'INACTIVO') else 'warn' }}">{{ step }}</p>{% endif %}</td>
         <td class="mono"><b>{{ r.sku }}</b></td>
         <td class="r"><b>{{ n(r.precio) ~ ' €' if r.precio is not none else '—' }}</b></td>
         <td class="ls-stock">{% if r.stock is none %}<span class="muted">?</span>{% else %}
@@ -107,9 +129,15 @@
   const table = document.getElementById('listings');
   if (table) {
     const rows = [...table.tBodies[0].rows], filtro = document.getElementById('filtro'), count = document.getElementById('count');
-    let tab = 'todos';
+    const url = new URL(location.href);
+    let tab = document.querySelector(`.tabs a[data-tab="${url.searchParams.get('tab')}"]`) ? url.searchParams.get('tab') : 'todos';
+    document.querySelectorAll('.tabs a').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
     const apply = () => {
       const q = filtro.value.trim().toLowerCase();
+      // la pestaña y el filtro van en la dirección: sobreviven al recargar o al cambiar de modo y se pueden compartir
+      for (const [k, v] of [['tab', tab === 'todos' ? '' : tab], ['q', filtro.value.trim()]]) v ? url.searchParams.set(k, v) : url.searchParams.delete(k);
+      url.searchParams.delete('ok'); url.searchParams.delete('error');
+      history.replaceState(null, '', url);
       let shown = 0;
       rows.forEach(r => {
         const ok = (tab === 'todos' || r.dataset.tags.split(' ').includes(tab)) && (!q || r.textContent.toLowerCase().includes(q));

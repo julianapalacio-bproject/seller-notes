@@ -97,7 +97,8 @@
         {% for d in profit.dias %}
         <li class="{{ 'neg' if d.neto < 0 }}{{ ' today' if loop.last }}" title="{{ d.fecha.strftime('%d/%m') }}: {{ eur(d.neto) }} · {{ d.uds }} ud{{ 's' if d.uds != 1 }}">
           <span class="bar" style="height: {{ '%.1f' % ([100 * (d.neto | abs) / top, 2] | max) }}%"></span>
-          <span class="day">{{ d.label }}</span>
+          <span class="sr-only">{{ d.fecha.strftime('%d/%m') }}: {{ eur(d.neto) }}</span>
+          <span class="day" aria-hidden="true">{{ d.label }}</span>
         </li>
         {% endfor %}
       </ol>

@@ -39,6 +39,18 @@
   </main>
   <footer class="wrap foot">Seller Notes · The Blue Project</footer>
   <script>
+    // En el móvil el menú se desliza: difumina el borde por donde quedan opciones y deja a la vista la página actual
+    {
+      const nav = document.querySelector('.top nav');
+      const edges = () => {
+        nav.classList.toggle('more-left', nav.scrollLeft > 2);
+        nav.classList.toggle('more-right', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2);
+      };
+      nav.querySelector('a.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+      nav.addEventListener('scroll', edges, { passive: true });
+      addEventListener('resize', edges);
+      edges();
+    }
     document.getElementById('theme-toggle').addEventListener('click', () => {
       const tema = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       try { localStorage.setItem('tema', tema); } catch (e) {}

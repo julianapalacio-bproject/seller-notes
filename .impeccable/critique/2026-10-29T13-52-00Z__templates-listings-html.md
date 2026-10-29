@@ -10,6 +10,7 @@ target_fingerprint: "sha256:68fbbf8f4607eff10ece573fd00d9a04f05b72bbb8c2241f3c33
 target_path: /Users/julianapalacio/Documents/BLUE PROJECT AI/seller-notes/templates/listings.html
 timestamp: 2026-10-29T13-52-00Z
 slug: templates-listings-html
+closed: true
 ---
 Method: dual-agent (A: design review sub-agent · B: detector sub-agent)
 
