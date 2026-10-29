@@ -202,7 +202,7 @@ body.glass {
   background: radial-gradient(900px 500px at 15% -10%, rgba(16, 185, 129, .06), transparent 70%),
               radial-gradient(800px 600px at 100% 30%, rgba(99, 102, 241, .05), transparent 70%), var(--bg);
   background-attachment: fixed;
-  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 [data-theme="dark"] body.glass {
@@ -1322,3 +1322,56 @@ body.glass.apex .ls-flags a:hover { filter: brightness(.97); text-decoration: un
   body.glass.apex #listings .ls-name { font-size: 13px; max-width: none; }
   body.glass.apex .ls-count { padding-top: 10px; }
 }
+
+/* Botón principal sin el icono de actualizar (descargar, guardar, añadir, analizar) */
+body.glass:is(.apex, .navy) .btn-ink.plain::before { content: none; }
+body.glass:is(.apex, .navy) a.btn-ink { text-decoration: none; }
+
+/* Resultado de un catálogo: filtros en el servidor, cabeceras que ordenan y páginas de 100 */
+.cat-fig.ok b { color: var(--ok-ink); } .cat-fig.bad b { color: var(--bad-ink); }
+.cat-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 18px; }
+.cat-filters > label:not(.check) { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.cat-filters input[type=number] { width: 140px; min-height: 36px; }
+.cat-filters label.check { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; color: var(--text); }
+.cat-filters input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue, var(--ink)); }
+.cat-count { margin: 0 0 0 auto; align-self: center; }
+body.glass.apex #results th a.sort { color: inherit; text-decoration: none; display: inline-block; padding: 4px 0; }
+body.glass.apex #results th a.sort:hover, body.glass.apex #results th a.sort.on { color: var(--text); }
+body.glass.apex #results td.pos { color: var(--ok-ink); }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 0 0; flex-wrap: wrap; }
+.cat-note { margin: 0 4px 24px; max-width: 64ch; }
+
+/* Costes por SKU: etiquetas visibles en el formulario de cada fila */
+body.glass.navy #costes .inline-form { gap: 8px; align-items: flex-end; flex-wrap: nowrap; }
+body.glass.navy #costes .inline-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 600; color: var(--muted); }
+body.glass.navy #costes .inline-form input { min-height: 34px; }
+.co-label { display: none; }
+.form-go { display: flex; align-items: flex-end; }
+
+/* Costes en el móvil y la tableta: cada SKU es un bloque (antes la tabla se salía 134 px por la derecha) */
+@media (max-width: 860px) {
+  body.glass.navy #costes thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  body.glass.navy #costes, body.glass.navy #costes tbody { display: block; }
+  body.glass.navy #costes tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px;
+    grid-template-areas: "sku sku sku" "desde desde desde" "coste envio iva" "form form form"; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  body.glass.navy #costes tbody tr:last-child { border-bottom: 0; }
+  body.glass.navy #costes td { display: block; padding: 0; border: 0; text-align: left; background: transparent; }
+  body.glass.navy #costes .co-sku { grid-area: sku; } body.glass.navy #costes .co-desde { grid-area: desde; font-size: 12px; color: var(--muted); }
+  body.glass.navy #costes .co-coste { grid-area: coste; } body.glass.navy #costes .co-envio { grid-area: envio; } body.glass.navy #costes .co-iva { grid-area: iva; }
+  body.glass.navy #costes .co-form { grid-area: form; padding-top: 6px; }
+  .co-label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+  body.glass.navy #costes .inline-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex-wrap: wrap; }
+  body.glass.navy #costes .inline-form label:nth-of-type(4) { grid-column: span 2; }
+  body.glass.navy #costes .inline-form input { width: 100%; min-height: 40px; font-size: 16px; }
+  body.glass.navy #costes .inline-form button { min-height: 40px; }
+  body.glass.navy .g-card.flush .table-scroll { margin: 0 16px 8px; }
+}
+
+/* Catálogos: el campo de archivo ya no empuja la página fuera de la pantalla */
+.drop { min-width: 0; }
+.drop input[type=file] { max-width: 100%; }
+@media (max-width: 680px) { .drop { flex-basis: 100%; } .upload form .btn-ink { width: 100%; justify-content: center; } }
+
+/* Buscadores y campos: al llegar con el teclado, anillo azul como el resto de controles (antes solo cambiaba el borde) */
+body.glass:is(.apex, .navy) :is(input[type=search], input[type=text], input[type=number], .bb-add input):focus-visible {
+  outline: 2px solid var(--blue, var(--ink)); outline-offset: 1px; }

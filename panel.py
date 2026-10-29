@@ -146,14 +146,15 @@ def product_labels(con):
     """{asin: (sku, nombre)}. El nombre sale, por orden: de tu hoja de costes (el más corto), de tus listings
     o del título de la página de amazon.es (para los ASIN que no vendes)."""
     out = {}
+    # con MAX() en un GROUP BY, SQLite devuelve las demás columnas de la fila más reciente de cada grupo
     for sql in ("SELECT asin, '', titulo FROM titulos",
-                "SELECT asin, sku, nombre FROM listings l WHERE ts=(SELECT MAX(ts) FROM listings WHERE asin=l.asin)",
-                "SELECT asin, sku, nombre FROM costes c WHERE desde=(SELECT MAX(desde) FROM costes WHERE sku=c.sku)"):
+                "SELECT asin, sku, nombre, MAX(ts) FROM listings GROUP BY asin",
+                "SELECT asin, sku, nombre, MAX(desde) FROM costes GROUP BY sku"):
         try:
             rows = con.execute(sql).fetchall()
         except Exception:  # la tabla aún no existe
             continue
-        for asin, sku, nombre in rows:
+        for asin, sku, nombre, *_ in rows:
             if asin:
                 old = out.get(asin, ("", ""))
                 out[asin] = (sku or old[0], nombre or old[1])
@@ -173,6 +174,19 @@ def buybox_menu(con, names, labels):
     return menu
 
 
+def buybox_seconds(snaps, end):
+    """Segundos que cada vendedor tuvo la Buy Box, ponderado por tiempo (igual que el informe diario).
+    snaps: [(ts, vendedor)] en orden."""
+    share = defaultdict(float)
+    now = datetime.now(sn.TZ)
+    for cur, nxt in zip(snaps, snaps[1:] + [None]):
+        t0 = datetime.fromisoformat(cur[0])
+        t1 = datetime.fromisoformat(nxt[0]) if nxt else min(end, now)
+        t1 = min(t1, t0 + timedelta(minutes=2 * sn.INTERVAL_MINUTES))  # huecos con el monitor apagado no cuentan
+        share[cur[1]] += max((t1 - t0).total_seconds(), 0)
+    return share
+
+
 def asin_history(con, asin, start, end, names):
     s_utc, e_utc = start.astimezone(timezone.utc).isoformat(), end.astimezone(timezone.utc).isoformat()
     label_fmt = "%H:%M" if end - start <= timedelta(days=1) else "%d/%m %H:%M"
@@ -184,14 +198,7 @@ def asin_history(con, asin, start, end, names):
     if not snaps:
         return data
 
-    # % de Buy Box ponderado por tiempo (igual que el informe diario)
-    share = defaultdict(float)
-    now = datetime.now(sn.TZ)
-    for cur, nxt in zip(snaps, snaps[1:] + [None]):
-        t0 = datetime.fromisoformat(cur[1])
-        t1 = datetime.fromisoformat(nxt[1]) if nxt else min(end, now)
-        t1 = min(t1, t0 + timedelta(minutes=2 * sn.INTERVAL_MINUTES))  # huecos con el monitor apagado no cuentan
-        share[cur[3]] += max((t1 - t0).total_seconds(), 0)
+    share = buybox_seconds([(s[1], s[3]) for s in snaps], end)
     tot = sum(share.values()) or 1
     data["share"] = [(sn.name(s, names), 100 * v / tot, s == sn.MY_SELLER_ID and bool(s))
                      for s, v in sorted(share.items(), key=lambda x: -x[1])]
@@ -384,25 +391,27 @@ def buybox_lost_since(con, asin):
     return con.execute("SELECT MIN(ts) FROM snapshots WHERE asin=? AND ts>?", (asin, last_mine)).fetchone()[0]
 
 
-def buybox_holder(con, asin):
-    return con.execute("SELECT bb_seller FROM snapshots WHERE asin=? ORDER BY ts DESC, id DESC LIMIT 1", (asin,)).fetchone()[0]
-
-
 def dashboard_buybox(con, names, labels):
-    """Por cada ASIN vigilado: quién tiene ahora la Buy Box, si tienes oferta y tu % de hoy."""
-    start, end, _, _ = day_range(datetime.now(sn.TZ).date())
+    """Por cada ASIN vigilado: quién tiene ahora la Buy Box, si tienes oferta y tu % de hoy.
+    Solo lee lo necesario (la última consulta y los ganadores de hoy), no el historial completo de Análisis Productos."""
+    _, end, s_utc, e_utc = day_range(datetime.now(sn.TZ).date())
+    me = sn.MY_SELLER_ID
     out = []
     for asin in sn.ASINS:
-        d = asin_history(con, asin, start, end, names)
         sku, nombre = labels.get(asin, ("", ""))
-        if not d.get("snaps"):
+        last = con.execute("SELECT id, bb_seller, bb_price FROM snapshots WHERE asin=? ORDER BY ts DESC, id DESC LIMIT 1",
+                           (asin,)).fetchone()
+        if not last:
             out.append(dict(asin=asin, sku=sku, nombre=nombre, has_data=False))
             continue
-        mine = next((o for o in d["offers"] if o["is_me"]), None)
-        out.append(dict(asin=asin, sku=sku, nombre=nombre, has_data=True, holder=d["bb_seller"], is_me=d["bb_is_me"],
-                        nobody=not buybox_holder(con, asin),
-                        price=d["bb_price"], my_price=mine["landed"] if mine else None, selling=bool(mine),
-                        share=next((p for _, p, me in d["share"] if me), 0.0), changes=d["bb_changes"],
+        mine = con.execute("SELECT landed FROM offers WHERE snapshot_id=? AND seller_id=?", (last[0], me)).fetchone() if me else None
+        today = con.execute("SELECT ts, bb_seller FROM snapshots WHERE asin=? AND ts>=? AND ts<? ORDER BY ts",
+                            (asin, s_utc, e_utc)).fetchall()
+        secs = buybox_seconds(today, end)
+        out.append(dict(asin=asin, sku=sku, nombre=nombre, has_data=True,
+                        holder=names.get(last[1], last[1]) or "(nadie / suprimida)", is_me=bool(me) and last[1] == me,
+                        nobody=not last[1], price=last[2], my_price=mine[0] if mine else None, selling=bool(mine),
+                        share=100 * secs.get(me, 0) / (sum(secs.values()) or 1) if me else 0.0,
                         war=price_war(con, asin, names)))
     return out
 
@@ -598,6 +607,22 @@ def load_job(job_id):
     return job, items
 
 
+CATALOG_PAGE = 100  # filas por página: un catálogo de miles de productos no cabe de una vez en el navegador
+CATALOG_SORTS = {  # columna de la tabla → valor por el que se ordena (None va siempre al final)
+    "producto": lambda it: (it.get("nombre") or it.get("titulo") or "").lower() or None,
+    "bsr": lambda it: it.get("bsr"), "ofertas": lambda it: it.get("ofertas"), "precio": lambda it: it.get("precio"),
+    "coste": lambda it: it.get("coste"), "comisiones": lambda it: it.get("comisiones"),
+    "beneficio": lambda it: it.get("beneficio"), "roi": lambda it: it.get("roi"), "margen": lambda it: it.get("margen"),
+}
+
+
+def number_arg(name):
+    try:
+        return float(request.args.get(name, "").replace(",", "."))
+    except ValueError:
+        return None
+
+
 @app.route("/catalogos/<int:job_id>")
 def catalogo(job_id):
     job, items = load_job(job_id)
@@ -605,11 +630,32 @@ def catalogo(job_id):
         return redirect(url_for("catalogos"))
     found = [it for it in items if it.get("asin")]
     roi_ok = [it for it in found if (it.get("roi") or -999) >= 30]
-    tiles = [("Productos", len(items), ""), ("En Amazon.es", len(found), ""),
-             ("ROI ≥ 30%", len(roi_ok), "ok"),
-             ("Amazon vende", sum(1 for it in found if it.get("amazon_vende")), "bad")]
-    items.sort(key=lambda it: (it.get("roi") is None, -(it.get("roi") or 0)))
-    return render_template("catalogo.html", page="catalogos", job=job, items=items, tiles=tiles)
+    tiles = [("productos", len(items), ""), ("en Amazon.es", len(found), ""), ("con ROI ≥ 30 %", len(roi_ok), "ok"),
+             ("los vende Amazon", sum(1 for it in found if it.get("amazon_vende")), "bad")]
+
+    # filtros y orden en el servidor; «f» marca que el formulario se envió (si no, «solo en Amazon» va marcado)
+    a = request.args
+    f = dict(roi=number_arg("roi"), bsr=number_arg("bsr"),
+             en_amazon="en_amazon" in a if "f" in a else True, sin_amazon="sin_amazon" in a)
+    rows = [it for it in items
+            if (f["roi"] is None or (it.get("roi") is not None and it["roi"] >= f["roi"]))
+            and (f["bsr"] is None or (it.get("bsr") and it["bsr"] <= f["bsr"]))
+            and (not f["en_amazon"] or it.get("asin")) and (not f["sin_amazon"] or not it.get("amazon_vende"))]
+    sort = a.get("orden") if a.get("orden") in CATALOG_SORTS else "roi"
+    desc = a.get("dir", "desc" if sort != "producto" else "asc") == "desc"
+    key = CATALOG_SORTS[sort]
+    rows = sorted((it for it in rows if key(it) is not None), key=key, reverse=desc) + [it for it in rows if key(it) is None]
+
+    pages = max(1, -(-len(rows) // CATALOG_PAGE))
+    try:
+        page = min(max(1, int(a.get("pagina", 1))), pages)
+    except ValueError:
+        page = 1
+    keep = {k: v for k, v in a.items() if k != "pagina"}
+    link = lambda **kw: url_for("catalogo", job_id=job_id, **{**keep, **kw})
+    return render_template("catalogo.html", page="catalogos", job=job, tiles=tiles, f=f, sort=sort, desc=desc,
+                           items=rows[(page - 1) * CATALOG_PAGE: page * CATALOG_PAGE], matched=len(rows), total=len(items),
+                           pagina=page, paginas=pages, first=(page - 1) * CATALOG_PAGE + 1, link=link)
 
 
 @app.route("/catalogos/<int:job_id>/estado")

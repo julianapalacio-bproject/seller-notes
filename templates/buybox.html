@@ -93,7 +93,7 @@
             <p class="muted small">{% if a.price_min is not none and a.price_min != a.price_max %}Mín {{ eur(a.price_min) }} · máx {{ eur(a.price_max) }}{% else %}Sin cambios de precio{% endif %}</p></div>
           <div class="g-num">{{ eur(a.bb_price) if a.bb_price is not none else '—' }}</div>
         </div>
-        <div class="chart"><canvas id="price-chart" data-chart='{{ a.chart }}'></canvas></div>
+        <div class="chart"><canvas id="price-chart" data-chart='{{ a.chart }}' role="img" aria-label="Precio de la Buy Box en el periodo{% if a.price_min is not none %}: {% if a.price_min != a.price_max %}entre {{ eur(a.price_min) }} y {{ eur(a.price_max) }}{% else %}sin cambios{% endif %}, ahora {{ eur(a.bb_price) if a.bb_price is not none else 'sin precio' }}{% endif %}. {{ a.snaps }} consultas."></canvas></div>
         <div class="bb-strip"><span class="muted small">{{ a.snaps }} consultas en el periodo</span><span class="muted small">Última: {{ a.ts | local }}</span></div>
       </section>
 
@@ -164,7 +164,7 @@
 
       <section class="g-card">
         <div class="g-card-head"><div><h2 class="sec">Quién tuvo la Buy Box</h2><p class="muted small">Porcentaje del tiempo con el monitor en marcha</p></div></div>
-        <div class="g-donut"><canvas id="share" data-l='{{ a.share | map(attribute=0) | list | tojson }}' data-v='{{ a.share | map(attribute=1) | list | tojson }}' data-me='{{ a.share | map(attribute=2) | list | tojson }}'></canvas>
+        <div class="g-donut"><canvas id="share" role="img" aria-label="Reparto de la Buy Box: {% for name, p, me in a.share %}{{ name.split(' [')[0] }}{{ ' (tú)' if me }} {{ pct(p) }}{{ '; ' if not loop.last }}{% endfor %}" data-l='{{ a.share | map(attribute=0) | list | tojson }}' data-v='{{ a.share | map(attribute=1) | list | tojson }}' data-me='{{ a.share | map(attribute=2) | list | tojson }}'></canvas>
           <div><b>{{ a.share | length }}</b><span>vendedor{{ 'es' if a.share | length != 1 }}</span></div></div>
         <ul class="g-legend">
           {% for who, p, me in a.share %}<li class="{{ 'me' if me }}"><i></i><span>{{ who }}{% if me %} (tú){% endif %}</span><b>{{ pct(p) }}</b></li>{% endfor %}

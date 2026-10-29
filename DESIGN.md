@@ -145,7 +145,7 @@ Seller Notes is the bridge of a small ship. A deep navy band runs across the top
 
 The surfaces are tactile. Cards float on soft, wide shadows with a bright inner top highlight, like a lit glass edge. Segmented controls sit *into* the surface with an inset shadow, and the active segment rises out of it as a white chip. Buttons press down when clicked. Anton is the only expressive voice: uppercase, condensed, used for page titles, section heads and headline figures. Everything else is quiet Inter.
 
-The system is one family with two variants. **Apex** is the base (Dashboard, Análisis Productos, Catálogos): Anton titles, lavender deck, graphite or blue primary per page. **Navy** is the Profit variant: Inter-only headings, zinc greys and the bridge blue as primary. Both share the navy top bar, the type family and the blue accents. The older emerald "glass" pages (catalog result, columns, Costes) are drift and should migrate to Apex.
+The system is one family with two variants. **Apex** is the base (Dashboard, Análisis Productos, Catálogos): Anton titles, lavender deck, graphite or blue primary per page. **Navy** is the Profit variant: Inter-only headings, zinc greys and the bridge blue as primary. Both share the navy top bar, the type family and the blue accents. Every page now belongs to the family: Costes uses Navy (it lives under Profit), and the catalog result and column check use Apex. The old emerald "glass" style survives only as base rules and must not be used for new pages.
 
 **Key Characteristics:**
 - Navy gradient top bar (midnight hull → deep navy → bridge blue), sticky, 56px.
@@ -291,4 +291,5 @@ A 112px SVG ring on a dark hero card: a 3px track at 8% white, and a fill in a b
 - **Don't** set readable text below 11px.
 - **Don't** add hover lift or motion to non-clickable cards.
 - **Don't** follow `prefers-color-scheme`. Theme is the user's toggle, stored as `tema`.
-- **Don't** add new pages in the legacy emerald glass style (Hanken Grotesk, #059669 primary). Migrate those pages to Apex.
+- **Don't** build new pages in the old emerald glass style (Hanken Grotesk, #059669 primary). New pages take `glass apex` (or `glass navy` under Profit).
+- **Don't** render thousands of rows at once: long tables page on the server (100 rows) with filters and sorting in the URL.

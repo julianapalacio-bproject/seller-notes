@@ -53,7 +53,7 @@
       <div><h2 class="sec">Ventas con IVA</h2><p class="muted small">Por {{ unidad }}</p></div>
       <div class="g-num">{{ eur(tot.ventas) }}</div>
     </div>
-    <div class="g-minibars"><canvas id="ventas-bars" data-l='{{ periods | map(attribute="label") | list | tojson }}' data-v='{{ periods | map(attribute="ventas") | list | tojson }}'></canvas></div>
+    <div class="g-minibars"><canvas id="ventas-bars" role="img" aria-label="Ventas con IVA por {{ unidad }}: {{ eur(periods | sum(attribute='ventas')) }} en {{ periods | length }} periodos, máximo {{ eur(periods | map(attribute='ventas') | max) if periods else '0' }}" data-l='{{ periods | map(attribute="label") | list | tojson }}' data-v='{{ periods | map(attribute="ventas") | list | tojson }}'></canvas></div>
     <div class="g-stats">
       <div><span class="muted small">Unidades vendidas</span><b>{{ tot.uds }} uds</b>{% if tot.estimadas %}<span class="muted small">{{ tot.estimadas }} sin liquidar</span>{% endif %}</div>
       <div><span class="muted small">Reembolsado</span><b>{{ eur(-tot.devoluciones) if tot.devoluciones else '—' }}</b>{% if tot.devueltas %}<span class="muted small">{{ tot.devueltas }} uds</span>{% endif %}</div>
@@ -89,7 +89,7 @@
 <div class="g-row r2">
   <section class="g-card">
     <div class="g-card-head"><div><h2 class="sec">Curva de beneficio</h2><p class="muted small">Neto acumulado por {{ unidad }}</p></div></div>
-    <div class="g-curve"><canvas id="curve" data-chart='{{ chart }}'></canvas></div>
+    <div class="g-curve"><canvas id="curve" data-chart='{{ chart }}' role="img" aria-label="Beneficio neto acumulado: {{ eur(tot.neto) }} al final del periodo"></canvas></div>
     <div class="g-box"><div><span class="muted small">Margen</span><b>{{ n(tot.margen)[:-1] ~ ' %' if tot.margen is not none else '—' }}</b></div>
       <div><span class="muted small">Neto total</span><b>{{ eur(tot.neto) }}</b></div></div>
   </section>
@@ -113,7 +113,7 @@
     <div class="g-card-head"><div><h2 class="sec">Gastos de la cuenta</h2><p class="muted small">No se reparten entre productos</p></div>
       <span class="pill bad">{{ eur(tot.cuenta) }}</span></div>
     {% if acc %}
-    <div class="g-donut"><canvas id="gastos" data-l='{{ acc | map(attribute=0) | list | tojson }}' data-v='{{ acc | map(attribute=1) | list | tojson }}'></canvas>
+    <div class="g-donut"><canvas id="gastos" role="img" aria-label="Gastos de la cuenta: {% for k, v in acc %}{{ k }} {{ eur(v) }}{{ '; ' if not loop.last }}{% endfor %}" data-l='{{ acc | map(attribute=0) | list | tojson }}' data-v='{{ acc | map(attribute=1) | list | tojson }}'></canvas>
       <div><b>{{ eur(-tot.cuenta) }}</b><span>{{ acc | length }} concepto{{ 's' if acc | length != 1 }}</span></div></div>
     <ul class="g-legend">
       {% for k, v in acc %}<li><i style="--i: {{ loop.index0 }}"></i><span>{{ k }}</span><b>{{ eur(v) }}</b></li>{% endfor %}
@@ -125,7 +125,7 @@
 
 <section class="g-card">
   <div class="g-card-head"><div><h2 class="sec">Evolución por {{ unidad }}</h2><p class="muted small">Beneficio de productos y beneficio neto</p></div></div>
-  <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}'></canvas></div>
+  <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}' role="img" aria-label="Evolución por {{ unidad }}: beneficio de productos {{ eur(tot.producto) }} y beneficio neto {{ eur(tot.neto) }} en total"></canvas></div>
 </section>
 
 <section class="g-card flush">

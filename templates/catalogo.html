@@ -1,78 +1,99 @@
 {% extends "base.html" %}
-{% block body_class %}glass{% endblock %}
+{% block body_class %}glass apex ap-catalogos{% endblock %}
+{% macro th(col, label, right=False) -%}
+  {%- set on = sort == col -%}
+  <th class="{{ 'r' if right }}" {% if on %}aria-sort="{{ 'descending' if desc else 'ascending' }}"{% endif %}>
+    <a class="sort{{ ' on' if on }}" href="{{ link(orden=col, dir='asc' if on and desc else 'desc') }}">{{ label }}{% if on %}<span aria-hidden="true">{{ ' ↓' if desc else ' ↑' }}</span>{% endif %}</a>
+  </th>
+{%- endmacro %}
 {% block content %}
-<div class="head">
+<section class="g-card g-head">
   <div>
-    <h1>{{ job.proveedor or job.archivo }}</h1>
-    <p class="muted">{{ job.archivo }} · {{ job.ts | local }} · <a href="{{ url_for('catalogos') }}">todos los catálogos</a></p>
+    <div class="g-title"><h1>{{ job.proveedor or job.archivo }}</h1></div>
+    <p class="muted small">{{ job.archivo }} · {{ job.ts | local }} · <a href="{{ url_for('catalogos') }}">Todos los catálogos</a></p>
   </div>
-  {% if job.estado == 'terminado' %}<a class="btn primary" href="{{ url_for('catalogo_excel', job_id=job.id) }}">Descargar Excel</a>{% endif %}
-</div>
+  {% if job.estado == 'terminado' %}<a class="btn-ink plain" href="{{ url_for('catalogo_excel', job_id=job.id) }}">Descargar Excel</a>{% endif %}
+  {% if job.estado == 'terminado' %}
+  <div class="ls-summary">
+    {% for label, value, tone in tiles %}
+    <p class="ls-units cat-fig {{ tone if value }}"><b>{{ '{:,}'.format(value).replace(',', '.') }}</b> {{ label }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
 
 {% if job.estado == 'en_curso' %}
-<section class="card" id="progress" data-url="{{ url_for('catalogo_estado', job_id=job.id) }}">
-  <h3>Analizando…</h3>
-  <div class="progress"><span style="width: {{ job.progreso }}%"></span></div>
-  <p class="muted" id="progress-msg">{{ job.mensaje }}</p>
+<section class="g-card" id="progress" data-url="{{ url_for('catalogo_estado', job_id=job.id) }}">
+  <h2 class="sec">Analizando…</h2>
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ job.progreso }}"><span style="width: {{ job.progreso }}%"></span></div>
+  <p class="muted" id="progress-msg" aria-live="polite">{{ job.mensaje }}</p>
 </section>
 {% elif job.estado == 'error' %}
-<div class="alert">El análisis no terminó: {{ job.mensaje }}</div>
+<div class="alert" role="alert">El análisis no terminó: {{ job.mensaje }}</div>
 {% else %}
 
-<section class="tiles">
-  {% for label, value, tone in tiles %}
-  <div class="tile {{ tone if value else '' }}"><span class="num">{{ value }}</span><span>{{ label }}</span></div>
-  {% endfor %}
-</section>
+<form class="g-card cat-filters" method="get" id="filtros">
+  <input type="hidden" name="f" value="1">
+  {% if request.args.orden %}<input type="hidden" name="orden" value="{{ request.args.orden }}"><input type="hidden" name="dir" value="{{ request.args.dir }}">{% endif %}
+  <label>ROI mínimo (%)<input type="number" name="roi" value="{{ '%g' % f.roi if f.roi is not none }}" placeholder="cualquiera" step="5"></label>
+  <label>BSR máximo<input type="number" name="bsr" value="{{ '%d' % f.bsr if f.bsr is not none }}" placeholder="cualquiera" step="1000"></label>
+  <label class="check"><input type="checkbox" name="en_amazon" {{ 'checked' if f.en_amazon }}> Solo los que están en Amazon</label>
+  <label class="check"><input type="checkbox" name="sin_amazon" {{ 'checked' if f.sin_amazon }}> Ocultar si Amazon vende</label>
+  <button type="submit" class="btn-ghost">Aplicar</button>
+  <p class="muted small cat-count" aria-live="polite">{{ '{:,}'.format(matched).replace(',', '.') }} de {{ '{:,}'.format(total).replace(',', '.') }} productos</p>
+</form>
 
-<section class="filters card">
-  <label>ROI mínimo <input type="number" id="f-roi" value="" placeholder="%" step="5"></label>
-  <label>BSR máximo <input type="number" id="f-bsr" value="" placeholder="cualquiera" step="1000"></label>
-  <label class="check"><input type="checkbox" id="f-found" checked> Solo los que están en Amazon</label>
-  <label class="check"><input type="checkbox" id="f-amazon"> Ocultar si Amazon vende</label>
-  <span class="muted small" id="f-count"></span>
+<section class="g-card flush">
+  {% if items %}
+  <div class="table-scroll flat">
+  <table id="results">
+    <thead>
+      <tr>
+        {{ th('producto', 'Producto') }}{{ th('bsr', 'BSR') }}{{ th('ofertas', 'Ofertas') }}{{ th('precio', 'Buy Box', True) }}
+        {{ th('coste', 'Coste', True) }}{{ th('comisiones', 'Comisiones', True) }}{{ th('beneficio', 'Beneficio', True) }}
+        {{ th('roi', 'ROI', True) }}{{ th('margen', 'Margen', True) }}
+      </tr>
+    </thead>
+    <tbody>
+    {% for it in items %}
+      <tr>
+        <td>
+          <strong>{{ (it.nombre or it.titulo or '(sin nombre)')[:70] }}</strong>
+          <div class="muted small">
+            {% if it.asin %}<a href="https://www.amazon.es/dp/{{ it.asin }}" target="_blank" rel="noopener">{{ it.asin }}</a> · {% endif %}EAN {{ it.ean or '—' }}{% if it.referencia %} · Ref. {{ it.referencia }}{% endif %}
+          </div>
+          {% if it.nota %}<div class="note small">{{ it.nota }}</div>{% endif %}
+        </td>
+        <td>{% if it.bsr %}{{ '{:,}'.format(it.bsr).replace(',', '.') }}<div class="muted small">{{ it.categoria }}</div>{% else %}—{% endif %}</td>
+        <td>{% if it.ofertas is not none %}{{ it.ofertas }} <span class="muted small">({{ it.ofertas_fba }} FBA)</span>
+          {% if it.amazon_vende %}<div><span class="pill bad">Amazon</span></div>{% endif %}
+          {% if it.yo_vendo %}<div><span class="pill ok">Ya lo vendes</span></div>{% endif %}{% else %}—{% endif %}</td>
+        <td class="r">{{ ('%.2f €' % it.precio).replace('.', ',') if it.precio else '—' }}
+          {% if it.precio_fuente and it.precio_fuente != 'Buy Box' %}<div class="muted small">{{ it.precio_fuente }}</div>{% endif %}</td>
+        <td class="r">{{ ('%.2f €' % it.coste).replace('.', ',') if it.coste is not none else '—' }}</td>
+        <td class="r">{% if it.comisiones is not none %}{{ ('%.2f €' % it.comisiones).replace('.', ',') }}
+          <div class="muted small">{{ ('%.2f' % it.comision_venta).replace('.', ',') }} + FBA {{ ('%.2f' % it.comision_fba).replace('.', ',') }}</div>{% else %}—{% endif %}</td>
+        <td class="r {{ 'pos' if (it.beneficio or 0) > 0 else 'neg' if it.beneficio is not none }}">
+          {{ ('%.2f €' % it.beneficio).replace('.', ',') if it.beneficio is not none else '—' }}</td>
+        <td class="r">{% if it.roi is not none %}<span class="roi {{ 'good' if it.roi >= 30 else 'mid' if it.roi >= 15 else 'low' }}">{{ '%.0f' % it.roi }} %</span>{% else %}—{% endif %}</td>
+        <td class="r">{{ '%.0f %%' % it.margen if it.margen is not none else '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if paginas > 1 %}
+  <nav class="pager" aria-label="Páginas de resultados">
+    {% if pagina > 1 %}<a class="btn-ghost" href="{{ link(pagina=pagina - 1) }}" rel="prev">← Anterior</a>{% else %}<span></span>{% endif %}
+    <span class="muted small">Productos {{ first }}–{{ first + items | length - 1 }} de {{ '{:,}'.format(matched).replace(',', '.') }} · página {{ pagina }} de {{ paginas }}</span>
+    {% if pagina < paginas %}<a class="btn-ghost" href="{{ link(pagina=pagina + 1) }}" rel="next">Siguiente →</a>{% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <p class="empty">Ningún producto cumple estos filtros. <a href="{{ url_for('catalogo', job_id=job.id) }}">Quitar filtros</a></p>
+  {% endif %}
 </section>
-
-<div class="table-scroll">
-<table id="results" class="sortable">
-  <thead>
-    <tr>
-      <th data-sort="text">Producto</th><th data-sort="num">BSR</th><th data-sort="num">Ofertas</th>
-      <th data-sort="num" class="r">Buy Box</th><th data-sort="num" class="r">Coste</th><th data-sort="num" class="r">Comisiones</th>
-      <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">ROI</th><th data-sort="num" class="r">Margen</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for it in items %}
-    <tr data-roi="{{ it.roi if it.roi is not none else '' }}" data-bsr="{{ it.bsr or '' }}" data-found="{{ 1 if it.asin else 0 }}"
-        data-amazon="{{ 1 if it.amazon_vende else 0 }}">
-      <td data-v="{{ it.nombre or it.titulo }}">
-        <strong>{{ (it.nombre or it.titulo or '(sin nombre)')[:70] }}</strong>
-        <div class="muted small">
-          {% if it.asin %}<a href="https://www.amazon.es/dp/{{ it.asin }}" target="_blank" rel="noopener">{{ it.asin }}</a> · {% endif %}EAN {{ it.ean or '—' }}{% if it.referencia %} · Ref. {{ it.referencia }}{% endif %}
-        </div>
-        {% if it.nota %}<div class="note small">{{ it.nota }}</div>{% endif %}
-      </td>
-      <td data-v="{{ it.bsr or 999999999 }}">{% if it.bsr %}{{ '{:,}'.format(it.bsr).replace(',', '.') }}<div class="muted small">{{ it.categoria }}</div>{% else %}—{% endif %}</td>
-      <td data-v="{{ it.ofertas or 0 }}">{% if it.ofertas is not none %}{{ it.ofertas }} <span class="muted small">({{ it.ofertas_fba }} FBA)</span>
-        {% if it.amazon_vende %}<div><span class="pill bad">Amazon</span></div>{% endif %}
-        {% if it.yo_vendo %}<div><span class="pill ok">Ya lo vendes</span></div>{% endif %}{% else %}—{% endif %}</td>
-      <td class="r" data-v="{{ it.precio or 0 }}">{{ '%.2f €' % it.precio if it.precio else '—' }}
-        {% if it.precio_fuente and it.precio_fuente != 'Buy Box' %}<div class="muted small">{{ it.precio_fuente }}</div>{% endif %}</td>
-      <td class="r" data-v="{{ it.coste or 0 }}">{{ '%.2f €' % it.coste if it.coste is not none else '—' }}</td>
-      <td class="r" data-v="{{ it.comisiones or 0 }}">{% if it.comisiones is not none %}{{ '%.2f €' % it.comisiones }}
-        <div class="muted small">{{ '%.2f' % it.comision_venta }} + FBA {{ '%.2f' % it.comision_fba }}</div>{% else %}—{% endif %}</td>
-      <td class="r {{ 'pos' if (it.beneficio or 0) > 0 else 'neg' if it.beneficio is not none }}" data-v="{{ it.beneficio if it.beneficio is not none else -9999 }}">
-        {{ '%.2f €' % it.beneficio if it.beneficio is not none else '—' }}</td>
-      <td class="r" data-v="{{ it.roi if it.roi is not none else -9999 }}">
-        {% if it.roi is not none %}<span class="roi {{ 'good' if it.roi >= 30 else 'mid' if it.roi >= 15 else 'low' }}">{{ '%.0f' % it.roi }}%</span>{% else %}—{% endif %}</td>
-      <td class="r" data-v="{{ it.margen if it.margen is not none else -9999 }}">{{ '%.0f%%' % it.margen if it.margen is not none else '—' }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-</div>
-<p class="muted small">Beneficio por unidad = Buy Box sin IVA − comisiones (venta + FBA, estimación de Amazon al precio de la Buy Box) − coste sin IVA{% if job.opciones %}{% endif %} − envío a FBA. Haz clic en una cabecera para ordenar.</p>
+<p class="muted small cat-note">Beneficio por unidad = Buy Box sin IVA − comisiones (venta + FBA, estimación de Amazon al precio de la Buy Box) − coste sin IVA − envío a FBA. Pulsa una cabecera para ordenar; el Excel trae todos los productos.</p>
 {% endif %}
 {% endblock %}
 
@@ -84,44 +105,13 @@
       const j = await (await fetch(prog.dataset.url)).json();
       if (j.estado !== 'en_curso') return location.reload();
       prog.querySelector('.progress span').style.width = j.progreso + '%';
+      prog.querySelector('.progress').setAttribute('aria-valuenow', j.progreso);
       document.getElementById('progress-msg').textContent = j.mensaje;
       setTimeout(tick, 2000);
     };
     setTimeout(tick, 2000);
   }
-
-  const table = document.getElementById('results');
-  if (table) {
-    const rows = [...table.tBodies[0].rows];
-    const $ = id => document.getElementById(id);
-    const apply = () => {
-      const roi = parseFloat($('f-roi').value), bsr = parseFloat($('f-bsr').value);
-      let shown = 0;
-      rows.forEach(r => {
-        const d = r.dataset;
-        const ok = (isNaN(roi) || (d.roi !== '' && +d.roi >= roi))
-          && (isNaN(bsr) || (d.bsr !== '' && +d.bsr <= bsr))
-          && (!$('f-found').checked || d.found === '1')
-          && (!$('f-amazon').checked || d.amazon === '0');
-        r.hidden = !ok;
-        shown += ok;
-      });
-      $('f-count').textContent = `${shown} de ${rows.length} productos`;
-    };
-    document.querySelectorAll('.filters input').forEach(i => i.addEventListener('input', apply));
-    apply();
-
-    table.querySelectorAll('th[data-sort]').forEach((th, col) => th.addEventListener('click', () => {
-      const asc = th.dataset.dir !== 'asc';
-      table.querySelectorAll('th').forEach(h => delete h.dataset.dir);
-      th.dataset.dir = asc ? 'asc' : 'desc';
-      const num = th.dataset.sort === 'num';
-      rows.sort((a, b) => {
-        const x = a.cells[col].dataset.v, y = b.cells[col].dataset.v;
-        const c = num ? (+x) - (+y) : x.localeCompare(y, 'es');
-        return asc ? c : -c;
-      }).forEach(r => table.tBodies[0].appendChild(r));
-    }));
-  }
+  // las casillas aplican el filtro al momento; las cifras, al pulsar «Aplicar» o Intro
+  document.querySelectorAll('#filtros input[type=checkbox]').forEach(c => c.addEventListener('change', () => c.form.submit()));
 </script>
 {% endblock %}

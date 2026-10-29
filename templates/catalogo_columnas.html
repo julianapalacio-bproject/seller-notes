@@ -1,19 +1,20 @@
 {% extends "base.html" %}
-{% block body_class %}glass{% endblock %}
+{% block body_class %}glass apex ap-catalogos{% endblock %}
 {% block content %}
-<div class="head">
+<section class="g-card g-head">
   <div>
-    <h1>Comprueba las columnas</h1>
+    <div class="g-title"><h1>Comprueba las columnas</h1></div>
     <p class="muted">{{ original }} · {{ total }} filas. He detectado estas columnas; cámbialas si alguna no es correcta.</p>
   </div>
-</div>
+</section>
 
-<form method="post" action="{{ url_for('analizar_catalogo') }}" class="card"
-      onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Empezando…'">
+<form method="post" action="{{ url_for('analizar_catalogo') }}" class="g-card"
+      onsubmit="const b=this.querySelector('button[type=submit]'); b.disabled=true; b.textContent='Empezando…'">
   <input type="hidden" name="archivo" value="{{ archivo }}">
   <input type="hidden" name="original" value="{{ original }}">
   <input type="hidden" name="header_idx" value="{{ header_idx }}">
 
+  <h2 class="sec">Columnas del archivo</h2>
   <div class="form-grid">
     {% for key, label in fields.items() %}
     <label>
@@ -28,14 +29,15 @@
     {% endfor %}
   </div>
 
+  <h2 class="sec">Opciones</h2>
   <div class="form-grid">
     <label><span>Nombre del proveedor</span><input type="text" name="proveedor" value="{{ proveedor }}"></label>
     <label><span>IVA de venta si no hay columna (%)</span><input type="text" name="iva" value="{{ '%g' % iva }}" inputmode="decimal"></label>
     <label><span>Envío a FBA por unidad (€, opcional)</span><input type="text" name="envio" value="0" inputmode="decimal"></label>
   </div>
 
-  <h3>Vista previa</h3>
-  <div class="table-scroll">
+  <h2 class="sec">Vista previa</h2>
+  <div class="table-scroll flat">
     <table class="compact">
       <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
       <tbody>{% for r in preview %}<tr>{% for c in r %}<td class="small">{{ c[:60] }}</td>{% endfor %}</tr>{% endfor %}</tbody>
@@ -43,8 +45,8 @@
   </div>
 
   <div class="actions">
-    <a class="btn" href="{{ url_for('catalogos') }}">Cancelar</a>
-    <button type="submit">Analizar {{ total }} productos</button>
+    <a class="btn-ghost" href="{{ url_for('catalogos') }}">Cancelar</a>
+    <button type="submit" class="btn-ink plain">Analizar {{ total }} productos</button>
   </div>
   <p class="muted small">Amazon limita la velocidad de consulta: cuenta con ~1 minuto por cada 100 productos más las comprobaciones. Puedes cerrar esta página; el análisis sigue mientras el panel esté abierto.</p>
 </form>

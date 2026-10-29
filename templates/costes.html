@@ -1,44 +1,48 @@
 {% extends "base.html" %}
-{% block body_class %}glass{% endblock %}
+{% block body_class %}glass navy{% endblock %}
 {% block content %}
-<div class="head">
+<section class="g-card g-head">
   <div>
-    <h1>Costes por SKU</h1>
-    <p class="muted">Coste de compra sin IVA de cada producto. Si un proveedor cambia el precio, guarda el nuevo coste con su fecha «desde»: las ventas anteriores siguen usando el coste antiguo. · <a href="{{ url_for('rentabilidad') }}">Volver a Profit</a></p>
+    <div class="g-title"><h1>Costes por SKU</h1></div>
+    <p class="muted">Coste de compra sin IVA de cada producto. Si un proveedor cambia el precio, guarda el nuevo coste con su fecha «desde»: las ventas anteriores siguen usando el coste antiguo.</p>
   </div>
-</div>
+  <a class="btn-ghost" href="{{ url_for('rentabilidad') }}">← Volver a Profit</a>
+</section>
 
-{% if missing %}<div class="alert">SKU vendidos sin coste: {{ missing | join(', ') }}. Añádelos abajo para que su beneficio sea correcto.</div>{% endif %}
+{% if missing %}<div class="alert" role="alert">SKU vendidos sin coste: {{ missing | join(', ') }}. Añádelos abajo para que su beneficio sea correcto.</div>{% endif %}
 
-<div class="table-scroll">
-<table>
-  <thead><tr><th>SKU</th><th>Desde</th><th class="r">Coste/u</th><th class="r">Envío FBA/u</th><th class="r">IVA</th><th>Cambiar coste</th></tr></thead>
-  <tbody>
-  {% for c in costs %}
-    <tr>
-      <td><strong>{{ c.sku }}</strong><div class="muted small">{{ c.asin }} · {{ c.nombre[:55] }}</div></td>
-      <td>{{ c.desde }}{% if c.historial > 1 %}<div class="muted small">{{ c.historial }} cambios</div>{% endif %}</td>
-      <td class="r">{{ '%.2f €' % c.coste }}</td>
-      <td class="r">{{ '%.2f €' % c.envio }}</td>
-      <td class="r">{{ '%g' % c.iva }}%</td>
-      <td>
-        <form method="post" class="inline-form">
-          <input type="hidden" name="sku" value="{{ c.sku }}">
-          <input type="text" name="coste" value="{{ '%.2f' % c.coste }}" inputmode="decimal" title="Coste/u sin IVA" size="6">
-          <input type="text" name="envio" value="{{ '%.2f' % c.envio }}" inputmode="decimal" title="Envío a FBA por unidad" size="5">
-          <input type="text" name="iva" value="{{ '%g' % c.iva }}" inputmode="decimal" title="IVA %" size="3">
-          <input type="date" name="desde" value="{{ today }}" title="Desde qué fecha vale">
-          <button type="submit">Guardar</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-</div>
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Costes actuales <span class="pill ink">{{ costs | length }}</span></h2></div></div>
+  <div class="table-scroll">
+  <table id="costes">
+    <thead><tr><th>SKU</th><th>Desde</th><th class="r">Coste/u</th><th class="r">Envío FBA/u</th><th class="r">IVA</th><th>Cambiar coste</th></tr></thead>
+    <tbody>
+    {% for c in costs %}
+      <tr>
+        <td class="co-sku"><strong>{{ c.sku }}</strong><div class="muted small">{{ c.asin }} · {{ c.nombre[:55] }}</div></td>
+        <td class="co-desde">{{ c.desde }}{% if c.historial > 1 %}<div class="muted small">{{ c.historial }} cambios</div>{% endif %}</td>
+        <td class="r co-coste"><span class="co-label">Coste/u </span>{{ ('%.2f €' % c.coste).replace('.', ',') }}</td>
+        <td class="r co-envio"><span class="co-label">Envío FBA/u </span>{{ ('%.2f €' % c.envio).replace('.', ',') }}</td>
+        <td class="r co-iva"><span class="co-label">IVA </span>{{ '%g' % c.iva }} %</td>
+        <td class="co-form">
+          <form method="post" class="inline-form">
+            <input type="hidden" name="sku" value="{{ c.sku }}">
+            <label>Coste<input type="text" name="coste" value="{{ '%.2f' % c.coste }}" inputmode="decimal" size="6" aria-label="Nuevo coste por unidad sin IVA de {{ c.sku }}"></label>
+            <label>Envío<input type="text" name="envio" value="{{ '%.2f' % c.envio }}" inputmode="decimal" size="5" aria-label="Envío a FBA por unidad de {{ c.sku }}"></label>
+            <label>IVA<input type="text" name="iva" value="{{ '%g' % c.iva }}" inputmode="decimal" size="3" aria-label="IVA en % de {{ c.sku }}"></label>
+            <label>Desde<input type="date" name="desde" value="{{ today }}" aria-label="Desde qué fecha vale el nuevo coste de {{ c.sku }}"></label>
+            <button type="submit" class="btn-ink plain">Guardar</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
 
-<section class="card" style="margin-top: 20px">
-  <h3>Añadir un SKU nuevo</h3>
+<section class="g-card">
+  <div class="g-card-head"><div><h2 class="sec">Añadir un SKU nuevo</h2></div></div>
   <form method="post" class="form-grid">
     <label><span>SKU</span><input type="text" name="sku" required list="missing-skus"></label>
     <datalist id="missing-skus">{% for s in missing %}<option value="{{ s }}">{% endfor %}</datalist>
@@ -48,7 +52,7 @@
     <label><span>Envío a FBA/u (€)</span><input type="text" name="envio" value="0" inputmode="decimal"></label>
     <label><span>IVA (%)</span><input type="text" name="iva" value="21" inputmode="decimal"></label>
     <label><span>Desde</span><input type="date" name="desde" value="2026-07-01"></label>
-    <label><span>&nbsp;</span><button type="submit">Añadir</button></label>
+    <div class="form-go"><button type="submit" class="btn-ink plain">Añadir</button></div>
   </form>
 </section>
 {% endblock %}

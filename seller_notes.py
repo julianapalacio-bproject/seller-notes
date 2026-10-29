@@ -98,6 +98,7 @@ def db():
             old_value TEXT, new_value TEXT);
         CREATE INDEX IF NOT EXISTS ix_snap ON snapshots(asin, ts);
         CREATE INDEX IF NOT EXISTS ix_ev ON events(asin, ts);
+        CREATE INDEX IF NOT EXISTS ix_offers_snap ON offers(snapshot_id);
         """
     )
     cols = [r[1] for r in con.execute("PRAGMA table_info(snapshots)")]

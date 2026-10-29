@@ -29,7 +29,7 @@
   </section>
 
   <section class="g-card upload">
-    <div class="g-card-head"><div><h3 class="sec">Analizar un catálogo nuevo</h3><p class="muted small">Después podrás revisar qué columna es el EAN, el coste, etc.</p></div></div>
+    <div class="g-card-head"><div><h2 class="sec">Analizar un catálogo nuevo</h2><p class="muted small">Después podrás revisar qué columna es el EAN, el coste, etc.</p></div></div>
     <form method="post" action="{{ url_for('subir_catalogo') }}" enctype="multipart/form-data">
       <label class="drop">
         <input type="file" name="archivo" accept=".xlsx,.xlsm,.csv,.txt" required
@@ -46,13 +46,13 @@
 
 <section class="g-card flush">
   <div class="g-card-head pad">
-    <div><h3 class="sec">Análisis anteriores <span class="pill ink">{{ jobs | length }}</span></h3></div>
+    <div><h2 class="sec">Análisis anteriores <span class="pill ink">{{ jobs | length }}</span></h2></div>
     {% if jobs %}
-    <div class="g-seg tabs">
-      <a href="#" class="on" data-tab="todos">Todos ({{ jobs | length }})</a>
-      <a href="#" data-tab="terminado">Terminados ({{ ok_jobs | length }})</a>
-      <a href="#" data-tab="en_curso">En curso ({{ running | length }})</a>
-      <a href="#" data-tab="error">Con error ({{ failed | length }})</a>
+    <div class="g-seg tabs" role="group" aria-label="Filtrar análisis por estado">
+      <a href="?tab=todos" class="on" aria-current="true" data-tab="todos">Todos ({{ jobs | length }})</a>
+      <a href="?tab=terminado" data-tab="terminado">Terminados ({{ ok_jobs | length }})</a>
+      <a href="?tab=en_curso" data-tab="en_curso">En curso ({{ running | length }})</a>
+      <a href="?tab=error" data-tab="error">Con error ({{ failed | length }})</a>
     </div>
     <input type="search" id="filtro" placeholder="Filtrar por proveedor o archivo…" aria-label="Filtrar análisis">
     {% endif %}
@@ -81,7 +81,7 @@
     </tbody>
   </table>
   </div>
-  <p class="muted small ls-count" id="count"></p>
+  <p class="muted small ls-count" id="count" aria-live="polite"></p>
   {% else %}
   <p class="empty">Todavía no has analizado ningún catálogo.</p>
   {% endif %}
@@ -93,7 +93,9 @@
   const table = document.getElementById('jobs');
   if (table) {
     const rows = [...table.tBodies[0].rows], filtro = document.getElementById('filtro'), count = document.getElementById('count');
-    let tab = 'todos';
+    const want = new URLSearchParams(location.search).get('tab');
+    let tab = document.querySelector(`.tabs a[data-tab="${want}"]`) ? want : 'todos';
+    document.querySelectorAll('.tabs a').forEach(t => (t.classList.toggle('on', t.dataset.tab === tab), t.dataset.tab === tab ? t.setAttribute('aria-current', 'true') : t.removeAttribute('aria-current')));
     const apply = () => {
       const q = filtro.value.trim().toLowerCase();
       let shown = 0;
@@ -105,7 +107,7 @@
     };
     document.querySelectorAll('[data-tab]').forEach(a => a.addEventListener('click', e => {
       e.preventDefault(); tab = a.dataset.tab;
-      document.querySelectorAll('.tabs a').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+      document.querySelectorAll('.tabs a').forEach(t => (t.classList.toggle('on', t.dataset.tab === tab), t.dataset.tab === tab ? t.setAttribute('aria-current', 'true') : t.removeAttribute('aria-current')));
       apply();
     }));
     filtro.addEventListener('input', apply);
