@@ -15,7 +15,7 @@
     <p class="muted small">{% if ts %}{{ total }} listing{{ 's' if total != 1 }} en Amazon.es{% else %}Todavía no hay consultas{% endif %}
       {% if ignored %} · {{ ignored }} SKU ignorados (skus_ignorados.txt){% endif %}</p>
   </div>
-  <form method="post" action="{{ url_for('refresh_listings') }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Consultando…'">
+  <form method="post" action="{{ url_for('refresh_listings') }}" onsubmit="const b=this.querySelector('button'); b.disabled=true; b.classList.add('is-busy'); b.textContent='Consultando…'">
     <button type="submit" class="btn-ink" {{ 'disabled' if not has_seller_id }}>Actualizar ahora</button>
   </form>
 </section>

@@ -209,6 +209,8 @@
   const eur = x => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
   Chart.defaults.font.family = css.fontFamily;
   Chart.defaults.color = v('--muted');
+  // gráficos que se ven decenas de veces al día: se dibujan rápido, y sin animación si el sistema pide reducir movimiento
+  Chart.defaults.animation.duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250;
 
   const c = document.getElementById('price-chart');
   if (c) {

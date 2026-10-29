@@ -866,10 +866,9 @@ body.glass.apex .btn-ink { display: inline-flex; align-items: center; gap: 8px; 
   border-radius: 12px; padding: 8px 16px; font-size: 12px; font-weight: 600; letter-spacing: .01em; box-shadow: var(--btn-sh); filter: none; transition: background .15s; }
 body.glass.apex .btn-ink:hover { background: var(--btn-hover); }
 body.glass.apex.ap-catalogos .btn-ink { padding: 10px 20px; }
-body.glass.apex .g-head .btn-ink::before { content: ""; width: 17px; height: 17px; flex: none; background: currentColor; transition: transform .5s;
+body.glass.apex .g-head .btn-ink::before { content: ""; width: 17px; height: 17px; flex: none; background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'/%3E%3C/svg%3E") center / contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'/%3E%3C/svg%3E") center / contain no-repeat; }
-body.glass.apex .g-head .btn-ink:hover::before { transform: rotate(180deg); }
 body.glass.apex .btn-ghost { background: var(--card); color: var(--text); border: 1px solid rgba(230, 232, 241, .8); border-radius: 12px;
   padding: 7px 14px; font-size: 12px; font-weight: 600; box-shadow: var(--sh-btn); text-decoration: none; }
 body.glass.apex .btn-ghost:hover { background: var(--soft); border-color: rgba(230, 232, 241, .8); }
@@ -954,8 +953,6 @@ body.glass.apex .kpi3-icon { width: 48px; height: 48px; border-radius: 12px; bac
   color: var(--primary); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .05); }
 body.glass.apex .g-row.k3 > .g-card:last-child .kpi3-icon { background: var(--primary-soft); }
 [data-theme="dark"] body.glass.apex .kpi3-icon { border-color: var(--line); }
-body.glass.apex .kpi3:hover { transform: translateY(-2px); }
-body.glass.apex .kpi3 { transition: transform .15s; }
 body.glass.apex .ls-prod { gap: 8px; }
 body.glass.apex .ls-prod .pill { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 0; }
 body.glass.apex .ls-prod .pill.ink { background: var(--primary); color: #fff; }
@@ -1021,8 +1018,7 @@ body.glass.apex .bb-strip { background: rgba(242, 243, 253, .7); border: 1px sol
 body.glass.apex .bb-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 18px; }
 body.glass.apex .bb-tiles div { flex-direction: column-reverse; justify-content: flex-end; align-items: center; text-align: center; gap: 4px; padding: 10px 6px;
   border-radius: 12px; background: rgba(255, 255, 255, .9); border: 1px solid rgba(191, 219, 254, .6);
-  box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(48, 95, 158, .08); transition: transform .15s; }
-body.glass.apex .bb-tiles div:hover { transform: translateY(-2px); }
+  box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(48, 95, 158, .08); }
 body.glass.apex .bb-tiles b { font-size: 18px; font-weight: 700; color: var(--primary); }
 body.glass.apex .bb-tiles span { font-size: 10px; line-height: 1.25; color: var(--muted); }
 body.glass.apex .bb-tiles .warn { border-color: rgba(253, 230, 138, .6); box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(245, 158, 11, .08); } body.glass.apex .bb-tiles .warn b { color: var(--warn-num); }
@@ -1118,4 +1114,36 @@ body.glass.apex .info { background: var(--blue-soft); color: var(--blue); border
   body.glass:is(.apex, .navy) .top-right { width: 100%; min-width: 0; }
   body.glass:is(.apex, .navy) nav { border-left: 0; padding-left: 0; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   body.glass:is(.apex, .navy) nav a { white-space: nowrap; }
+}
+
+/* ---------------------------------------------------------------- Movimiento (guía de Emil Kowalski)
+   Todo lo que se pulsa responde al instante; nada se mueve sin motivo.
+   «body.glass.glass» sube la prioridad para ganar a los estilos de cada página (apex, navy). */
+:root { --ease-out: cubic-bezier(.23, 1, .32, 1); }
+
+/* 1 · Respuesta al pulsar: el botón se hunde con suavidad (antes saltaba de golpe o no hacía nada) */
+body.glass.glass :is(.btn-ink, .btn-ghost, .bb-add button, .theme-toggle, nav a, .g-seg a, .daynav a, .bb-menu li a) {
+  transition: transform 160ms var(--ease-out), background-color 150ms var(--ease-out), border-color 150ms var(--ease-out),
+              color 150ms var(--ease-out), box-shadow 150ms var(--ease-out); }
+body.glass.glass :is(.btn-ink, .btn-ghost, .bb-add button, .theme-toggle, nav a, .g-seg a, .daynav a):active:not(:disabled) { transform: scale(.97); }
+body.glass .bb-menu li a:active { transform: scale(.985); }  /* filas anchas: un hundimiento más sutil */
+
+/* 2 · El icono de actualizar gira mientras Amazon se está consultando (antes giraba al pasar el ratón).
+   Las casillas de cifras y las tarjetas del Dashboard ya no se levantan: no se pueden pulsar. */
+body.glass .btn-ink.is-busy, body.glass .btn-ink.is-busy:disabled { cursor: progress; opacity: .85; }
+body.glass .btn-ink.is-busy::before { animation: sn-spin 900ms linear infinite; }
+@keyframes sn-spin { to { transform: rotate(360deg); } }
+
+/* 3 · Punto verde «tienes la Buy Box»: un latido suave y lento en vez de un parpadeo */
+body.glass.apex .g-title .pill .dot.me { animation: sn-breathe 3s ease-in-out infinite; }
+@keyframes sn-breathe { 50% { opacity: .65; } }
+
+/* 4 · Hover en pantallas táctiles: tras quitar las elevaciones y el giro (2), ningún hover mueve nada;
+   los que quedan solo cambian de color, así que no se ven «pegados» al tocar en el móvil */
+
+/* 5 · Si el sistema pide reducir movimiento: sin giros, latidos ni desplazamientos (los colores sí cambian) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+  body.glass.glass :is(.btn-ink, .btn-ghost, .bb-add button, .theme-toggle, nav a, .g-seg a, .daynav a, .bb-menu li a):active { transform: none; }
+  body.glass * { transition-property: color, background-color, border-color, opacity !important; }
 }

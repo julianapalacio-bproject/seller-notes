@@ -9,9 +9,9 @@
       {% if last %}<span class="pill ok"><i class="dot me"></i> Amazon liquidado hasta {{ last | local }}</span>{% endif %}</div>
     <p class="muted small">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
   </div>
-  <form method="post" action="{{ url_for('rentabilidad_actualizar') }}">
+  <form method="post" action="{{ url_for('rentabilidad_actualizar') }}" onsubmit="const b=this.querySelector('button'); b.disabled=true; b.classList.add('is-busy'); b.textContent='Actualizando…'">
     <input type="hidden" name="volver" value="{{ request.full_path }}">
-    <button type="submit" class="btn-ink" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
+    <button type="submit" class="btn-ink{{ ' is-busy' if sync.running }}" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
   </form>
 </section>
 
@@ -195,6 +195,8 @@
   const eur = x => x.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
   Chart.defaults.color = v('--muted');
+  // gráficos que se ven decenas de veces al día: se dibujan rápido, y sin animación si el sistema pide reducir movimiento
+  Chart.defaults.animation.duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250;
   const bare = { x: { display: false }, y: { display: false } };
 
   const c = document.getElementById('profit-chart');
