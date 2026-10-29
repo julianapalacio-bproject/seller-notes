@@ -110,13 +110,21 @@ PERIODS = {"dia": ("Día", 1), "7d": ("7 días", 7), "30d": ("30 días", 30)}
 
 
 def product_labels(con):
-    """{asin: (sku, nombre)} según la última consulta de tus listings."""
-    try:
-        rows = con.execute("SELECT asin, sku, nombre FROM listings l "
-                           "WHERE ts=(SELECT MAX(ts) FROM listings WHERE asin=l.asin)").fetchall()
-    except Exception:  # la tabla aún no existe
-        return {}
-    return {r[0]: (r[1], r[2]) for r in rows}
+    """{asin: (sku, nombre)}. El nombre sale, por orden: de tu hoja de costes (el más corto), de tus listings
+    o del título de la página de amazon.es (para los ASIN que no vendes)."""
+    out = {}
+    for sql in ("SELECT asin, '', titulo FROM titulos",
+                "SELECT asin, sku, nombre FROM listings l WHERE ts=(SELECT MAX(ts) FROM listings WHERE asin=l.asin)",
+                "SELECT asin, sku, nombre FROM costes c WHERE desde=(SELECT MAX(desde) FROM costes WHERE sku=c.sku)"):
+        try:
+            rows = con.execute(sql).fetchall()
+        except Exception:  # la tabla aún no existe
+            continue
+        for asin, sku, nombre in rows:
+            if asin:
+                old = out.get(asin, ("", ""))
+                out[asin] = (sku or old[0], nombre or old[1])
+    return out
 
 
 def buybox_menu(con, names, labels):

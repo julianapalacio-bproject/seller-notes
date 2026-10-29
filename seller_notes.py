@@ -106,6 +106,7 @@ def db():
     if "bb_prime" not in cols:  # quién gana para clientes Prime y para el resto (oferta normal)
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_prime TEXT")
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_normal TEXT")
+    con.execute("CREATE TABLE IF NOT EXISTS titulos (asin TEXT PRIMARY KEY, titulo TEXT)")  # nombre en amazon.es
     if "bb_fast" not in cols:  # segunda opción de compra de la página (p. ej. «Recíbelo más rápido»)
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast TEXT")
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast_price REAL")
@@ -211,6 +212,9 @@ def get_featured_spain(asins):
     return out
 
 
+page_titles = {}  # {asin: título del producto}, leído de la misma página
+
+
 def get_fast_option(asin):
     """Segunda opción de compra que muestra la página de amazon.es, p. ej. «Recíbelo más rápido».
     La API solo da la opción principal. Devuelve (seller_id, precio, etiqueta); ("", None, None) si la página
@@ -226,6 +230,9 @@ def get_fast_option(asin):
     t = r.text
     if r.status_code != 200 or 'id="productTitle"' not in t:  # captcha o página caída
         return None
+    title = re.search(r'id="productTitle"[^>]*>\s*([^<]+?)\s*<', t)
+    if title:
+        page_titles[asin] = html.unescape(title.group(1))
     m = re.search(r'id="newAccordionRow_1" data-buying-option-index="1"', t)
     if not m:
         return "", None, None
@@ -385,6 +392,8 @@ def poll_once(con, asins=None):
                 o["is_bb"] = 1 if o["seller_id"] == winner else 0
         stock = my_stock.get(asin) if my_stock else None
         fast = get_fast_option(asin)
+        if asin in page_titles:
+            con.execute("INSERT OR REPLACE INTO titulos VALUES (?,?)", (asin, page_titles[asin]))
         bb_seller, bb_price, total, events = store(con, asin, ts, total, offers, raw=payload, my_stock=stock,
                                                  segments=spain.get(asin), fast=fast)
         local = datetime.fromisoformat(ts).astimezone(TZ).strftime("%H:%M")

@@ -19,8 +19,8 @@
           <span class="dot {{ 'me' if m.bb_is_me else ('other' if m.has_data else 'none') }}"
                 title="{{ 'Tienes la Buy Box' if m.bb_is_me else ('La Buy Box la tiene otro' if m.has_data else 'Sin datos aún') }}"></span>
           <span class="m-text">
-            <strong class="mono">{{ m.sku or m.asin }}</strong>
-            <span class="muted small">{{ m.asin }}{% if m.bb_price is not none %} · {{ eur(m.bb_price) }}{% endif %}</span>
+            <strong class="m-name">{{ m.nombre or m.sku or m.asin }}</strong>
+            <span class="muted small mono">{{ m.sku or m.asin }}{% if m.bb_price is not none %} · {{ eur(m.bb_price) }}{% endif %}</span>
           </span>
         </a>
       </li>
