@@ -1147,3 +1147,133 @@ body.glass.apex .g-title .pill .dot.me { animation: sn-breathe 3s ease-in-out in
   body.glass.glass :is(.btn-ink, .btn-ghost, .bb-add button, .theme-toggle, nav a, .g-seg a, .daynav a, .bb-menu li a):active { transform: none; }
   body.glass * { transition-property: color, background-color, border-color, opacity !important; }
 }
+
+/* ---------------------------------------------------------------- Dashboard · resumen (DESIGN.md «El puente de mando»)
+   El título es la lectura principal del día; debajo, lo que pide acción y tres paneles con Buy Box, dinero y listings. */
+body.glass.apex.ap-dash a:focus-visible, body.glass.apex.ap-dash button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 8px; }
+body.glass.apex.ap-dash .tone-ok { color: var(--ok); }
+body.glass.apex.ap-dash h2.sec { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 20px; line-height: 1.3;
+  letter-spacing: .025em; text-transform: uppercase; color: var(--text); margin: 0; }
+.dash-more { font-size: 12px; font-weight: 600; white-space: nowrap; }
+body.glass.apex .dash-more { color: var(--blue); text-decoration: none; }
+body.glass.apex .dash-more:hover { text-decoration: underline; }
+
+/* Cabecera: veredicto + frescura de cada dato */
+.dash-head { align-items: flex-end; }
+.dash-verdict h1 { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 40px; line-height: 1.05;
+  letter-spacing: .03em; text-transform: uppercase; color: var(--text); text-wrap: balance; }
+.dash-date { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.dash-fresh { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.dash-fresh li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12px;
+  color: var(--muted); background: var(--soft); box-shadow: var(--sh-inset); white-space: nowrap; }
+.dash-fresh li b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.dash-fresh .dot, .attn .dot, .attn-clear .dot, .health-legend .dot { width: 8px; height: 8px; }
+.dash-fresh .ok .dot { background: var(--ok); }
+.dash-fresh .warn .dot { background: var(--warn-num); } .dash-fresh .warn b { color: var(--warn); }
+.dash-fresh .bad .dot { background: var(--bad); } .dash-fresh .bad b { color: var(--bad); }
+
+/* Atención hoy */
+.dash-attn .g-card-head { align-items: baseline; }
+.attn-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.attn { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto auto; align-items: center; gap: 14px;
+  padding: 12px 14px; border-radius: 12px; background: var(--soft); border: 1px solid var(--line); }
+.attn.bad { background: color-mix(in srgb, var(--bad-bg) 55%, var(--card)); border-color: var(--bad-line); }
+.attn.warn { background: color-mix(in srgb, var(--warn-bg) 60%, var(--card)); border-color: var(--warn-line); }
+.attn-tone { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.attn.bad .attn-tone { color: var(--bad-ink); } .attn.bad .dot { background: var(--bad); }
+.attn.warn .attn-tone { color: var(--warn); } .attn.warn .dot { background: var(--warn-num); }
+.attn-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.attn-area { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  color: var(--muted); background: var(--card); border: 1px solid var(--line); vertical-align: 1px; }
+.attn-detail { margin: 3px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.attn-since { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.glass.apex .attn-go { white-space: nowrap; }
+.attn-clear { display: flex; align-items: center; gap: 10px; margin: 0; padding: 14px 16px; border-radius: 12px; font-size: 14px;
+  color: var(--ok-ink); background: var(--ok-bg); border: 1px solid var(--ok-line); }
+.attn-clear .dot { background: var(--ok); flex: none; }
+
+/* Tres paneles */
+.g-row.dash-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
+.dash-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); align-items: start; }
+body.glass.apex .dash-side > .g-card { margin-bottom: 0; }
+.attn-more { margin-top: 8px; }
+.attn-more summary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;
+  color: var(--blue); cursor: pointer; }
+.attn-more summary::-webkit-details-marker { display: none; }
+.attn-more summary { list-style: none; }
+.attn-more summary::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 2px 2px 0;
+  transform: rotate(-45deg); transition: transform 160ms var(--ease-out); }
+.attn-more[open] summary::before { transform: rotate(45deg); }
+.attn-more summary:hover { background: var(--soft); }
+.attn-more[open] summary { margin-bottom: 8px; }
+.dash-row .g-card-head { align-items: baseline; }
+
+.bb-sum { list-style: none; margin: 0; padding: 0; }
+.bb-sum li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, auto) 104px; align-items: center; gap: 14px;
+  padding: 11px 0; border-top: 1px solid var(--line); }
+.bb-sum li:first-child { border-top: 0; padding-top: 0; }
+body.glass.apex .bb-sum-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-decoration: none; }
+.bb-sum-name b { font-size: 13px; font-weight: 600; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden; }
+.bb-sum-name:hover b { color: var(--blue); }
+.bb-sum-name .muted { font-size: 11px; font-variant-numeric: tabular-nums; }
+.bb-sum-who { display: flex; flex-direction: column; font-size: 13px; font-weight: 700; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+.bb-sum-who small { font-size: 11px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bb-sum-who.ok { color: var(--ok-ink); } .bb-sum-who.bad { color: var(--bad); } .bb-sum-who.none { color: var(--warn); }
+.bb-sum-share { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.bb-sum-share b { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+body.glass.apex .bb-sum-share .g-track span { background: var(--blue); }
+
+.money-lines { margin: 0 0 18px; display: flex; flex-direction: column; gap: 12px; }
+.money-lines > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.money-lines dt { font-size: 13px; color: var(--muted); }
+.money-lines dd { margin: 0; text-align: right; font-size: 18px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums;
+  display: flex; flex-direction: column; align-items: flex-end; }
+.money-lines dd small { font-size: 12px; font-weight: 600; margin-top: 2px; }
+.money-days { margin: auto 0 0; }
+.money-days ol { list-style: none; margin: 0; padding: 0; height: 84px; display: flex; align-items: flex-end; gap: 4px; }
+.money-days li { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+.money-days .bar { display: block; width: 100%; max-width: 18px; border-radius: 4px 4px 2px 2px; background: var(--blue); }
+.money-days li.neg .bar { background: var(--bad); }
+.money-days li.today .bar { opacity: .45; }
+.money-days .day { font-size: 11px; color: var(--muted); line-height: 1; }
+.money-days figcaption { margin-top: 10px; font-size: 11px; }
+
+.health-num { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.health-num b { font-family: "Anton", "Inter", sans-serif; font-weight: 400; font-size: 30px; letter-spacing: .025em; color: var(--text);
+  margin-right: 4px; line-height: 1; }
+.health-bar { display: flex; gap: 3px; height: 8px; margin-bottom: 12px; }
+.health-bar span { border-radius: 99px; min-width: 6px; }
+.health-bar .ok, .health-legend .ok .dot { background: var(--ok); }
+.health-bar .warn, .health-legend .warn .dot { background: var(--warn-num); }
+.health-bar .bad, .health-legend .bad .dot { background: var(--bad); }
+.health-legend { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text); }
+.health-legend li { display: flex; align-items: center; gap: 8px; }
+.health-legend b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.health-stats { margin: auto 0 0; padding-top: 12px; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.health-stats div { display: flex; flex-direction: column; gap: 2px; }
+.health-stats dt { font-size: 11px; color: var(--muted); }
+.health-stats dd { margin: 0; font-size: 16px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+body.glass.apex .dash-row dd.neg, body.glass.apex .money-lines dd.neg { color: var(--bad); }
+body.glass.apex .money-lines small.pos { color: var(--ok-ink); }
+body.glass.apex .money-lines small.neg { color: var(--bad-ink); }
+
+@media (max-width: 900px) {
+  .g-row.dash-row { grid-template-columns: minmax(0, 1fr); }
+  .dash-side { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 680px) {
+  .dash-side { grid-template-columns: minmax(0, 1fr); }
+  .dash-verdict h1 { font-size: 30px; }
+  .dash-fresh { gap: 6px; }
+  .dash-fresh li { padding: 5px 10px; }
+  .attn { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 12px; }
+  .attn-body { grid-column: 1 / -1; grid-row: 2; }
+  .attn-go { grid-column: 1 / -1; justify-self: start; }
+  .attn > span:last-child:empty { display: none; }
+  .bb-sum li { grid-template-columns: minmax(0, 1fr) auto; }
+  .bb-sum-share { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 10px; }
+  .bb-sum-share b { order: 2; min-width: 42px; }
+  .bb-sum-share .g-track { flex: 1; }
+}

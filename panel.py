@@ -72,11 +72,6 @@ def latest_listings(con):
     return ts, rows
 
 
-@app.route("/")
-def home():
-    return redirect(url_for("listings"))
-
-
 @app.route("/listings")
 def listings():
     con = sn.db()
@@ -306,6 +301,190 @@ def buybox():
                            period=period, periods=PERIODS, day=day, first_day=day - timedelta(days=days - 1),
                            prev_day=day - timedelta(days=days), next_day=day + timedelta(days=days),
                            is_today=day >= today, error=request.args.get("error"), aviso=request.args.get("aviso"))
+
+
+# ---------------------------------------------------------------- dashboard: qué cambió y qué hacer
+DIAS_STOCK_AVISO = 21  # avisar cuando el stock dure menos que esto al ritmo de venta de los últimos 30 días
+DIAS_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+
+def minutes_since(ts):
+    return (datetime.now(timezone.utc) - datetime.fromisoformat(ts.replace("Z", "+00:00"))).total_seconds() / 60
+
+
+def ago(minutes):
+    if minutes < 1:
+        return "ahora mismo"
+    if minutes < 60:
+        return f"hace {int(minutes)} min"
+    if minutes < 48 * 60:
+        return f"hace {int(minutes // 60)} h"
+    return f"hace {int(minutes // 1440)} días"
+
+
+def freshness(ts, warn, bad):
+    """Tono ok/warn/bad según los minutos desde la última consulta."""
+    if not ts:
+        return dict(tone="bad", text="sin datos", ts=None)
+    m = minutes_since(ts)
+    return dict(tone="bad" if m > bad else "warn" if m > warn else "ok", text=ago(m), ts=ts)
+
+
+def listing_since(con, sku, ok_sql):
+    """Primera consulta de la racha actual en la que el SKU dejó de cumplir ok_sql."""
+    last_ok = con.execute(f"SELECT MAX(ts) FROM listings WHERE sku=? AND {ok_sql}", (sku,)).fetchone()[0]
+    if last_ok:
+        return con.execute("SELECT MIN(ts) FROM listings WHERE sku=? AND ts>?", (sku, last_ok)).fetchone()[0]
+    return con.execute("SELECT MIN(ts) FROM listings WHERE sku=?", (sku,)).fetchone()[0]
+
+
+def buybox_lost_since(con, asin):
+    """Primera consulta tras la última vez que tuviste la Buy Box de este ASIN."""
+    last_mine = con.execute("SELECT MAX(ts) FROM snapshots WHERE asin=? AND bb_seller=?", (asin, sn.MY_SELLER_ID)).fetchone()[0]
+    if not last_mine:
+        return None
+    return con.execute("SELECT MIN(ts) FROM snapshots WHERE asin=? AND ts>?", (asin, last_mine)).fetchone()[0]
+
+
+def buybox_holder(con, asin):
+    return con.execute("SELECT bb_seller FROM snapshots WHERE asin=? ORDER BY ts DESC, id DESC LIMIT 1", (asin,)).fetchone()[0]
+
+
+def dashboard_buybox(con, names, labels):
+    """Por cada ASIN vigilado: quién tiene ahora la Buy Box, si tienes oferta y tu % de hoy."""
+    start, end, _, _ = day_range(datetime.now(sn.TZ).date())
+    out = []
+    for asin in sn.ASINS:
+        d = asin_history(con, asin, start, end, names)
+        sku, nombre = labels.get(asin, ("", ""))
+        if not d.get("snaps"):
+            out.append(dict(asin=asin, sku=sku, nombre=nombre, has_data=False))
+            continue
+        mine = next((o for o in d["offers"] if o["is_me"]), None)
+        out.append(dict(asin=asin, sku=sku, nombre=nombre, has_data=True, holder=d["bb_seller"], is_me=d["bb_is_me"],
+                        nobody=not buybox_holder(con, asin),
+                        price=d["bb_price"], my_price=mine["landed"] if mine else None, selling=bool(mine),
+                        share=next((p for _, p, me in d["share"] if me), 0.0), changes=d["bb_changes"],
+                        war=price_war(con, asin, names)))
+    return out
+
+
+def attention_items(con, rows, bb, money, fresh):
+    """Lo que pide una acción hoy, de lo más grave a lo menos. Cada aviso dice desde cuándo y adónde ir."""
+    items = []
+    add = lambda tone, area, title, detail="", since=None, href="", cta="": items.append(
+        dict(tone=tone, area=area, title=title, detail=detail, since=since, href=href, cta=cta))
+
+    # el monitor tiene que estar en marcha para que todo lo demás sea cierto
+    if fresh["buybox"]["tone"] != "ok":
+        add(fresh["buybox"]["tone"], "Monitor", "El monitor no ha consultado la Buy Box " + fresh["buybox"]["text"],
+            "Abre «2 - Iniciar monitor» para que la Buy Box y los listings se sigan actualizando.",
+            fresh["buybox"]["ts"])
+    if fresh["listings"]["tone"] != "ok":
+        add("warn", "Listings", "La última consulta de tus listings fue " + fresh["listings"]["text"],
+            "El monitor los consulta cada hora; también puedes actualizarlos desde Listings.",
+            fresh["listings"]["ts"], url_for("listings"), "Ir a Listings")
+
+    for b in bb:
+        name = b["nombre"] or b["sku"] or b["asin"]
+        href = url_for("buybox", asin=b["asin"])
+        if b.get("selling") and b["nobody"]:
+            add("warn", "Buy Box", f"Nadie tiene la Buy Box de {name}", "Amazon la ha suprimido: suele ser por precio alto.",
+                None, href, "Ver producto")
+        elif b.get("selling") and not b["is_me"]:
+            add("bad", "Buy Box", f"Has perdido la Buy Box de {name}",
+                f"La tiene {b['holder']} a {money(b['price'])}; tu oferta está a {money(b['my_price'])}. "
+                f"Hoy la has tenido el {b['share']:.0f} % del tiempo.", buybox_lost_since(con, b["asin"]), href, "Ver producto")
+        if b.get("war") and b["war"]["active"]:
+            w = b["war"]
+            detail = f"El precio de la Buy Box ha bajado un {w['drop']:.0f} % en 7 días." if w["drop"] >= 5 else ""
+            bots = [f"{n.split(' [')[0]} ({c} cambios)" for n, c, me in w["bots"] if not me]
+            if bots:
+                detail += (" " if detail else "") + "Cambian de precio sin parar: " + ", ".join(bots) + "."
+            add("warn", "Buy Box", f"Guerra de precios en {name}", detail, None, href, "Ver producto")
+
+    for r in rows:
+        name = r["nombre"] or r["sku"]
+        href = url_for("listings", q=r["sku"])
+        if r["estado"] != "ACTIVO":
+            add("warn" if r["estado"] == "VISIBLE, NO COMPRABLE" and r["stock"] != 0 else "bad", "Listings",
+                f"{r['sku']}: {r['estado'].lower()}" + (" y sin stock" if r["stock"] == 0 else ""), name,
+                listing_since(con, r["sku"], "estado='ACTIVO'"), href, "Ver listing")
+        elif r["stock"] == 0:
+            add("bad", "Listings", f"{r['sku']}: sin stock", name,
+                listing_since(con, r["sku"], "stock>0"), href, "Ver listing")
+        if r["errores"]:
+            add("bad", "Listings", f"{r['sku']}: {r['errores']} error{'es' if r['errores'] > 1 else ''} en el listing",
+                r["lista_incidencias"][0] if r["lista_incidencias"] else name, None, href, "Ver incidencias")
+        if r["stock"] and r.get("dias") is not None and r["dias"] < DIAS_STOCK_AVISO:
+            add("warn", "Listings", f"{r['sku']}: stock para unos {r['dias']:.0f} días",
+                f"{r['stock']} uds; vendes unas {str(round(r['ventas_dia'], 1)).replace('.', ',')} al día "
+                "(media de los últimos 30 días).", None, href, "Ver listing")
+    return items
+
+
+@app.route("/")
+def home():
+    sn.ASINS[:] = sn.read_asins()
+    con = sn.db()
+    rt.ensure_tables(con)
+    names = sn.seller_names()
+    labels = product_labels(con)
+    ts, rows = latest_listings(con)
+    today = datetime.now(sn.TZ).date()
+    now = datetime.now(sn.TZ)
+    eur = lambda v: "—" if v is None else f"{v:,.2f}".replace(",", " ").replace(".", ",").replace(" ", ".") + " €"
+
+    # dinero: los últimos 30 días por día (también sirve para el ritmo de venta de cada SKU)
+    first = min(today - timedelta(days=29), today.replace(day=1))
+    prows, _, _, periods = profit_view(con, first, today, "dia")
+    sold = {r["sku"]: r["uds"] for r in prows}
+    for r in rows:
+        per_day = sold.get(r["sku"], 0) / ((today - first).days + 1)
+        r["ventas_dia"] = per_day
+        r["dias"] = r["stock"] / per_day if per_day and r["stock"] is not None else None
+    by_day = {p["key"]: p for p in periods}
+    day = lambda d: by_day.get(d.isoformat(), {"neto": 0.0, "uds": 0})
+    yesterday = day(today - timedelta(days=1))
+    profit = dict(
+        hoy=day(today), ayer=yesterday,
+        semana=sum(day(today - timedelta(days=i))["neto"] for i in range(1, 8)),
+        semana_antes=sum(day(today - timedelta(days=i))["neto"] for i in range(8, 15)),
+        mes=sum(p["neto"] for p in periods if p["key"] >= today.replace(day=1).isoformat()),
+        dias=[dict(label=DIAS_ES[(today - timedelta(days=i)).weekday()][:2].capitalize(),
+                   fecha=(today - timedelta(days=i)), neto=day(today - timedelta(days=i))["neto"],
+                   uds=day(today - timedelta(days=i))["uds"]) for i in range(13, -1, -1)],
+        sin_coste=sorted(r["sku"] for r in prows if r["sin_coste"]),
+        estimadas=sum(r["estimadas"] for r in prows))
+
+    bb_last = con.execute("SELECT MAX(ts) FROM snapshots").fetchone()[0]
+    fin_last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
+    fresh = dict(listings=freshness(ts, 3 * 60, 24 * 60),
+                 buybox=freshness(bb_last, 30, 6 * 60),
+                 dinero=freshness(fin_last, 2 * 1440, 4 * 1440))
+    bb = dashboard_buybox(con, names, labels)
+    items = attention_items(con, rows, bb, eur, fresh)
+    if yesterday["neto"] < 0:
+        items.append(dict(tone="warn", area="Profit", title=f"Ayer perdiste dinero: {eur(yesterday['neto'])}",
+                          detail="Mira qué productos o gastos de la cuenta lo causaron.", since=None,
+                          href=url_for("rentabilidad", rango="ayer"), cta="Ver ayer"))
+    if profit["sin_coste"]:
+        n = len(profit["sin_coste"])
+        items.append(dict(tone="warn", area="Profit", title=f"{n} SKU vendido{'s' if n > 1 else ''} sin coste de producto",
+                          detail=", ".join(profit["sin_coste"]) + ". El beneficio sale más alto de lo real.", since=None,
+                          href=url_for("costes"), cta="Poner costes"))
+    items.sort(key=lambda i: {"bad": 0, "warn": 1}.get(i["tone"], 2))
+
+    count = defaultdict(int)
+    for r in rows:
+        count[r["estado"]] += 1
+    health = dict(total=len(rows), estados=[(e, count[e], tone) for e, tone in (
+        ("ACTIVO", "ok"), ("VISIBLE, NO COMPRABLE", "warn"), ("INACTIVO", "bad"), ("SUPRIMIDO", "bad")) if count[e]],
+        sin_stock=sum(1 for r in rows if r["stock"] == 0), unidades=sum(r["stock"] or 0 for r in rows),
+        con_errores=sum(1 for r in rows if r["errores"]))
+    return render_template("dashboard.html", page="dashboard", items=items, fresh=fresh, bb=bb, profit=profit,
+                           health=health, eur=eur,
+                           fecha=f"{DIAS_ES[now.weekday()].capitalize()} {now.day} de {MONTHS_ES[now.month].lower()} · {now:%H:%M}")
 
 
 # ---------------------------------------------------------------- catálogos de proveedor
@@ -571,8 +750,11 @@ def mark_interrupted_jobs():
 
 
 if __name__ == "__main__":
+    if "--puerto" in sys.argv:  # otro puerto para probar cambios sin cerrar el panel abierto
+        PORT = int(sys.argv[sys.argv.index("--puerto") + 1])
     mark_interrupted_jobs()
     if "--no-abrir" not in sys.argv:
         Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
     print(f"Seller Notes · panel en http://127.0.0.1:{PORT}  (Ctrl+C para cerrar)")
     app.run(host="127.0.0.1", port=PORT, debug=False)
+

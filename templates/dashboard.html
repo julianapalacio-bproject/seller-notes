@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block body_class %}glass apex ap-dash{% endblock %}
+{% set tone_label = {'bad': 'Urgente', 'warn': 'Revisar', 'ok': 'Al día'} %}
+{% block content %}
+{% set n_bad = items | selectattr('tone', 'equalto', 'bad') | list | length %}
+<section class="g-card g-head dash-head">
+  <div class="dash-verdict">
+    <h1>{% if not items %}Todo en orden{% elif n_bad %}{{ n_bad }} urgente{{ 's' if n_bad != 1 }}{% if items | length > n_bad %} · {{ items | length - n_bad }} por revisar{% endif %}{% else %}{{ items | length }} por revisar{% endif %}</h1>
+    <p class="dash-date">{{ fecha }}</p>
+  </div>
+  <ul class="dash-fresh" aria-label="Última actualización de cada dato">
+    {% for key, label in [('buybox', 'Buy Box'), ('listings', 'Listings'), ('dinero', 'Dinero')] %}
+    {% set f = fresh[key] %}
+    <li class="{{ f.tone }}" title="{{ f.ts | local if f.ts else 'Sin datos' }}"><i class="dot"></i><span>{{ label }}</span> <b>{{ f.text }}</b></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="g-card dash-attn" aria-labelledby="attn-title">
+  <div class="g-card-head">
+    <h2 class="sec" id="attn-title">Atención hoy</h2>
+    {% if items %}<span class="muted small">De lo más urgente a lo menos</span>{% endif %}
+  </div>
+  {% if items %}
+  {# todo lo urgente a la vista; de lo que solo hay que revisar, los tres primeros y el resto se despliega #}
+  {% set shown = n_bad + 3 %}
+  {% macro attn(i) %}
+    <li class="attn {{ i.tone }}">
+      <span class="attn-tone"><i class="dot"></i>{{ tone_label[i.tone] }}</span>
+      <div class="attn-body">
+        <p class="attn-title"><span class="attn-area">{{ i.area }}</span> {{ i.title }}</p>
+        {% if i.detail %}<p class="attn-detail">{{ i.detail }}</p>{% endif %}
+      </div>
+      <span class="attn-since">{% if i.since %}desde {{ i.since | local }}{% endif %}</span>
+      {% if i.href %}<a class="btn-ghost small attn-go" href="{{ i.href }}">{{ i.cta }} <span aria-hidden="true">→</span></a>{% else %}<span></span>{% endif %}
+    </li>
+  {% endmacro %}
+  <ol class="attn-list">{% for i in items[:shown] %}{{ attn(i) }}{% endfor %}</ol>
+  {% if items | length > shown %}
+  <details class="attn-more">
+    <summary>Mostrar {{ items | length - shown }} aviso{{ 's' if items | length - shown != 1 }} más</summary>
+    <ol class="attn-list">{% for i in items[shown:] %}{{ attn(i) }}{% endfor %}</ol>
+  </details>
+  {% endif %}
+  {% else %}
+  <p class="attn-clear"><i class="dot"></i> Tienes la Buy Box en todo lo que vendes, todos tus listings están activos y con stock, y ayer no perdiste dinero.</p>
+  {% endif %}
+</section>
+
+<div class="g-row dash-row">
+  <section class="g-card dash-bb" aria-labelledby="bb-title">
+    <div class="g-card-head">
+      <h2 class="sec" id="bb-title">Buy Box ahora</h2>
+      <a class="dash-more" href="{{ url_for('buybox') }}">Análisis Productos →</a>
+    </div>
+    {% if bb %}
+    <ul class="bb-sum">
+      {% for b in bb %}
+      <li>
+        <a href="{{ url_for('buybox', asin=b.asin) }}" class="bb-sum-name"><b>{{ b.nombre or b.asin }}</b><span class="muted">{{ b.sku or b.asin }}</span></a>
+        {% if not b.has_data %}
+        <span class="muted small">Sin consultas todavía</span><span></span>
+        {% else %}
+        <span class="bb-sum-who {{ 'ok' if b.is_me else 'none' if b.nobody else 'bad' if b.selling else 'other' }}">
+          {% if b.is_me %}Tú{% elif b.nobody %}Nadie{% else %}{{ b.holder }}{% endif %}
+          <small>{{ eur(b.price) if b.price is not none else 'sin precio' }}</small>
+        </span>
+        <span class="bb-sum-share" title="Parte del día de hoy en que has tenido la Buy Box">
+          {% if b.selling %}<b>{{ '%.0f' % b.share }} %</b><span class="g-track"><span style="width: {{ '%.1f' % b.share }}%"></span></span>
+          {% else %}<span class="muted small">No vendes</span>{% endif %}
+        </span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No vigilas ningún ASIN. Añade uno en Análisis Productos.</p>
+    {% endif %}
+  </section>
+
+  <div class="dash-side">
+  <section class="g-card dash-money" aria-labelledby="money-title">
+    <div class="g-card-head">
+      <h2 class="sec" id="money-title">Beneficio neto</h2>
+      <a class="dash-more" href="{{ url_for('rentabilidad') }}">Profit →</a>
+    </div>
+    {% set diff = profit.semana - profit.semana_antes %}
+    <dl class="money-lines">
+      <div><dt>Ayer</dt><dd class="{{ 'neg' if profit.ayer.neto < 0 }}">{{ eur(profit.ayer.neto) }}</dd></div>
+      <div><dt>Últimos 7 días</dt><dd class="{{ 'neg' if profit.semana < 0 }}">{{ eur(profit.semana) }}
+        <small class="{{ 'pos' if diff >= 0 else 'neg' }}">{{ '+' if diff >= 0 }}{{ eur(diff) }} vs. 7 días antes</small></dd></div>
+      <div><dt>Este mes</dt><dd class="{{ 'neg' if profit.mes < 0 }}">{{ eur(profit.mes) }}</dd></div>
+    </dl>
+    {% set top = [profit.dias | map(attribute='neto') | map('abs') | max, 0.01] | max %}
+    <figure class="money-days" aria-label="Beneficio neto de los últimos 14 días">
+      <ol>
+        {% for d in profit.dias %}
+        <li class="{{ 'neg' if d.neto < 0 }}{{ ' today' if loop.last }}" title="{{ d.fecha.strftime('%d/%m') }}: {{ eur(d.neto) }} · {{ d.uds }} ud{{ 's' if d.uds != 1 }}">
+          <span class="bar" style="height: {{ '%.1f' % ([100 * (d.neto | abs) / top, 2] | max) }}%"></span>
+          <span class="day">{{ d.label }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      <figcaption class="muted small">Últimos 14 días · hoy aún no está cerrado{% if profit.estimadas %} · {{ profit.estimadas }} uds con comisiones estimadas{% endif %}</figcaption>
+    </figure>
+  </section>
+
+  <section class="g-card dash-health" aria-labelledby="health-title">
+    <div class="g-card-head">
+      <h2 class="sec" id="health-title">Listings</h2>
+      <a class="dash-more" href="{{ url_for('listings') }}">Ver todos →</a>
+    </div>
+    {% if health.total %}
+    <p class="health-num"><b>{{ health.estados[0][1] if health.estados and health.estados[0][0] == 'ACTIVO' else 0 }}</b> de {{ health.total }} activos</p>
+    <div class="health-bar" role="img" aria-label="{% for e, n, t in health.estados %}{{ n }} {{ e | lower }}{{ ', ' if not loop.last }}{% endfor %}">
+      {% for e, n, t in health.estados %}<span class="{{ t }}" style="flex: {{ n }}"></span>{% endfor %}
+    </div>
+    <ul class="health-legend">
+      {% for e, n, t in health.estados %}<li class="{{ t }}"><i class="dot"></i>{{ e | capitalize }} <b>{{ n }}</b></li>{% endfor %}
+    </ul>
+    <dl class="health-stats">
+      <div><dt>Unidades en stock</dt><dd>{{ '{:,}'.format(health.unidades).replace(',', '.') }}</dd></div>
+      <div><dt>Sin stock</dt><dd class="{{ 'neg' if health.sin_stock }}">{{ health.sin_stock }}</dd></div>
+      <div><dt>Con errores</dt><dd class="{{ 'neg' if health.con_errores }}">{{ health.con_errores }}</dd></div>
+    </dl>
+    {% else %}
+    <p class="empty">Aún no hay datos de listings. Actualízalos desde Listings.</p>
+    {% endif %}
+  </section>
+  </div>
+</div>
+{% endblock %}

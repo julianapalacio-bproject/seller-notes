@@ -10,7 +10,7 @@
 {% set max_stock = [rows | map(attribute='stock') | reject('none') | max | default(0), 1] | max %}
 <section class="g-card g-head">
   <div>
-    <div class="g-title"><h1>Dashboard</h1>
+    <div class="g-title"><h1>Listings</h1>
       {% if ts %}<span class="pill ok"><i class="dot me"></i> Última consulta {{ ts | local }}</span>{% endif %}</div>
     <p class="muted small">{% if ts %}{{ total }} listing{{ 's' if total != 1 }} en Amazon.es{% else %}Todavía no hay consultas{% endif %}
       {% if ignored %} · {{ ignored }} SKU ignorados (skus_ignorados.txt){% endif %}</p>
@@ -60,7 +60,8 @@
       <a href="#" data-tab="sin-stock">Sin stock ({{ sin_stock }})</a>
       <a href="#" data-tab="no-activo">No activos ({{ total - activos }})</a>
     </div>
-    <input type="search" id="filtro" placeholder="Filtrar por ASIN, SKU o nombre…" aria-label="Filtrar listings">
+    <input type="search" id="filtro" placeholder="Filtrar por ASIN, SKU o nombre…" aria-label="Filtrar listings"
+           value="{{ request.args.get('q', '') }}">
   </div>
   <div class="table-scroll flat">
   <table id="listings">

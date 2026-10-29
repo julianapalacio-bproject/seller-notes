@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T14:00:00+01:00",
+  "title": "Design System: Seller Notes",
+  "extensions": {
+    "colorMeta": {
+      "midnight-hull": { "role": "tertiary", "displayName": "Midnight Hull", "tonalRamp": ["#050b16", "#0a162b", "#13233f", "#1e3354", "#34496d", "#5a6d8e", "#93a2bd", "#d3dae6"] },
+      "deep-navy": { "role": "tertiary", "displayName": "Deep Navy", "tonalRamp": ["#071224", "#0f244a", "#1a3463", "#28467c", "#3f5f96", "#6681b2", "#a3b5d4", "#dde5f2"] },
+      "bridge-blue": { "role": "primary", "displayName": "Bridge Blue", "tonalRamp": ["#13263f", "#1f3b63", "#254b7d", "#305f9e", "#5b84c4", "#81acf1", "#c9dbff", "#e8edff"] },
+      "signal-sky": { "role": "secondary", "displayName": "Signal Sky" },
+      "ice-blue": { "role": "secondary", "displayName": "Ice Blue" },
+      "lavender-mist": { "role": "neutral", "displayName": "Lavender Mist" },
+      "lavender-soft": { "role": "neutral", "displayName": "Lavender Soft" },
+      "lavender-line": { "role": "neutral", "displayName": "Lavender Line" },
+      "lavender-well": { "role": "neutral", "displayName": "Lavender Well" },
+      "steel-edge": { "role": "neutral", "displayName": "Steel Edge" },
+      "ink": { "role": "neutral", "displayName": "Ink" },
+      "slate-ink": { "role": "neutral", "displayName": "Slate Ink" },
+      "fog-ink": { "role": "neutral", "displayName": "Fog Ink" },
+      "graphite": { "role": "primary", "displayName": "Graphite (Dashboard primary)" },
+      "profit-emerald": { "role": "semantic", "displayName": "Profit Emerald" },
+      "loss-crimson": { "role": "semantic", "displayName": "Loss Crimson" },
+      "caution-amber": { "role": "semantic", "displayName": "Caution Amber" },
+      "caution-amber-num": { "role": "semantic", "displayName": "Caution Amber (figures)" },
+      "card-white": { "role": "neutral", "displayName": "Card White" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display · Anton", "purpose": "Uppercase page titles in the header card." },
+      "headline": { "displayName": "Headline · Anton", "purpose": "Section titles inside cards." },
+      "figure": { "displayName": "Figure · Anton", "purpose": "KPI and hero figures." },
+      "title": { "displayName": "Title · Inter", "purpose": "Emphasized row names, menu items; Profit page title at 20px." },
+      "body": { "displayName": "Body · Inter", "purpose": "Descriptions and notes." },
+      "table": { "displayName": "Table · Inter", "purpose": "All data tables and lists, tabular figures." },
+      "label": { "displayName": "Label · Inter", "purpose": "Uppercase table headers, KPI labels, eyebrows." }
+    },
+    "shadows": [
+      { "name": "floating-panel", "value": "0 20px 25px -5px rgba(15,23,42,.05), 0 8px 10px -6px rgba(15,23,42,.03), inset 0 1px 0 rgba(255,255,255,.95)", "purpose": "Every card." },
+      { "name": "raised-control", "value": "0 1px 2px rgba(15,36,74,.05), inset 0 1px 0 rgba(255,255,255,.9)", "purpose": "Ghost buttons and fields." },
+      { "name": "primary-lift", "value": "0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1)", "purpose": "Primary buttons (blue variant: 0 4px 14px rgba(48,95,158,.35))." },
+      { "name": "well", "value": "inset 0 2px 4px rgba(0,0,0,.05)", "purpose": "Segmented tracks, search fields, drop zones." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(.23, 1, .32, 1)", "purpose": "All state transitions." },
+      { "name": "press", "value": "transform 160ms var(--ease-out); scale(.97) on :active", "purpose": "Press feedback on buttons, nav and segments." },
+      { "name": "breathe", "value": "3s ease-in-out infinite, opacity 1 → .65", "purpose": "Fresh-status dot only." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "680px" },
+      { "name": "stack", "value": "820px" },
+      { "name": "single-column", "value": "900px" },
+      { "name": "two-column", "value": "1050px" },
+      { "name": "buybox-two-column", "value": "1150px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The page's single main action (Dashboard: graphite).",
+      "html": "<button class=\"ds-btn-primary\">Actualizar ahora</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; background: #5c5c5c; color: #fff; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; padding: 8px 16px; font: 600 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .01em; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1); cursor: pointer; transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 150ms; } .ds-btn-primary:hover { background: #474746; } .ds-btn-primary:active { transform: scale(.97); } .ds-btn-primary:focus-visible { outline: 2px solid #305f9e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button · Blue",
+      "kind": "button",
+      "refersTo": "button-primary-blue",
+      "description": "Análisis Productos primary: blue gradient.",
+      "html": "<button class=\"ds-btn-blue\">Vigilar ASIN</button>",
+      "css": ".ds-btn-blue { background: linear-gradient(90deg, #305f9e, #2563eb); color: #fff; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; padding: 8px 16px; font: 600 12px/1.2 Inter, system-ui, sans-serif; box-shadow: 0 4px 14px rgba(48,95,158,.35); cursor: pointer; transition: transform 160ms cubic-bezier(.23,1,.32,1); } .ds-btn-blue:hover { background: linear-gradient(90deg, #2563eb, #1d4ed8); } .ds-btn-blue:active { transform: scale(.97); } .ds-btn-blue:focus-visible { outline: 2px solid #81acf1; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary actions and day navigation.",
+      "html": "<button class=\"ds-btn-ghost\">← Ayer</button>",
+      "css": ".ds-btn-ghost { background: #fff; color: #181c22; border: 1px solid rgba(230,232,241,.8); border-radius: 12px; padding: 7px 14px; font: 600 12px/1.2 Inter, system-ui, sans-serif; box-shadow: 0 1px 2px rgba(15,36,74,.05), inset 0 1px 0 rgba(255,255,255,.9); cursor: pointer; transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 150ms; } .ds-btn-ghost:hover { background: #f2f3fd; } .ds-btn-ghost:active { transform: scale(.97); } .ds-btn-ghost:focus-visible { outline: 2px solid #305f9e; outline-offset: 2px; }"
+    },
+    {
+      "name": "Segmented Filter",
+      "kind": "nav",
+      "refersTo": "segmented",
+      "description": "Inset well with a raised white active chip; tabs carry live counts.",
+      "html": "<div class=\"ds-seg\"><a class=\"on\" href=\"#\">Todos (8)</a><a href=\"#\">Activos (7)</a><a href=\"#\">Sin stock (1)</a></div>",
+      "css": ".ds-seg { display: inline-flex; gap: 6px; background: #e6e8f1; border: 1px solid rgba(255,255,255,.6); border-radius: 12px; padding: 4px; box-shadow: inset 0 2px 4px rgba(0,0,0,.05); font-family: Inter, system-ui, sans-serif; } .ds-seg a { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #414753; text-decoration: none; border: 1px solid transparent; transition: background-color 150ms, color 150ms; } .ds-seg a:hover { color: #181c22; background: rgba(255,255,255,.6); } .ds-seg a.on { background: #fff; color: #5c5c5c; font-weight: 700; border-color: rgba(255,255,255,.9); box-shadow: 0 1px 2px rgba(0,0,0,.05); } .ds-seg a:focus-visible { outline: 2px solid #305f9e; outline-offset: 1px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Well-style search with inline magnifier.",
+      "html": "<input class=\"ds-search\" type=\"search\" placeholder=\"Filtrar por ASIN, SKU o nombre…\">",
+      "css": ".ds-search { width: 256px; max-width: 100%; background: #f2f3fd url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23717785' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E\") 10px 50% / 15px no-repeat; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; padding: 6px 12px 6px 32px; font: 400 14px/1.4 Inter, system-ui, sans-serif; color: #181c22; box-shadow: inset 0 2px 4px rgba(0,0,0,.05); } .ds-search::placeholder { color: #414753; } .ds-search:focus { outline: none; background-color: #fff; border-color: rgba(48,95,158,.4); }"
+    },
+    {
+      "name": "Status Pills",
+      "kind": "chip",
+      "refersTo": "pill-ok",
+      "description": "State-only color: emerald on course, crimson losing, amber check.",
+      "html": "<span class=\"ds-pill ok\"><i></i>Activo</span> <span class=\"ds-pill bad\"><i></i>Sin stock</span> <span class=\"ds-pill warn\"><i></i>Visible, no comprable</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font: 700 11px/1.4 Inter, system-ui, sans-serif; border: 1px solid transparent; white-space: nowrap; } .ds-pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-pill.ok { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; } .ds-pill.bad { background: #ffdad6; color: #93000a; border-color: rgba(186,26,26,.2); } .ds-pill.warn { background: rgba(254,243,199,.8); color: #92400e; border-color: #fde68a; }"
+    },
+    {
+      "name": "KPI Instrument Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Floating panel with uppercase label, Anton figure and middot sub-line.",
+      "html": "<section class=\"ds-kpi\"><div class=\"ds-kpi-label\">Listings activos</div><div class=\"ds-kpi-num\"><b>7</b><span>de 8</span></div><p class=\"ds-kpi-sub\"><span>1 sin stock</span><span>0 suprimidos</span></p></section>",
+      "css": ".ds-kpi { background: rgba(255,255,255,.9); border: 1px solid rgba(255,255,255,.9); border-radius: 16px; padding: 20px; box-shadow: 0 20px 25px -5px rgba(15,23,42,.05), 0 8px 10px -6px rgba(15,23,42,.03), inset 0 1px 0 rgba(255,255,255,.95); font-family: Inter, system-ui, sans-serif; color: #181c22; max-width: 280px; } .ds-kpi-label { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: #414753; } .ds-kpi-num { display: flex; align-items: baseline; gap: 8px; margin: 4px 0; } .ds-kpi-num b { font: 400 30px/1.2 Anton, Inter, sans-serif; letter-spacing: .025em; } .ds-kpi-num span { font-size: 12px; font-weight: 600; color: #5c5c5c; } .ds-kpi-sub { display: flex; gap: 6px; margin: 0; font-size: 11px; color: #414753; } .ds-kpi-sub span + span::before { content: '·'; color: #c1c6d5; margin-right: 6px; }"
+    },
+    {
+      "name": "Top Bar",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Sticky navy gradient bridge band with pill navigation.",
+      "html": "<header class=\"ds-top\"><strong>SELLER NOTES</strong><nav><a class=\"on\" href=\"#\">Dashboard</a><a href=\"#\">Análisis Productos</a><a href=\"#\">Profit</a><a href=\"#\">Catálogos</a></nav></header>",
+      "css": ".ds-top { display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 16px; background: linear-gradient(90deg, #0a162b 0%, #0f244a 50%, #305f9e 100%); color: #fff; font-family: Inter, system-ui, sans-serif; } .ds-top strong { font: 400 16px Anton, Inter, sans-serif; letter-spacing: .05em; } .ds-top nav { display: flex; gap: 4px; border-left: 1px solid rgba(255,255,255,.15); padding-left: 16px; } .ds-top nav a { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; color: rgba(219,234,254,.9); text-decoration: none; border: 1px solid transparent; transition: background-color 150ms, color 150ms; } .ds-top nav a:hover { color: #fff; background: rgba(255,255,255,.1); } .ds-top nav a.on { color: #fff; font-weight: 600; background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.2); } .ds-top nav a:focus-visible { outline: 2px solid #a8c8ff; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El puente de mando",
+    "overview": "Seller Notes is the bridge of a small ship. A deep navy band runs across the top like the bridge window. Light, floating instrument panels sit below it on a pale lavender deck. The numbers are the instruments. Each panel shows one reading, and you read it in a glance without hunting. The mood is calm control, not alarm. Color is held back so that green (on course), crimson (losing money or the Buy Box) and amber (check this) mean something when they appear.\n\nThe surfaces are tactile. Cards float on soft, wide shadows with a bright inner top highlight, like a lit glass edge. Segmented controls sit into the surface with an inset shadow, and the active segment rises out of it as a white chip. Buttons press down when clicked. Anton is the only expressive voice: uppercase, condensed, used for page titles, section heads and headline figures. Everything else is quiet Inter.\n\nThe system is one family with two variants. Apex is the base (Dashboard, Análisis Productos, Catálogos): Anton titles, lavender deck, graphite or blue primary per page. Navy is the Profit variant: Inter-only headings, zinc greys and the bridge blue as primary. Both share the navy top bar, the type family and the blue accents. The older emerald \"glass\" pages (catalog result, columns, Costes) are drift and should migrate to Apex.",
+    "keyCharacteristics": [
+      "Navy gradient top bar (midnight hull → deep navy → bridge blue), sticky, 56px.",
+      "White floating cards (16px radius) on a lavender gradient deck.",
+      "Anton uppercase for titles and headline figures; Inter for everything else, with tabular numbers in data.",
+      "Inset wells for controls, raised white chips for the active state.",
+      "Semantic color only for state: emerald, crimson, amber.",
+      "Light by default. Dark is the user's choice through the header toggle, never prefers-color-scheme."
+    ],
+    "rules": [
+      { "name": "The State-Only Color Rule", "body": "Emerald, crimson and amber never decorate. If a green, red or amber element doesn't mean on course, losing or check, it is a bug.", "section": "colors" },
+      { "name": "The One Blue Rule", "body": "Each page has a single primary (graphite on Dashboard, blue on Análisis Productos and Profit, navy gradient on Catálogos). Never put two primaries in one view.", "section": "colors" },
+      { "name": "The Anton Ration Rule", "body": "Anton appears only in titles, section heads and headline figures, never in body, labels or buttons. Navy pages (Profit) don't use it at all.", "section": "typography" },
+      { "name": "The 11px Floor Rule", "body": "No readable text below 11px. The 9px channel pill and the 10px table status pill break this today and should go up to 11px.", "section": "typography" },
+      { "name": "The Lit Edge Rule", "body": "Anything that floats gets the white inner top highlight. Anything you put something into (wells, fields) gets an inset shadow instead.", "section": "elevation" },
+      { "name": "The Still Card Rule", "body": "Cards don't lift or move on hover. They aren't clickable, so motion would be a false promise.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the navy top bar, Inter body and bridge blue (#305f9e) on every page. They are what makes Apex and Navy one family.",
+      "Do give each page exactly one primary color for its main action.",
+      "Do use tabular figures for every number column and right-align money.",
+      "Do put the white inner top highlight on anything that floats, and an inset shadow on anything that is a well.",
+      "Do port Stitch screens faithfully (palette, fonts, shadows, buttons) and replace their mock numbers with real data.",
+      "Do keep motion to press feedback (scale 0.97, 160ms) and state changes, and respect prefers-reduced-motion."
+    ],
+    "donts": [
+      "Don't use emerald, crimson or amber for decoration. They only mean on course, losing or check.",
+      "Don't set Anton for body text, labels, buttons or table content, or anywhere on Navy (Profit) pages.",
+      "Don't set readable text below 11px or in fog ink (#717785) on lavender.",
+      "Don't add hover lift or motion to non-clickable cards.",
+      "Don't follow prefers-color-scheme. Theme is the user's toggle, stored as tema.",
+      "Don't add new pages in the legacy emerald glass style (Hanken Grotesk, #059669 primary). Migrate those pages to Apex."
+    ]
+  }
+}

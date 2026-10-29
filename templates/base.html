@@ -21,7 +21,8 @@
       </a>
       <div class="top-right">
       <nav>
-        <a href="{{ url_for('listings') }}" class="{{ 'on' if page == 'listings' }}">Dashboard</a>
+        <a href="{{ url_for('home') }}" class="{{ 'on' if page == 'dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('listings') }}" class="{{ 'on' if page == 'listings' }}">Listings</a>
         <a href="{{ url_for('buybox') }}" class="{{ 'on' if page == 'buybox' }}">Análisis Productos</a>
         <a href="{{ url_for('rentabilidad') }}" class="{{ 'on' if page == 'rentabilidad' }}">Profit</a>
         <a href="{{ url_for('catalogos') }}" class="{{ 'on' if page == 'catalogos' }}">Catálogos</a>

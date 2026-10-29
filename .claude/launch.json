@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "panel", "runtimeExecutable": "python3", "runtimeArgs": ["panel.py", "--no-abrir"], "port": 5050 }
+    { "name": "panel", "runtimeExecutable": "python3", "runtimeArgs": ["panel.py", "--no-abrir"], "port": 5050 },
+    { "name": "panel-test", "runtimeExecutable": "python3", "runtimeArgs": ["panel.py", "--no-abrir", "--puerto", "5051"], "port": 5051 }
   ]
 }
