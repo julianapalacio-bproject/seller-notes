@@ -9,6 +9,13 @@
   "detector": {
     "ignoreRules": [],
     "ignoreFiles": [],
-    "ignoreValues": []
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "arimo",
+        "createdAt": "2026-10-29T15:42:17.179Z",
+        "reason": "The user asked for fonts as close to Helvetica as possible (2026-10-29); Arimo is the Helvetica-metric fallback"
+      }
+    ]
   }
 }
