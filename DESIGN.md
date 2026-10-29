@@ -209,7 +209,7 @@ A cool, blue-led palette: navies for structure, lavender for the deck, and three
 
 ## Layout
 
-Single centered column, max-width 1180px, 16px side gutter. Pages stack in this order: a header card (title + description + primary action), a row of KPI cards, filters, then a flush table card. Cards sit in CSS grid rows (`.g-row`) with 18px gaps (20px on Análisis Productos, 24px on Catálogos). Card padding is 20px (24px on Catálogos). Rows use asymmetric fractional columns (for example 1 : 1.25 : 1.5) rather than equal thirds.
+Single centered column, max-width 1180px, 16px side gutter. Pages stack in this order: a header card (title + description + primary action, plus a summary row where the page has one), filters, then a flush table card. Cards sit in CSS grid rows (`.g-row`) with 18px gaps (20px on Análisis Productos, 24px on Catálogos). Card padding is 20px (24px on Catálogos). Rows use asymmetric fractional columns (for example 1 : 1.25 : 1.5) rather than equal thirds.
 
 Breakpoints: 1150px and 1050px, where three-column rows become two with the lead card spanning both. 900px and 820px, where everything becomes one column, the Buy Box menu turns into a horizontal scroller, and the top bar wraps with the nav scrolling sideways. 680px, where hero figures shrink.
 
@@ -266,8 +266,8 @@ Tactile and confident: they sit on a lift shadow and press in when clicked.
 - **Top bar:** sticky navy gradient band, 56px, with the logo (32px, 8px radius) and Anton wordmark at 16px. Nav sits after a 15%-white divider: pill links at 12px/500 in pale blue (#dbeafe at 90%). Hover gets a 10% white fill; active gets a 20% white fill, a hairline and 600 weight. The theme toggle is a 32px round ghost icon. On mobile the bar wraps and the nav scrolls sideways.
 - **Segmented filter** (`.g-seg`): a lavender-well track with an inset shadow. Segments are 12px/600 fog text; the active one is a raised white chip with primary-colored text. Tabs carry live counts, for example "Activos (7)".
 
-### Signature: KPI instrument card (`.kpi3`)
-An uppercase 11px label with a 17px line icon, a 30px Anton figure with an inline delta or pill, and a middot-separated sub-line at 11px. A 48px rounded icon tile sits on the right.
+### Signature: Summary row (Listings)
+Page summaries live in the header card, below a hairline, not in a row of separate KPI cards. The row has a 26px Anton figure with its label («7 de 8 activos») over an 8px segmented status bar, a second figure («713 uds en stock»), and right-aligned problem chips: tone-filled pills with a dot, each linking to the matching table filter. When nothing needs attention, a single emerald «Todo activo, con stock y sin incidencias» chip replaces them. No decorative icon tiles, and no count repeated across cards.
 
 ### Signature: Bridge readout (Dashboard)
 The page title is the day's verdict, set in Anton at 40px: «Todo en orden», «2 urgentes · 3 por revisar». The date and three freshness chips (Buy Box, Listings, Dinero) follow it, and each chip's dot turns amber or crimson when that data is stale. Below it, «Atención hoy» lists one row per action, urgent first. Each row has a tone label, an area tag, a one-line title, a two-line detail, «desde …» and a ghost button to the page that resolves it. Urgent rows are always visible; only the first three «Revisar» rows show, and the rest fold under «Mostrar N avisos más». Row tint comes from the tone's soft fill plus a 1px tone border, never a side stripe.

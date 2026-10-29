@@ -28,6 +28,24 @@
   <form method="post" action="{{ url_for('refresh_listings') }}" onsubmit="const b=this.querySelector('button'); b.disabled=true; b.classList.add('is-busy'); b.textContent='Consultando…'">
     <button type="submit" class="btn-ink" {{ 'disabled' if not has_seller_id }}>Actualizar ahora</button>
   </form>
+  {% if rows %}
+  {% set estados = tiles[:4] | selectattr(1) | list %}
+  <div class="ls-summary">
+    <div class="ls-health">
+      <p><b>{{ activos }}</b> de {{ total }} activos</p>
+      <div class="health-bar" role="img" aria-label="{% for label, n, t in estados %}{{ n }} {{ label | lower }}{{ ', ' if not loop.last }}{% endfor %}">
+        {% for label, n, t in estados %}<span class="{{ t }}" style="flex: {{ n }}" title="{{ n }} {{ label | lower }}"></span>{% endfor %}
+      </div>
+    </div>
+    <p class="ls-units"><b>{{ '{:,}'.format(unidades).replace(',', '.') }}</b> uds en stock</p>
+    <ul class="ls-flags" aria-label="Qué revisar">
+      {% if sin_stock %}<li><a class="bad" href="?tab=sin-stock" data-tab="sin-stock">{{ sin_stock }} sin stock</a></li>{% endif %}
+      {% if total - activos %}<li><a class="{{ 'bad' if tiles[2][1] or tiles[3][1] else 'warn' }}" href="?tab=no-activo" data-tab="no-activo">{{ total - activos }} no activo{{ 's' if total - activos != 1 }}</a></li>{% endif %}
+      {% if con_inc %}<li><a class="warn" href="?tab=incidencias" data-tab="incidencias">{{ con_inc }} con incidencias</a></li>{% endif %}
+      {% if not (sin_stock or total - activos or con_inc) %}<li class="ok">Todo activo, con stock y sin incidencias</li>{% endif %}
+    </ul>
+  </div>
+  {% endif %}
 </section>
 
 {% if error %}
@@ -45,33 +63,6 @@
 {% if not has_seller_id %}<div class="alert">Falta MY_SELLER_ID en el archivo .env.</div>{% endif %}
 
 {% if rows %}
-<div class="g-row k3">
-  <section class="g-card kpi3">
-    <div><span class="kpi3-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Cantidad de listings</span>
-      <div class="kpi3-num"><b>{{ total }}</b> <span>en Amazon.es</span></div>
-      <p class="kpi3-sub"><span class="pos">● {{ activos }} activo{{ 's' if activos != 1 }}</span>
-        {% if sin_stock %}<span class="neg">● {{ sin_stock }} sin stock</span>{% endif %}
-        {% if total - activos %}<span class="muted">{{ total - activos }} no activo{{ 's' if total - activos != 1 }}</span>{% endif %}</p></div>
-    <span class="kpi3-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
-  </section>
-  <section class="g-card kpi3">
-    <div><span class="kpi3-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-6 9 6v10H3z"/><path d="M9 20v-6h6v6"/></svg> Unidades en stock</span>
-      <div class="kpi3-num"><b>{{ '{:,}'.format(unidades).replace(',', '.') }}</b> <span>unidades</span></div>
-      <p class="kpi3-sub"><span class="accent">{{ total - sin_stock }} listing{{ 's' if total - sin_stock != 1 }} con stock</span>
-        {% if sin_stock %}<a href="#" class="neg" data-tab="sin-stock">{{ sin_stock }} sin stock →</a>{% else %}<span class="muted">Ninguno agotado</span>{% endif %}</p></div>
-    <span class="kpi3-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span>
-  </section>
-  <section class="g-card kpi3">
-    {% set salud = 100 * activos / total %}
-    <div><span class="kpi3-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg> Estado del catálogo</span>
-      <div class="kpi3-num"><b class="accent">{{ ('%.1f' % salud).replace('.', ',') }} %</b>
-        <span class="pill {{ 'ok' if salud == 100 and not con_inc else 'warn' }}">{{ 'Óptimo' if salud == 100 and not con_inc else 'Revisar' }}</span></div>
-      <p class="kpi3-sub"><span class="accent">✓ {{ activos }} de {{ total }} activos</span>
-        <span class="{{ 'neg' if con_inc else 'muted' }}">{{ con_inc }} con incidencias</span></p></div>
-    <span class="kpi3-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M12 9v6M9 12h6"/></svg></span>
-  </section>
-</div>
-
 <section class="g-card flush">
   <div class="g-card-head pad">
     <div class="g-seg tabs">
