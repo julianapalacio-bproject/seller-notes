@@ -4,7 +4,7 @@
    · Profit y Costes (body.navy): pantalla «Rentabilidad real · Estilo Elegante y Sobrio» — Inter, grises zinc,
      tarjetas blancas con borde fino, números en monoespaciada, botón negro, verde/rojo solo para beneficio y coste.
    · Dashboard, Listings, Análisis Productos y Catálogos (body.apex): pantallas «… · Estilo Sobrio y Elegante Apex» —
-     títulos en Space Mono, texto en Epilogue, cifras y etiquetas en Space Grotesk, gris pizarra #535c65.
+     títulos en Space Mono, texto en Epilogue, cifras y etiquetas en Archivo (más estrecha y con cifras tabulares; sustituye a Space Grotesk), gris pizarra #535c65.
    «:not(#_)» sube la prioridad por encima de las reglas de panel.css sin tener que repetir cada clase de página. */
 
 /* ------------------------------------------------------------------ Colores */
@@ -26,9 +26,9 @@ body.glass.sobrio:not(#_) {
   --r-card: 8px; --r-ctl: 8px; --r-chip: 4px;
   --f-body: "Epilogue", "Inter", system-ui, -apple-system, sans-serif;
   --f-head: "Space Mono", ui-monospace, Menlo, monospace;
-  --f-num: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --f-num: "Archivo", "Inter", system-ui, sans-serif;
   --gap: 24px;
-  color: var(--text); font-family: var(--f-body); font-size: 13px; font-feature-settings: normal; font-variant-numeric: normal;
+  color: var(--text); font-family: var(--f-body); font-size: 13px; font-feature-settings: normal; font-variant-numeric: tabular-nums;
   background: var(--bg); background-attachment: scroll;
 }
 body.glass.navy.sobrio:not(#_) {
@@ -87,7 +87,7 @@ body.glass.sobrio:not(#_) .brand { color: var(--text); gap: 10px; }
 body.glass.sobrio:not(#_) .brand img { width: 30px; height: 30px; border-radius: 6px; box-shadow: none; }
 body.glass.sobrio:not(#_) .brand-name { font-family: "Space Mono", ui-monospace, monospace; font-weight: 700; font-size: 16px; line-height: 1.4;
   letter-spacing: -.01em; text-transform: uppercase; color: var(--text); }
-body.glass.sobrio:not(#_) .brand-sub { font-family: "Space Grotesk", "Inter", sans-serif; font-size: 11px; font-weight: 600; letter-spacing: .05em;
+body.glass.sobrio:not(#_) .brand-sub { font-family: "Archivo", "Inter", sans-serif; font-size: 11px; font-weight: 600; letter-spacing: .05em;
   text-transform: uppercase; color: var(--sub); opacity: 1; margin-top: 0; }
 body.glass.sobrio:not(#_) nav { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; gap: 4px;
   -webkit-backdrop-filter: none; backdrop-filter: none; }
