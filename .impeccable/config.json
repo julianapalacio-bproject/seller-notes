@@ -27,6 +27,12 @@
         "value": "epilogue",
         "createdAt": "2026-10-29T15:05:58.932Z",
         "reason": "Stitch: the user asked to apply the «Sobrio y Elegante» screens, which use this font (2026-10-29)"
+      },
+      {
+        "rule": "overused-font",
+        "value": "space grotesk",
+        "createdAt": "2026-10-29T15:08:51.713Z",
+        "reason": "Stitch: the user asked to apply the «Sobrio y Elegante» screens, which use Space Grotesk for numbers (2026-10-29)"
       }
     ]
   }
