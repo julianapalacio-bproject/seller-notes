@@ -88,12 +88,12 @@
           <a class="mono" href="https://www.amazon.es/dp/{{ r.asin }}" target="_blank" rel="noopener">{{ r.asin }}</a></div>
           <div class="ls-name">{{ r.nombre }}</div>
           {% set step = next_step(r) %}{% if step %}<p class="ls-next {{ 'bad' if r.stock == 0 or r.estado in ('SUPRIMIDO', 'INACTIVO') else 'warn' }}">{{ step }}</p>{% endif %}</td>
-        <td class="mono"><b>{{ r.sku }}</b></td>
-        <td class="r"><b>{{ n(r.precio) ~ ' €' if r.precio is not none else '—' }}</b></td>
+        <td class="mono ls-sku"><b>{{ r.sku }}</b></td>
+        <td class="r ls-price"><b>{{ n(r.precio) ~ ' €' if r.precio is not none else '—' }}</b></td>
         <td class="ls-stock">{% if r.stock is none %}<span class="muted">?</span>{% else %}
           <b class="{{ 'neg' if r.stock == 0 }}">{{ r.stock }} uds</b>
           <span class="g-track {{ 'bad' if r.stock == 0 }}"><span style="width: {{ '%.1f' % ([100 * r.stock / max_stock, 3 if r.stock else 0] | max) }}%"></span></span>{% endif %}</td>
-        <td>
+        <td class="ls-inc{{ ' none' if not r.lista_incidencias }}">
           {% if r.lista_incidencias %}
           <details>
             <summary>{% if r.errores %}<span class="pill bad">{{ r.errores }} error{{ 'es' if r.errores > 1 }}</span>{% endif %}
@@ -102,7 +102,7 @@
           </details>
           {% else %}<span class="muted">—</span>{% endif %}
         </td>
-        <td><span class="pill {{ 'ok' if r.estado == 'ACTIVO' else 'warn' if r.estado == 'VISIBLE, NO COMPRABLE' else 'bad' }}"><i class="dot {{ 'me' if r.estado == 'ACTIVO' else 'bad' }}"></i> {{ r.estado | capitalize }}</span></td>
+        <td class="ls-state"><span class="pill {{ 'ok' if r.estado == 'ACTIVO' else 'warn' if r.estado == 'VISIBLE, NO COMPRABLE' else 'bad' }}"><i class="dot {{ 'me' if r.estado == 'ACTIVO' else 'bad' }}"></i> {{ r.estado | capitalize }}</span></td>
       </tr>
     {% endfor %}
     </tbody>

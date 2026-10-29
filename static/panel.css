@@ -1289,3 +1289,36 @@ body.glass.apex .ls-flags a:hover { filter: brightness(.97); text-decoration: un
   .ls-health { flex: 1 1 100%; }
   .ls-flags { margin-left: 0; }
 }
+
+/* Listings en el móvil: cada producto es un bloque de cuatro líneas en vez de una fila que se sale por la derecha
+   (nombre · estado · SKU y precio · stock · incidencias si las hay); pestañas en una línea que se desliza */
+@media (max-width: 860px) {
+  body.glass.apex .g-card.flush { padding: 16px; }
+  body.glass.apex .g-card.flush .g-card-head.pad { flex-direction: column; align-items: stretch; gap: 12px; }
+  body.glass.apex .g-seg.tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  body.glass.apex .g-seg.tabs::-webkit-scrollbar { display: none; }
+  body.glass.apex .g-seg.tabs a { flex: none; min-height: 36px; display: inline-flex; align-items: center; }
+  body.glass.apex input#filtro { width: 100%; min-height: 40px; font-size: 16px; }
+  body.glass.apex #listings thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  body.glass.apex #listings, body.glass.apex #listings tbody { display: block; }
+  body.glass.apex #listings tr { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "prod prod" "state state" "sku price" "stock stock" "inc inc"; gap: 8px 12px; align-items: center;
+    padding: 14px 2px; border-bottom: 1px solid var(--line); }
+  body.glass.apex #listings tr[hidden] { display: none; }
+  body.glass.apex #listings tbody tr:last-child { border-bottom: 0; }
+  body.glass.apex #listings tr.warn-row { margin: 6px 0; padding: 12px; border-radius: 12px; border-bottom: 0; }
+  body.glass.apex #listings td { display: block; padding: 0; border: 0; background: transparent; }
+  body.glass.apex #listings tr.warn-row { background: rgba(255, 218, 214, .22); }
+  [data-theme="dark"] body.glass.apex #listings tr.warn-row { background: rgba(255, 180, 171, .1); }
+  body.glass.apex #listings tbody tr:hover td { background: transparent; }
+  body.glass.apex #listings td:first-child { grid-area: prod; }
+  body.glass.apex #listings .ls-sku { grid-area: sku; min-width: 0; overflow-wrap: break-word; }
+  body.glass.apex #listings .ls-price { grid-area: price; }
+  body.glass.apex #listings .ls-stock { grid-area: stock; min-width: 0; }
+  body.glass.apex #listings .ls-stock .g-track { max-width: 200px; }
+  body.glass.apex #listings .ls-state { grid-area: state; justify-self: start; }
+  body.glass.apex #listings .ls-inc { grid-area: inc; }
+  body.glass.apex #listings .ls-inc.none { display: none; }
+  body.glass.apex #listings .ls-name { font-size: 13px; max-width: none; }
+  body.glass.apex .ls-count { padding-top: 10px; }
+}
