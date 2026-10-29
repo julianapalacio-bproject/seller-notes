@@ -136,7 +136,8 @@ def asin_history(con, asin, start, end, names):
     s_utc, e_utc = start.astimezone(timezone.utc).isoformat(), end.astimezone(timezone.utc).isoformat()
     label_fmt = "%H:%M" if end - start <= timedelta(days=1) else "%d/%m %H:%M"
     snaps = con.execute(
-        "SELECT id, ts, total_offers, bb_seller, bb_price, my_stock, bb_prime, bb_normal FROM snapshots "
+        "SELECT id, ts, total_offers, bb_seller, bb_price, my_stock, bb_prime, bb_normal, bb_fast, bb_fast_price, "
+        "bb_fast_label FROM snapshots "
         "WHERE asin=? AND ts>=? AND ts<? ORDER BY ts", (asin, s_utc, e_utc)).fetchall()
     data = {"asin": asin, "snaps": len(snaps)}
     if not snaps:
@@ -160,6 +161,9 @@ def asin_history(con, asin, start, end, names):
     # quién gana para clientes Prime y para el resto; None si la consulta es anterior a este dato
     data["segments"] = [(label, names.get(sid, sid), bool(sn.MY_SELLER_ID) and sid == sn.MY_SELLER_ID)
                         for label, sid in (("Prime", last[6]), ("Normal", last[7])) if sid] or None
+    # segunda opción de compra que enseña la página de amazon.es (p. ej. «Recíbelo más rápido»)
+    data["fast"] = dict(label=last[10], seller=names.get(last[8], last[8]), price=last[9],
+                        me=bool(sn.MY_SELLER_ID) and last[8] == sn.MY_SELLER_ID) if last[8] else None
     prices = [s[4] for s in snaps if s[4] is not None]
     data["price_min"], data["price_max"] = (min(prices), max(prices)) if prices else (None, None)
     changes = con.execute("SELECT COUNT(*) FROM events WHERE asin=? AND ts>=? AND ts<? AND type='cambio_buybox'",
@@ -174,7 +178,8 @@ def asin_history(con, asin, start, end, names):
                          "WHERE snapshot_id=? ORDER BY landed", (last[0],)):
         data["offers"].append(dict(seller=sn.name(r[0], names), is_me=bool(sn.MY_SELLER_ID) and r[0] == sn.MY_SELLER_ID,
                                    price=r[1], shipping=r[2], landed=r[3], fba=r[4], is_bb=bool(r[0]) and r[0] == last[3],
-                                   is_prime=bool(r[0]) and r[0] == last[6], is_normal=bool(r[0]) and r[0] == last[7]))
+                                   is_prime=bool(r[0]) and r[0] == last[6], is_normal=bool(r[0]) and r[0] == last[7],
+                                   is_fast=bool(r[0]) and r[0] == last[8]))
     data["events"] = [
         dict(ts=r[0], label=EVENT_LABELS.get(r[1], r[1]), type=r[1], seller=sn.name(r[2], names), old=r[3], new=r[4])
         for r in con.execute("SELECT ts, type, seller_id, old_value, new_value FROM events "

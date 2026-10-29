@@ -106,6 +106,10 @@ def db():
     if "bb_prime" not in cols:  # quién gana para clientes Prime y para el resto (oferta normal)
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_prime TEXT")
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_normal TEXT")
+    if "bb_fast" not in cols:  # segunda opción de compra de la página (p. ej. «Recíbelo más rápido»)
+        con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast TEXT")
+        con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast_price REAL")
+        con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast_label TEXT")
     return con
 
 
@@ -207,6 +211,37 @@ def get_featured_spain(asins):
     return out
 
 
+def get_fast_option(asin):
+    """Segunda opción de compra que muestra la página de amazon.es, p. ej. «Recíbelo más rápido».
+    La API solo da la opción principal. Devuelve (seller_id, precio, etiqueta); ("", None, None) si la página
+    tiene una sola Buy Box, y None si no se pudo leer."""
+    import html
+    try:
+        r = requests.get(f"https://www.amazon.es/dp/{asin}", timeout=20, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/126.0 Safari/537.36",
+            "Accept-Language": "es-ES,es;q=0.9"})
+    except requests.RequestException:
+        return None
+    t = r.text
+    if r.status_code != 200 or 'id="productTitle"' not in t:  # captcha o página caída
+        return None
+    m = re.search(r'id="newAccordionRow_1" data-buying-option-index="1"', t)
+    if not m:
+        return "", None, None
+    end = t.find("data-buying-option-index", m.end())
+    row = t[m.start(): end if end > 0 else m.start() + 100000]
+    seller = re.search(r'merchantID[^>]*value="([A-Z0-9]+)"', row)
+    price = re.search(r'class="a-offscreen">([\d.,]+)', row)
+    head = re.sub(r"<(style|script)[^>]*>.*?</\1>", " ", row[:6000], flags=re.S)
+    head = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", head)))
+    label = re.match(r"[^>]*>\s*([^\d€]+?)\s*\d", head)
+    if not seller:
+        return None
+    return (seller.group(1), float(price.group(1).replace(".", "").replace(",", ".")) if price else None,
+            label.group(1).strip() if label else "Otra opción")
+
+
 _stock_api = {"enabled": True}
 
 
@@ -283,7 +318,7 @@ def last_snapshot(con, asin):
     return {"bb_seller": row[1], "bb_price": row[2], "offers": offers}
 
 
-def store(con, asin, ts, total, offers, raw=None, my_stock=None, segments=None):
+def store(con, asin, ts, total, offers, raw=None, my_stock=None, segments=None, fast=None):
     prev = last_snapshot(con, asin)
     bb = next((o for o in offers if o["is_bb"]), None)
     bb_seller = bb["seller_id"] if bb else None
@@ -294,10 +329,10 @@ def store(con, asin, ts, total, offers, raw=None, my_stock=None, segments=None):
                        (asin, day_start.astimezone(timezone.utc).isoformat())).fetchone():
             raw = None
     cur = con.execute(
-        "INSERT INTO snapshots(ts, asin, total_offers, bb_seller, bb_price, raw, my_stock, bb_prime, bb_normal) "
-        "VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO snapshots(ts, asin, total_offers, bb_seller, bb_price, raw, my_stock, bb_prime, bb_normal, "
+        "bb_fast, bb_fast_price, bb_fast_label) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         (ts, asin, total, bb_seller, bb_price, json.dumps(raw) if raw else None, my_stock,
-         (segments or {}).get("prime"), (segments or {}).get("normal")),
+         (segments or {}).get("prime"), (segments or {}).get("normal"), *(fast or (None, None, None))),
     )
     sid = cur.lastrowid
     con.executemany(
@@ -349,10 +384,13 @@ def poll_once(con, asins=None):
             for o in offers:
                 o["is_bb"] = 1 if o["seller_id"] == winner else 0
         stock = my_stock.get(asin) if my_stock else None
+        fast = get_fast_option(asin)
         bb_seller, bb_price, total, events = store(con, asin, ts, total, offers, raw=payload, my_stock=stock,
-                                                 segments=spain.get(asin))
+                                                 segments=spain.get(asin), fast=fast)
         local = datetime.fromisoformat(ts).astimezone(TZ).strftime("%H:%M")
         extra = f" | Mi stock: {stock} uds" if stock is not None else ""
+        if fast and fast[0]:
+            extra += f" | {fast[2]}: {name(fast[0], names)} a {fast[1]} €"
         print(f"[{local}] {asin}: {total} ofertas | Buy Box: {name(bb_seller, names)} a {bb_price} €{extra}", flush=True)
         for t, s, a, b in events:
             print(f"    -> {t}: {name(s, names)} {a} → {b}", flush=True)

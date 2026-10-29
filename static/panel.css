@@ -395,6 +395,9 @@ body.glass .daynav .range { color: var(--navy); }
 .bb-segs > div { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px;
   background: rgba(255, 255, 255, .06); font-size: 12px; color: #94a3b8; min-width: 0; }
 .bb-segs b { color: #fff; font-size: 13px; overflow-wrap: anywhere; }
+.bb-fast { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 14px; padding: 8px 10px; border-radius: 10px;
+  background: rgba(255, 255, 255, .06); border: 1px dashed rgba(255, 255, 255, .18); font-size: 12px; color: #94a3b8; }
+.bb-fast b { color: #fff; font-size: 13px; overflow-wrap: anywhere; }
 .bb-strip { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px;
             border-radius: 14px; background: var(--card); border: 1px solid var(--accent-line); }
 
@@ -1005,6 +1008,7 @@ body.glass.apex .bb-ring b { font-family: "Anton", "Inter", sans-serif; font-wei
 body.glass.apex .bb-ring span { font-size: 10px; font-weight: 500; letter-spacing: .05em; color: #a8c8ff; margin-top: 2px; }
 body.glass.apex .bb-now { color: rgba(208, 218, 245, .9); font-size: 12px; }
 body.glass.apex .bb-now b { font-size: 14px; }
+body.glass.apex .bb-fast { border-radius: 12px; font-size: 11px; color: rgba(208, 218, 245, .8); }
 body.glass.apex .bb-segs > div { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .06); color: rgba(208, 218, 245, .8); font-size: 11px; border-radius: 12px; }
 body.glass.apex .g-foot { border-top-color: rgba(255, 255, 255, .1); color: rgba(208, 218, 245, .7); font-size: 11px; }
 body.glass.apex .g-foot b { color: #fff; }

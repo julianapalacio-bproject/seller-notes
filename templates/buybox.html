@@ -81,6 +81,9 @@
         <div class="bb-now"><span>Ahora la tiene</span><b>{{ a.bb_seller }}</b><span class="small">Para un cliente en España</span></div>
         {% if a.segments %}<div class="bb-segs">{% for label, seller, me in a.segments %}
           <div><span><i class="dot {{ 'me' if me else 'bad' }}"></i> {{ label }}</span><b>{{ 'Tú' if me else seller }}</b></div>{% endfor %}</div>{% endif %}
+        {% if a.fast %}<div class="bb-fast" title="Amazon enseña una segunda opción de compra en la página del producto">
+          <span><i class="dot {{ 'me' if a.fast.me else 'bad' }}"></i> También en la página: {{ a.fast.label }}</span>
+          <b>{{ 'Tú' if a.fast.me else a.fast.seller }}{% if a.fast.price is not none %} · {{ eur(a.fast.price) }}{% endif %}</b></div>{% endif %}
         <div class="g-foot"><span>Precio <b>{{ eur(a.bb_price) if a.bb_price is not none else '—' }}</b></span><span>{{ a.ts | local }}</span></div>
       </section>
 
@@ -179,7 +182,7 @@
         {% for o in a.offers %}
           <tr class="{{ 'me' if o.is_me }}">
             <td><b>{{ o.seller }}</b>{% if o.is_me %} <span class="pill ink">Tú</span>{% endif %}{% if o.is_bb %} <span class="pill ok"><i class="dot me"></i> Buy Box</span>{% endif %}
-              {% if o.is_prime %} <span class="pill ink">Gana en Prime</span>{% endif %}{% if o.is_normal %} <span class="pill warn">Gana en normal</span>{% endif %}</td>
+              {% if o.is_prime %} <span class="pill ink">Gana en Prime</span>{% endif %}{% if o.is_normal %} <span class="pill warn">Gana en normal</span>{% endif %}{% if o.is_fast %} <span class="pill ok">{{ a.fast.label }}</span>{% endif %}</td>
             <td class="r mono">{{ eur(o.price) if o.price is not none else '—' }}</td>
             <td class="r mono">{{ eur(o.shipping) if o.shipping else '—' }}</td>
             <td class="r"><b>{{ eur(o.landed) }}</b></td>
