@@ -1,0 +1,378 @@
+/* Seller Notes · estilo «Swiss minimal» (Stitch, proyecto «Seller Notes v2 · Swiss minimal»).
+   Se carga después de panel.css y se aplica a todas las páginas con la clase body.swiss (base.html).
+   Barra lateral blanca fija de 250px, fondo gris piedra #F5F5F4, tarjetas blancas de 20px con borde fino #E5E7EB,
+   texto y botones principales en negro #111111, etiquetas en gris #6B7280 y acento azul apagado #DCE3EC.
+   Verde, rojo y ámbar solo donde significan algo (beneficio, pérdida, revisar). Letra Inter con cifras tabulares.
+   «:not(#_)» sube la prioridad por encima de las reglas de panel.css sin tener que repetir cada clase de página. */
+
+/* ------------------------------------------------------------------ Colores */
+body.glass.swiss:not(#_) {
+  --bg: #f5f5f4; --card: #ffffff; --text: #111111; --head: #111111; --muted: #474747; --sub: #6b7280; --body: #374151;
+  --line: #e5e7eb; --soft: #f9f9f8; --soft-2: #f4f4f3; --soft-3: #eeeeed; --edge: #d1d5db; --card-edge: #e5e7eb;
+  --navy: #111111; --strong: #111111; --ink: #111111; --ink-hover: #3c3b3b; --on-ink: #ffffff; --ink-ring: transparent;
+  --ink-2: #e5e7eb; --ink-3: #585f6c; --ink-4: #dce3ec;
+  --primary: #111111; --primary-2: #3c3b3b; --on-primary: #ffffff; --primary-glow: rgba(17, 17, 17, .12); --primary-soft: #f4f4f3;
+  --ok: #15803d; --ok-bg: #f0fdf4; --ok-line: #bbf7d0; --ok-ink: #166534;
+  --bad: #b91c1c; --bad-bg: #fef2f2; --bad-line: #fecaca; --bad-ink: #991b1b;
+  --warn: #a16207; --warn-bg: #fef9c3; --warn-line: #fde68a; --warn-num: #a16207;
+  --blue: #111111; --blue-soft: #f4f4f3; --blue-line: #e5e7eb;
+  --accent: #dce3ec; --accent-soft: #f4f4f3; --accent-line: #dce3ec;
+  --shade-0: #111111; --shade-1: #585f6c; --shade-2: #a4abbb; --shade-3: #dce3ec; --shade-4: #474747;
+  --shade-5: #c6c6c6; --shade-6: #6b7280; --shade-7: #e5e7eb;
+  --gauge-dark: #111111; --gauge-track: #eeeeed;
+  --sh: 0 1px 2px rgba(17, 17, 17, .03); --sh-md: 0 3px 8px rgba(17, 17, 17, .18);
+  --r-card: 20px; --r-ctl: 999px; --r-chip: 6px;
+  --f-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --f-head: var(--f-body);
+  --f-num: var(--f-body);
+  --gap: 24px;
+  color: var(--text); font-family: var(--f-body); font-size: 13px; font-feature-settings: "tnum" 1; font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased; background: var(--bg); background-attachment: scroll;
+}
+[data-theme="dark"] body.glass.swiss:not(#_) {
+  --bg: #111213; --card: #1a1b1d; --text: #f1f1f0; --head: #ffffff; --muted: #c6c6c6; --sub: #9ca3af; --body: #d1d5db;
+  --line: #2a2c2f; --soft: #202124; --soft-2: #26282b; --soft-3: #303236; --edge: #3f4247; --card-edge: #2a2c2f;
+  --navy: #ffffff; --strong: #ffffff; --ink: #f5f5f4; --ink-hover: #e5e7eb; --on-ink: #111111; --ink-2: #303236; --ink-3: #a4abbb; --ink-4: #3a4350;
+  --primary: #f5f5f4; --primary-2: #e5e7eb; --on-primary: #111111; --primary-glow: rgba(245, 245, 244, .15); --primary-soft: #26282b;
+  --ok: #4ade80; --ok-bg: rgba(74, 222, 128, .12); --ok-line: rgba(74, 222, 128, .25); --ok-ink: #86efac;
+  --bad: #f87171; --bad-bg: rgba(248, 113, 113, .12); --bad-line: rgba(248, 113, 113, .25); --bad-ink: #fca5a5;
+  --warn: #facc15; --warn-bg: rgba(250, 204, 21, .12); --warn-line: rgba(250, 204, 21, .25); --warn-num: #facc15;
+  --blue: #f5f5f4; --blue-soft: #26282b; --blue-line: #303236; --accent: #3a4350; --accent-soft: #202124; --accent-line: #3a4350;
+  --shade-0: #f5f5f4; --shade-1: #a4abbb; --shade-2: #6b7280; --shade-3: #3a4350; --shade-4: #d1d5db;
+  --shade-5: #4b5563; --shade-6: #9ca3af; --shade-7: #303236;
+  --gauge-dark: #f5f5f4; --gauge-track: #303236;
+  --sh: 0 1px 2px rgba(0, 0, 0, .4); --sh-md: 0 3px 8px rgba(0, 0, 0, .5);
+  background: var(--bg);
+}
+
+/* ------------------------------------------------------------------ Barra lateral fija (escritorio) */
+body.glass.swiss:not(#_) .top { position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; width: 250px; color: var(--text);
+  background: var(--card); border-right: 1px solid var(--line); border-bottom: 0; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.glass.swiss:not(#_) .top-inner { height: 100%; max-width: none; margin: 0; padding: 20px 16px 16px; flex-direction: column;
+  align-items: stretch; justify-content: flex-start; gap: 28px; }
+body.glass.swiss:not(#_) .top-right { flex: 1; min-height: 0; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 16px; }
+body.glass.swiss:not(#_) :is(main, .foot) { margin-left: 250px; max-width: 1440px; padding-left: 32px; padding-right: 32px; }
+body.glass.swiss:not(#_) main { padding-top: 24px; }
+body.glass.swiss:not(#_) .foot { font-family: var(--f-body); font-size: 12px; color: var(--sub); }
+body.glass.swiss:not(#_) .brand { color: var(--text); gap: 12px; padding: 4px 8px; }
+body.glass.swiss:not(#_) .brand img { width: 32px; height: 32px; border-radius: 8px; box-shadow: none; }
+body.glass.swiss:not(#_) .brand-name { font-family: var(--f-head); font-weight: 700; font-size: 16px; line-height: 1.25;
+  letter-spacing: -.02em; text-transform: none; color: var(--text); }
+body.glass.swiss:not(#_) .brand-sub { font-family: var(--f-body); font-size: 11px; font-weight: 500; letter-spacing: -.01em;
+  text-transform: none; color: var(--sub); opacity: 1; margin-top: 1px; }
+body.glass.swiss:not(#_) nav { flex-direction: column; background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; gap: 4px;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.glass.swiss:not(#_) nav a { display: flex; align-items: center; gap: 12px; font-family: var(--f-body); font-size: 14px; font-weight: 500;
+  letter-spacing: -.01em; padding: 10px 12px; border-radius: 12px; border: 0; color: var(--muted); box-shadow: none;
+  text-decoration: none; transition: background .15s, color .15s; }
+body.glass.swiss:not(#_) nav a svg { flex: none; width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round; }
+body.glass.swiss:not(#_) nav a:hover { background: var(--soft-3); color: var(--text); }
+body.glass.swiss:not(#_) nav a.on, body.glass.swiss:not(#_) nav a.on:hover { background: var(--ink); color: var(--on-ink); font-weight: 600; box-shadow: none; }
+/* Claro / Oscuro: interruptor de dos partes al pie de la barra */
+body.glass.swiss:not(#_) .theme-toggle { display: flex; width: auto; height: auto; padding: 4px; gap: 0; border-radius: 999px; cursor: pointer;
+  background: var(--soft-2); border: 1px solid var(--line); box-shadow: none; color: var(--sub); }
+body.glass.swiss:not(#_) .theme-toggle:hover { background: var(--soft-2); }
+body.glass.swiss:not(#_) .theme-toggle span { flex: 1; padding: 5px 8px; border-radius: 999px; font-family: var(--f-body); font-size: 12px; font-weight: 500;
+  text-align: center; transition: background .15s, color .15s; }
+body.glass.swiss:not(#_) .theme-toggle:hover span { color: var(--text); }
+html:not([data-theme="dark"]) body.glass.swiss:not(#_) .theme-toggle .tt-light,
+[data-theme="dark"] body.glass.swiss:not(#_) .theme-toggle .tt-dark { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+
+/* ------------------------------------------------------------------ Tarjetas y títulos */
+body.glass.swiss:not(#_) .g-card { background: var(--card); border: 1px solid var(--card-edge); border-radius: var(--r-card); box-shadow: var(--sh);
+  padding: 16px; margin-bottom: var(--gap); -webkit-backdrop-filter: none; backdrop-filter: none; background-image: none; }
+body.glass.swiss:not(#_) .g-card.flush { padding: 16px; }
+body.glass.swiss:not(#_) .g-row { gap: var(--gap); }
+body.glass.swiss:not(#_) .g-row > .g-card { margin-bottom: var(--gap); }
+body.glass.swiss:not(#_) .g-head { padding: 16px 0; background: transparent; border: 0; box-shadow: none; }
+body.glass.swiss:not(#_) .g-title h1, body.glass.swiss:not(#_) .dash-verdict h1 { font-family: var(--f-head); font-weight: 700; font-size: 24px; line-height: 32px;
+  letter-spacing: -.02em; text-transform: none; color: var(--head); }
+body.glass.swiss:not(#_) .g-head p.muted, body.glass.swiss:not(#_) .dash-date { font-size: 13px; line-height: 18px; color: var(--sub); margin-top: 4px; }
+body.glass.swiss:not(#_) :is(h2, h3).sec { font-family: var(--f-head); font-weight: 700; font-size: 16px; line-height: 24px; letter-spacing: -.01em;
+  text-transform: none; color: var(--head); }
+body.glass.swiss:not(#_) .g-card-head { margin-bottom: 12px; }
+body.glass.swiss:not(#_) .g-card-head p.muted, body.glass.swiss:not(#_) .g-card-head .muted.small { font-size: 12px; color: var(--sub); }
+body.glass.swiss:not(#_) .muted { color: var(--sub); }
+body.glass.swiss:not(#_) a { text-decoration-color: var(--edge); }
+
+/* ------------------------------------------------------------------ Botones */
+body.glass.swiss:not(#_) :is(.btn-ink, .bb-add button) { display: inline-flex; align-items: center; gap: 6px; background: var(--ink); color: var(--on-ink);
+  border: 0; border-radius: var(--r-ctl); padding: 7px 16px; font-family: var(--f-body); font-size: 12px; font-weight: 500; letter-spacing: 0;
+  box-shadow: var(--sh-md); filter: none; transition: background .15s; }
+body.glass.swiss:not(#_) :is(.btn-ink, .bb-add button):hover { background: var(--ink-hover); }
+body.glass.swiss:not(#_) .btn-ghost { background: var(--soft-2); color: var(--text); border: 0; border-radius: var(--r-ctl);
+  padding: 6px 14px; font-family: var(--f-body); font-size: 12px; font-weight: 500; box-shadow: var(--sh); text-decoration: none; }
+body.glass.swiss:not(#_) .btn-ghost:hover { background: var(--soft-3); }
+body.glass.swiss:not(#_) .btn-ghost.small { padding: 4px 10px; font-size: 11px; }
+body.glass.navy.swiss:not(#_) .btn-ghost { background: var(--card); border: 1px solid var(--line); }
+body.glass.navy.swiss:not(#_) .btn-ghost:hover { background: var(--soft); }
+body.glass.swiss:not(#_) .bb-remove .btn-ghost { color: var(--bad); }
+
+/* ------------------------------------------------------------------ Filtros, buscadores y campos */
+body.glass.swiss:not(#_) .g-seg { background: var(--soft-2); border: 0; border-radius: var(--r-ctl); padding: 4px; gap: 4px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .05); -webkit-backdrop-filter: none; backdrop-filter: none; }
+body.glass.swiss:not(#_) .g-seg a { padding: 4px 10px; border-radius: var(--r-chip); border: 0; font-family: var(--f-body); font-size: 13px; font-weight: 400;
+  color: var(--sub); box-shadow: none; white-space: nowrap; }
+body.glass.swiss:not(#_) .g-seg a:hover { color: var(--text); background: transparent; }
+body.glass.swiss:not(#_) .g-seg a.on { background: var(--card); color: var(--text); font-weight: 600; box-shadow: var(--sh); }
+body.glass.navy.swiss:not(#_) .g-seg { background: var(--soft-2); border: 1px solid rgba(228, 228, 231, .6); padding: 2px; gap: 2px; box-shadow: none; }
+body.glass.navy.swiss:not(#_) .g-seg a { font-size: 12px; font-weight: 500; padding: 4px 12px; color: #52525b; }
+body.glass.navy.swiss:not(#_) .g-seg a.on { color: var(--head); font-weight: 600; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-seg { border-color: var(--line); }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-seg a { color: var(--muted); }
+body.glass.swiss:not(#_) .g-range label { font-size: 12px; font-weight: 500; color: var(--sub); }
+body.glass.swiss:not(#_) :is(input[type=date], input[type=text], input[type=number], select, .bb-add input) {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 6px 10px; font-family: var(--f-body); font-size: 12px;
+  color: var(--text); box-shadow: var(--sh); }
+body.glass.swiss:not(#_) input[type=search] { width: 256px; max-width: 100%; border: 0; border-radius: var(--r-ctl); padding: 7px 12px 7px 34px;
+  font-family: var(--f-body); font-size: 12px; color: var(--text); box-shadow: var(--sh);
+  background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23737780' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E") 11px 50% / 15px no-repeat; }
+body.glass.navy.swiss:not(#_) input[type=search] { background-color: var(--soft); border: 1px solid var(--line); box-shadow: none; }
+body.glass.navy.swiss:not(#_) input[type=search]:focus { background-color: var(--card); }
+body.glass.swiss:not(#_) input::placeholder { color: #737780; }
+body.glass.swiss:not(#_) :is(input, select):focus { outline: none; }
+body.glass.swiss:not(#_) :is(input, select):focus-visible { outline: 1px solid var(--primary); outline-offset: 0; }
+
+/* ------------------------------------------------------------------ Píldoras */
+body.glass.swiss:not(#_) .pill { font-family: var(--f-num); font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 12px; border: 0; box-shadow: none; background: var(--soft-2); color: var(--muted); }
+body.glass.swiss:not(#_) .pill.ok { background: var(--soft-3); color: var(--text); }
+body.glass.swiss:not(#_) .pill.bad { background: var(--bad-bg); color: var(--bad-ink); }
+body.glass.swiss:not(#_) .pill.warn { background: var(--warn-bg); color: var(--warn); }
+body.glass.swiss:not(#_) .pill.ink { background: var(--soft-2); color: var(--muted); }
+body.glass.swiss:not(#_) .pill .dot { width: 6px; height: 6px; }
+body.glass.swiss:not(#_) .pill.ok .dot.me, body.glass.swiss:not(#_) .dot.me { background: var(--ok); box-shadow: none; }
+body.glass.swiss:not(#_) .g-title .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; font-size: 10px; letter-spacing: .08em; }
+body.glass.swiss:not(#_) .g-title .pill:is(.ok, .fresh-pill) { background: var(--accent); color: var(--text); }
+[data-theme="dark"] body.glass.swiss:not(#_) .g-title .pill:is(.ok, .fresh-pill) { background: var(--soft-2); color: var(--head); }
+body.glass.swiss:not(#_) .g-title .pill.fresh-pill.warn { background: var(--warn-bg); color: var(--warn); }
+body.glass.swiss:not(#_) .g-title .pill .dot.me { box-shadow: none; }
+/* Profit: etiquetas cuadradas como en la pantalla de Rentabilidad */
+body.glass.navy.swiss:not(#_) .pill { font-family: var(--f-body); text-transform: none; letter-spacing: 0; border-radius: 4px; padding: 2px 6px; }
+body.glass.navy.swiss:not(#_) .pill.ok { background: var(--ok-bg); color: var(--ok-ink); }
+body.glass.navy.swiss:not(#_) .g-card-head > .pill.ink, body.glass.navy.swiss:not(#_) .g-meta .pill.ink { font-family: var(--f-num); font-size: 11px; font-weight: 500;
+  background: var(--soft-2); color: #52525b; border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; box-shadow: none; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) :is(.g-card-head > .pill.ink, .g-meta .pill.ink) { color: var(--muted); }
+
+/* ------------------------------------------------------------------ Tablas */
+body.glass.swiss:not(#_) .g-card.flush .g-card-head.pad { padding: 0; margin-bottom: 12px; }
+body.glass.swiss:not(#_) .g-card.flush .table-scroll { margin: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+body.glass.swiss:not(#_) table { font-size: 12px; }
+body.glass.swiss:not(#_) th { background: var(--soft); color: var(--sub); font-family: var(--f-num); font-size: 11px; font-weight: 600; letter-spacing: .05em;
+  text-transform: uppercase; padding: 12px; border: 0; border-radius: 0; }
+body.glass.swiss:not(#_) th:first-child { border-radius: 4px 0 0 4px; padding-left: 16px; }
+body.glass.swiss:not(#_) th:last-child { border-radius: 0 4px 4px 0; padding-right: 16px; }
+body.glass.swiss:not(#_) td { padding: 12px; border-bottom: 1px solid var(--line); color: var(--text); vertical-align: middle; background: transparent; }
+body.glass.swiss:not(#_) td:first-child { padding-left: 16px; } body.glass.swiss:not(#_) td:last-child { padding-right: 16px; }
+body.glass.swiss:not(#_) tbody tr:hover td { background: color-mix(in srgb, var(--soft) 60%, transparent); }
+body.glass.swiss:not(#_) td b, body.glass.swiss:not(#_) td strong { color: var(--text); font-weight: 700; }
+body.glass.swiss:not(#_) :is(.mono, td.mono) { font-family: var(--f-num); font-size: 13px; font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+body.glass.swiss:not(#_) td.r { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+body.glass.swiss:not(#_) :is(td.pos, .pos) { color: var(--ok); } body.glass.swiss:not(#_) :is(td.neg, .neg) { color: var(--bad); }
+body.glass.swiss:not(#_) td:is(.pos, .neg) { font-weight: 600; }
+body.glass.swiss:not(#_) tr:is(.warn-row, .me) td { background: color-mix(in srgb, var(--bad-bg) 15%, transparent); }
+body.glass.swiss:not(#_) tr.me td { background: var(--soft); }
+body.glass.swiss:not(#_) .ls-count { font-size: 12px; color: var(--sub); }
+body.glass.swiss:not(#_) .g-track { height: 6px; background: var(--soft-3); border-radius: 99px; box-shadow: none; }
+body.glass.swiss:not(#_) .g-track span { background: var(--primary); }
+body.glass.swiss:not(#_) .g-track.bad span { background: var(--bad) !important; }
+body.glass.swiss:not(#_) .empty { background: var(--card); border: 1px dashed var(--edge); border-radius: var(--r-card); color: var(--sub); }
+body.glass.swiss:not(#_) :is(.alert, .info) { border-radius: var(--r-card); font-size: 13px; }
+body.glass.swiss:not(#_) .info { background: var(--soft); color: var(--muted); border: 1px solid var(--line); }
+/* Profit: tabla dentro de un marco fino, cabecera zinc y cifras en monoespaciada */
+body.glass.navy.swiss:not(#_) .table-scroll { border: 1px solid var(--line); border-radius: 8px; }
+body.glass.navy.swiss:not(#_) th { background: var(--soft); color: #52525b; font-family: var(--f-body); letter-spacing: 0; text-transform: none;
+  border-bottom: 1px solid var(--line); border-radius: 0; padding: 10px 12px; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) th { color: var(--muted); }
+body.glass.navy.swiss:not(#_) td { border-bottom-color: var(--soft-2); color: var(--body); padding: 10px 12px; }
+body.glass.navy.swiss:not(#_) :is(td.r, .mono, td.mono) { font-family: var(--f-num); font-size: 12px; font-weight: 400; }
+body.glass.navy.swiss:not(#_) td.pos, body.glass.navy.swiss:not(#_) td.pos b { color: var(--ok); font-weight: 700; }
+body.glass.navy.swiss:not(#_) .roi { border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 600; box-shadow: none; }
+body.glass.navy.swiss:not(#_) .roi.good { background: var(--ok-bg); color: var(--ok-ink); }
+body.glass.navy.swiss:not(#_) .roi.mid { background: var(--warn-bg); color: var(--warn); }
+body.glass.navy.swiss:not(#_) .roi.low { background: var(--bad-bg); color: var(--bad-ink); }
+
+/* ------------------------------------------------------------------ Tarjetas destacadas: blancas, sin el fondo oscuro */
+body.glass.swiss:not(#_) .g-dark { background: var(--card); color: var(--text); border: 1px solid var(--card-edge); box-shadow: var(--sh); border-radius: var(--r-card); }
+body.glass.swiss:not(#_) .g-dark::before, body.glass.swiss:not(#_) .g-dark::after { display: none; }
+body.glass.swiss:not(#_) .g-dark :is(b, strong) { color: var(--text); }
+body.glass.swiss:not(#_) .g-label { font-family: var(--f-num); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--sub); }
+body.glass.swiss:not(#_) .g-label .dot.me { background: var(--ok); box-shadow: none; }
+body.glass.swiss:not(#_) .g-label .dot.bad { background: var(--bad); box-shadow: none; }
+body.glass.swiss:not(#_) .g-big { font-family: var(--f-num); font-weight: 700; font-size: 32px; letter-spacing: -.01em; color: var(--text); margin: 8px 0 4px; }
+body.glass.swiss:not(#_) .g-dark.ok .g-big { color: var(--text); }
+body.glass.navy.swiss:not(#_) .g-dark.ok .g-big { color: var(--ok); }
+body.glass.swiss:not(#_) .g-dark.bad .g-big { color: var(--bad); }
+body.glass.swiss:not(#_) .g-dark p, body.glass.swiss:not(#_) .g-checks { color: var(--sub); font-size: 12px; }
+body.glass.swiss:not(#_) .g-checks li::before { color: var(--ok); }
+body.glass.swiss:not(#_) .g-foot { border-top: 1px solid var(--line); color: var(--sub); font-size: 11px; }
+body.glass.swiss:not(#_) .g-foot b { color: var(--text); font-family: var(--f-num); }
+body.glass.swiss:not(#_) .g-num { font-family: var(--f-num); font-weight: 700; font-size: 28px; line-height: 34px; letter-spacing: -.01em; color: var(--text); }
+body.glass.navy.swiss:not(#_) .g-num { font-size: 24px; color: var(--strong); }
+body.glass.swiss:not(#_) .g-stats { border-top: 1px solid var(--line); }
+body.glass.swiss:not(#_) .g-stats b { font-family: var(--f-num); color: var(--text); font-size: 14px; }
+
+/* ------------------------------------------------------------------ Profit (Rentabilidad y Costes) */
+body.glass.navy.swiss:not(#_) .g-title h1 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+body.glass.navy.swiss:not(#_) :is(h2, h3).sec { font-size: 12px; font-weight: 600; line-height: 1.4; letter-spacing: .05em; text-transform: uppercase; color: #3f3f46; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) :is(h2, h3).sec { color: var(--body); }
+body.glass.navy.swiss:not(#_) .g-card-head { padding-bottom: 8px; border-bottom: 1px solid var(--soft-2); }
+body.glass.navy.swiss:not(#_) .g-gauge { background: var(--soft); border: 1px solid rgba(228, 228, 231, .6); border-radius: 8px; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-gauge { border-color: var(--line); }
+body.glass.navy.swiss:not(#_) .g-gauge.alt .fg { stroke: var(--shade-1); }
+body.glass.navy.swiss:not(#_) .g-gauge .pct { font-family: var(--f-num); font-weight: 700; color: var(--strong); }
+body.glass.navy.swiss:not(#_) .g-split li > div { color: var(--body); }
+body.glass.navy.swiss:not(#_) .g-split :is(b, em) { font-family: var(--f-num); color: var(--strong); }
+body.glass.navy.swiss:not(#_) .g-track { background: var(--soft-2); }
+body.glass.navy.swiss:not(#_) .g-split li .g-track span { background: #94a3b8; }
+body.glass.navy.swiss:not(#_) .g-split li:first-child .g-track span { background: var(--primary); }
+body.glass.navy.swiss:not(#_) .g-split li.neg .g-track span { background: var(--bad); }
+body.glass.navy.swiss:not(#_) .g-box { background: var(--soft); border: 1px solid rgba(228, 228, 231, .6); border-radius: 8px; padding: 10px; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-box { border-color: var(--line); }
+body.glass.navy.swiss:not(#_) .g-box .muted.small { font-size: 10px; font-weight: 500; text-transform: uppercase; color: var(--muted); }
+body.glass.navy.swiss:not(#_) .g-box b { font-family: var(--f-num); font-size: 14px; font-weight: 700; color: var(--strong); }
+body.glass.navy.swiss:not(#_) .g-box div + div b { color: var(--ok); }
+body.glass.navy.swiss:not(#_) .g-list li { font-family: var(--f-num); font-size: 12px; padding: 8px; margin-bottom: 6px; border-radius: 8px;
+  background: transparent; border: 1px solid var(--soft-2); box-shadow: none; }
+body.glass.navy.swiss:not(#_) .g-list li:hover { background: var(--soft); border-color: var(--soft-2); }
+body.glass.navy.swiss:not(#_) .g-list li:first-child { background: var(--soft); border-color: rgba(228, 228, 231, .7); box-shadow: none; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-list li { border-color: var(--line); }
+body.glass.navy.swiss:not(#_) .g-when { font-weight: 400; color: #52525b; }
+body.glass.navy.swiss:not(#_) .g-list li:first-child .g-when { font-weight: 500; color: var(--strong); }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-when { color: var(--muted); }
+body.glass.navy.swiss:not(#_) .g-meta .pill.ink { background: transparent; border: 0; padding: 0; color: #3f3f46; font-size: 12px; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-meta .pill.ink { background: transparent; color: var(--body); }
+body.glass.navy.swiss:not(#_) .g-list li:first-child .g-meta .pill.ink { background: transparent; color: var(--head); font-weight: 500; }
+body.glass.navy.swiss:not(#_) .g-meta .muted.small { color: var(--sub); }
+body.glass.navy.swiss:not(#_) .g-fijos { color: var(--sub); }
+body.glass.navy.swiss:not(#_) .g-neto { font-weight: 700; }
+body.glass.navy.swiss:not(#_) .g-neto small { font-family: var(--f-body); color: var(--sub); }
+body.glass.navy.swiss:not(#_) .g-total { border-top: 1px solid var(--soft-2); color: var(--muted); font-size: 11px; }
+body.glass.navy.swiss:not(#_) .g-total b { font-family: var(--f-num); color: var(--head); }
+body.glass.navy.swiss:not(#_) .g-donut b { font-family: var(--f-num); color: var(--strong); font-weight: 700; }
+body.glass.navy.swiss:not(#_) .g-donut span { color: var(--muted); letter-spacing: 0; }
+body.glass.navy.swiss:not(#_) .g-legend li { padding: 8px; border-radius: 8px; background: var(--soft); border: 1px solid rgba(228, 228, 231, .6); box-shadow: none;
+  color: #3f3f46; font-size: 11px; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-legend li { border-color: var(--line); color: var(--body); }
+body.glass.navy.swiss:not(#_) .g-legend b { font-family: var(--f-num); font-weight: 500; color: var(--strong); }
+body.glass.navy.swiss:not(#_) .g-note { background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 12px; font-size: 11px; color: var(--muted); }
+body.glass.navy.swiss:not(#_) .g-note b { color: #3f3f46; font-weight: 500; }
+[data-theme="dark"] body.glass.navy.swiss:not(#_) .g-note b { color: var(--body); }
+body.glass.navy.swiss:not(#_) .g-note::before { width: 16px; height: 16px; background: var(--soft-3); color: #52525b; box-shadow: none; }
+
+/* ------------------------------------------------------------------ Dashboard */
+body.glass.swiss:not(#_) .dash-fresh li { border-radius: 12px; background: var(--card); box-shadow: var(--sh); font-family: var(--f-num); font-size: 11px; }
+body.glass.swiss:not(#_) .dash-more, body.glass.swiss:not(#_) .attn-more summary { font-family: var(--f-num); color: var(--primary); }
+body.glass.swiss:not(#_) .attn { border-radius: 8px; background: var(--soft); border: 0; }
+body.glass.swiss:not(#_) .attn.bad { background: color-mix(in srgb, var(--bad-bg) 30%, var(--card)); }
+body.glass.swiss:not(#_) .attn.warn { background: color-mix(in srgb, var(--warn-bg) 70%, var(--card)); }
+body.glass.swiss:not(#_) .attn-tone, body.glass.swiss:not(#_) .attn-area { font-family: var(--f-num); }
+body.glass.swiss:not(#_) .attn-area { border-radius: 4px; background: var(--soft-2); border: 0; }
+body.glass.swiss:not(#_) .attn-clear { border-radius: 8px; border: 0; }
+body.glass.swiss:not(#_) .attn-title { font-size: 14px; font-weight: 600; }
+body.glass.swiss:not(#_) :is(.money-lines dd, .health-stats dd, .bb-sum-share b, .bb-sum-who) { font-family: var(--f-num); }
+body.glass.swiss:not(#_) .health-num b { font-family: var(--f-num); font-weight: 700; font-size: 28px; letter-spacing: -.01em; }
+body.glass.swiss:not(#_) .money-days .bar { background: var(--primary); }
+body.glass.swiss:not(#_) .money-days li.neg .bar { background: var(--bad); }
+
+/* ------------------------------------------------------------------ Listings */
+body.glass.swiss:not(#_) .ls-prod .pill { font-family: var(--f-body); font-size: 10px; font-weight: 600; letter-spacing: 0; text-transform: none;
+  padding: 0 5px; border-radius: 2px; background: var(--soft-2); color: var(--muted); }
+body.glass.swiss:not(#_) .ls-prod .pill.ink { background: var(--soft-2); color: var(--muted); }
+body.glass.swiss:not(#_) .ls-prod a { font-family: var(--f-num); font-size: 13px; font-weight: 700; color: var(--sub); text-decoration: none; }
+body.glass.swiss:not(#_) .ls-name { font-size: 14px; font-weight: 500; line-height: 20px; color: var(--text); }
+body.glass.swiss:not(#_) tr:hover .ls-name { color: var(--primary); }
+body.glass.swiss:not(#_) .ls-stock b { font-family: var(--f-num); font-size: 13px; }
+body.glass.swiss:not(#_) :is(.ls-units b, .ls-flags) { font-family: var(--f-num); }
+body.glass.swiss:not(#_) .ls-flags a { border-radius: 12px; }
+
+/* ------------------------------------------------------------------ Análisis Productos (Buy Box) */
+body.glass.swiss:not(#_) .bb-menu { padding: 16px 10px 12px; top: 24px; }
+body.glass.swiss:not(#_) .bb-menu li a { border-radius: 8px; border: 0; color: var(--text); text-decoration: none; }
+body.glass.swiss:not(#_) .bb-menu li a:hover { background: var(--soft); }
+body.glass.swiss:not(#_) .bb-menu li a.on { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+[data-theme="dark"] body.glass.swiss:not(#_) .bb-menu li a.on { background: var(--ink); color: var(--on-ink); }
+body.glass.swiss:not(#_) .bb-menu li a.on .muted { color: color-mix(in srgb, var(--on-ink) 75%, transparent); }
+body.glass.swiss:not(#_) .bb-menu .mono { font-size: 13px; font-weight: 700; }
+body.glass.swiss:not(#_) .daynav .range { font-family: var(--f-num); color: var(--text); font-size: 12px; font-weight: 700; }
+body.glass.swiss:not(#_) .bb-ring .track { stroke: var(--soft-3); }
+body.glass.swiss:not(#_) .bb-ring .fill { stroke: var(--primary); filter: none; }
+body.glass.swiss:not(#_) .g-dark.bad .bb-ring .fill { stroke: var(--bad); filter: none; }
+body.glass.swiss:not(#_) .bb-ring b { font-family: var(--f-num); font-weight: 700; font-size: 28px; letter-spacing: -.01em; color: var(--text); }
+body.glass.swiss:not(#_) .bb-ring span { font-family: var(--f-num); font-size: 11px; color: var(--sub); }
+body.glass.swiss:not(#_) :is(.bb-now, .bb-fast) { color: var(--sub); }
+body.glass.swiss:not(#_) .bb-now b { color: var(--text); font-family: var(--f-num); }
+body.glass.swiss:not(#_) .bb-segs > div { background: var(--soft); color: var(--sub); border-radius: 8px; }
+body.glass.swiss:not(#_) .bb-strip { background: var(--soft); border-radius: 8px; }
+body.glass.swiss:not(#_) .bb-tiles div { border-radius: 8px; background: var(--soft-3); align-items: flex-start; text-align: left; padding: 8px; }
+body.glass.swiss:not(#_) .bb-tiles b { font-family: var(--f-head); font-size: 16px; color: var(--text); }
+body.glass.swiss:not(#_) .bb-tiles span { font-size: 10px; font-weight: 600; color: var(--sub); }
+body.glass.swiss:not(#_) .bb-tiles .bad { background: color-mix(in srgb, var(--bad-bg) 30%, var(--card)); }
+body.glass.swiss:not(#_) .bb-tiles .bad b { color: var(--bad); }
+body.glass.swiss:not(#_) .bb-tiles .warn { background: var(--warn-bg); } body.glass.swiss:not(#_) .bb-tiles .warn b { color: var(--warn-num); }
+body.glass.swiss:not(#_) .bb-tiles .ok { background: var(--ok-bg); } body.glass.swiss:not(#_) .bb-tiles .ok b { color: var(--ok); }
+body.glass.swiss:not(#_) .bb-bar b { font-family: var(--f-num); color: var(--text); }
+body.glass.swiss:not(#_) .bb-events time { justify-self: start; align-self: start; font-family: var(--f-head); font-size: 12px; font-weight: 700; color: var(--sub);
+  background: var(--soft-2); padding: 2px 8px; border-radius: 4px; }
+body.glass.swiss:not(#_) .bb-events .ev { border-radius: 8px; background: transparent; border: 0; border-bottom: 1px solid var(--line); box-shadow: none; padding: 4px 0 10px; }
+body.glass.swiss:not(#_) .bb-events .ev:hover { background: transparent; }
+body.glass.swiss:not(#_) .bb-events .ev b { font-size: 14px; font-weight: 600; }
+body.glass.swiss:not(#_) .bb-events li i { box-shadow: none !important; }
+body.glass.swiss:not(#_) .g-donut b { font-family: var(--f-num); font-weight: 700; font-size: 28px; color: var(--text); }
+body.glass.swiss:not(#_) .g-legend li { color: var(--text); }
+body.glass.swiss:not(#_) .g-legend b { font-family: var(--f-num); }
+
+/* ------------------------------------------------------------------ Catálogos */
+body.glass.swiss:not(#_) .drop { background: var(--soft); border: 2px dashed var(--edge); border-radius: 8px; box-shadow: none; }
+body.glass.swiss:not(#_) .drop:hover { border-color: var(--primary); }
+body.glass.swiss:not(#_) .drop-name { color: var(--primary); }
+body.glass.swiss:not(#_) td > a strong { font-size: 14px; font-weight: 500; }
+
+/* ------------------------------------------------------------------ Ajustes Swiss sobre lo anterior */
+body.glass.swiss:not(#_) .g-seg a { border-radius: 999px; }
+body.glass.swiss:not(#_) :is(.btn-ink, .bb-add button) { font-weight: 600; padding: 7px 16px; }
+body.glass.swiss:not(#_) :is(.btn-ink, .bb-add button):active, body.glass.swiss:not(#_) .btn-ghost:active { transform: scale(.98); }
+body.glass.swiss:not(#_) .btn-ghost { background: var(--soft); border: 1px solid var(--line); box-shadow: none; font-weight: 600; }
+body.glass.swiss:not(#_) .btn-ghost:hover { background: var(--line); }
+body.glass.swiss:not(#_) th, body.glass.navy.swiss:not(#_) th { background: transparent; color: var(--sub); font-family: var(--f-body); font-size: 11px; font-weight: 500;
+  letter-spacing: .02em; text-transform: uppercase; border-bottom: 1px solid var(--line); border-radius: 0; }
+body.glass.swiss:not(#_) :is(th:first-child, th:last-child) { border-radius: 0; }
+body.glass.swiss:not(#_) tbody tr:hover td { background: var(--soft); }
+body.glass.navy.swiss:not(#_) .table-scroll { border: 0; border-radius: 0; }
+body.glass.swiss:not(#_) .g-card, body.glass.swiss:not(#_) .g-dark { padding: 24px; }
+body.glass.swiss:not(#_) .g-card-head { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+body.glass.swiss:not(#_) :is(h2, h3).sec, body.glass.navy.swiss:not(#_) :is(h2, h3).sec { font-size: 16px; font-weight: 600; line-height: 24px;
+  letter-spacing: -.01em; text-transform: none; color: var(--head); }
+body.glass.swiss:not(#_) .g-title h1, body.glass.navy.swiss:not(#_) .g-title h1, body.glass.swiss:not(#_) .dash-verdict h1 { font-size: 28px; line-height: 34px;
+  font-weight: 700; letter-spacing: -.02em; }
+body.glass.swiss:not(#_) .g-label { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+body.glass.swiss:not(#_) .g-big { font-size: 36px; letter-spacing: -.02em; }
+body.glass.swiss:not(#_) .pill { font-family: var(--f-body); letter-spacing: .02em; }
+body.glass.swiss:not(#_) .g-title .pill { background: var(--card); border: 1px solid var(--line); color: var(--sub); text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 500; }
+/* Atención hoy: filas separadas por una línea, como en Stitch; el color queda en el punto y la etiqueta */
+body.glass.swiss:not(#_) .attn-list { gap: 0; }
+body.glass.swiss:not(#_) .attn, body.glass.swiss:not(#_) .attn:is(.bad, .warn) { background: transparent; border: 0; border-bottom: 1px solid var(--line);
+  border-radius: 0; padding: 16px 4px; box-shadow: none; }
+body.glass.swiss:not(#_) .attn:last-child { border-bottom: 0; }
+body.glass.swiss:not(#_) .attn-tone { font-size: 10px; letter-spacing: .04em; }
+body.glass.swiss:not(#_) .attn-area { background: var(--soft-3); color: var(--sub); font-weight: 500; border-radius: 4px; }
+body.glass.swiss:not(#_) :is(.g-box, .g-gauge, .g-legend li, .g-list li, .bb-segs > div, .bb-strip, .bb-tiles div) { border-radius: 14px; }
+body.glass.swiss:not(#_) .bb-menu li a { border-radius: 12px; }
+
+/* ------------------------------------------------------------------ Pantallas pequeñas: la barra lateral pasa a barra superior */
+@media (max-width: 1023px) {
+  body.glass.swiss:not(#_) .top { position: sticky; bottom: auto; width: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  body.glass.swiss:not(#_) .top-inner { height: auto; padding: 10px 16px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  body.glass.swiss:not(#_) .top-right { flex: 1 1 100%; flex-direction: row; align-items: center; min-width: 0; }
+  body.glass.swiss:not(#_) nav { flex-direction: row; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  body.glass.swiss:not(#_) nav a { white-space: nowrap; padding: 7px 12px; font-size: 13px; gap: 8px; }
+  body.glass.swiss:not(#_) nav a svg { width: 16px; height: 16px; }
+  body.glass.swiss:not(#_) .theme-toggle span { padding: 4px 8px; font-size: 11px; }
+  body.glass.swiss:not(#_) :is(main, .foot) { margin-left: auto; margin-right: auto; padding-left: 16px; padding-right: 16px; }
+  body.glass.swiss:not(#_) .g-title h1, body.glass.swiss:not(#_) .dash-verdict h1 { font-size: 22px; line-height: 28px; }
+  body.glass.swiss:not(#_) input[type=search] { width: 100%; }
+  body.glass.swiss:not(#_) .g-card, body.glass.swiss:not(#_) .g-dark { padding: 16px; }
+  body.glass.swiss:not(#_) .bb-menu { top: 120px; }
+}
