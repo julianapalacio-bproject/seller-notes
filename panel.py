@@ -805,23 +805,31 @@ def costes():
         f = request.form
         sku = f["sku"].strip()
         coste = an.parse_money(f.get("coste"))
+        desde = f.get("desde") or datetime.now(sn.TZ).date().isoformat()
+        if f.get("borrar"):  # quitar un tramo de coste (nunca el único del SKU)
+            if con.execute("SELECT COUNT(*) FROM costes WHERE sku=?", (sku,)).fetchone()[0] > 1:
+                con.execute("DELETE FROM costes WHERE sku=? AND desde=?", (sku, desde))
+                con.commit()
+            return redirect(url_for("costes"))
         if sku and coste is not None:
             prev = con.execute("SELECT asin, nombre FROM costes WHERE sku=? ORDER BY desde DESC LIMIT 1", (sku,)).fetchone() or ("", "")
+            iva, envio = an.parse_money(f.get("iva")), an.parse_money(f.get("envio"))
             con.execute("INSERT OR REPLACE INTO costes(sku, desde, coste, envio_fba, iva, asin, nombre) VALUES (?,?,?,?,?,?,?)",
-                        (sku, f.get("desde") or datetime.now(sn.TZ).date().isoformat(), coste,
-                         an.parse_money(f.get("envio")) or 0.0, an.parse_money(f.get("iva")) or 21.0,
+                        (sku, desde, coste, envio or 0.0, 21.0 if iva is None else iva,
                          f.get("asin", "").strip() or prev[0], f.get("nombre", "").strip() or prev[1]))
             con.commit()
+            return redirect(url_for("costes", ok=sku, desde=desde, coste=coste))
         return redirect(url_for("costes"))
-    rows = rt.costs_table(con)
     latest = {}
-    for sku, desde, coste, envio, iva, asin, nombre in rows:
-        latest[sku] = dict(sku=sku, desde=desde, coste=coste, envio=envio, iva=iva, asin=asin, nombre=nombre,
-                           historial=latest.get(sku, {}).get("historial", 0) + 1)
+    for sku, desde, coste, envio, iva, asin, nombre in rt.costs_table(con):
+        hist = latest.get(sku, {}).get("historial", []) + [dict(desde=desde, coste=coste)]
+        latest[sku] = dict(sku=sku, desde=desde, coste=coste, envio=envio, iva=iva, asin=asin, nombre=nombre, historial=hist)
     sold = {r[0] for r in con.execute("SELECT DISTINCT sku FROM fin_lineas WHERE tipo='venta' AND sku IS NOT NULL")}
     missing = sorted(sold - set(latest))
+    a = request.args
+    saved = dict(sku=a["ok"], desde=a.get("desde", ""), coste=float(a.get("coste", 0))) if a.get("ok") else None
     return render_template("costes.html", page="rentabilidad", costs=sorted(latest.values(), key=lambda c: c["sku"]),
-                           missing=missing, today=datetime.now(sn.TZ).date().isoformat())
+                           missing=missing, today=datetime.now(sn.TZ).date().isoformat(), saved=saved)
 
 
 def mark_interrupted_jobs():

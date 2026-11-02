@@ -4,11 +4,13 @@
 <section class="g-card g-head">
   <div>
     <div class="g-title"><h1>Costes por SKU</h1></div>
-    <p class="muted">Coste de compra sin IVA de cada producto. Si un proveedor cambia el precio, guarda el nuevo coste con su fecha «desde»: las ventas anteriores siguen usando el coste antiguo.</p>
+    <p class="muted">Coste de compra sin IVA de cada producto. Cuando empieces a vender un lote con otro precio, escribe el nuevo coste y la fecha «desde» en su fila y pulsa Guardar: las ventas anteriores siguen usando el coste antiguo.</p>
   </div>
   <a class="btn-ghost" href="{{ url_for('rentabilidad') }}">← Volver a Profit</a>
 </section>
 
+{% macro fecha(d) %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[:4] }}{% endmacro %}
+{% if saved %}<div class="info" role="status">Guardado: {{ saved.sku }} a {{ ('%.2f €' % saved.coste).replace('.', ',') }} desde el {{ fecha(saved.desde) }}. Las ventas desde ese día usan este coste; las anteriores, el coste que tenían.</div>{% endif %}
 {% if missing %}<div class="alert" role="alert">SKU vendidos sin coste: {{ missing | join(', ') }}. Añádelos abajo para que su beneficio sea correcto.</div>{% endif %}
 
 <section class="g-card flush">
@@ -20,7 +22,16 @@
     {% for c in costs %}
       <tr>
         <td class="co-sku"><strong>{{ c.sku }}</strong><div class="muted small">{{ c.asin }} · {{ c.nombre[:55] }}</div></td>
-        <td class="co-desde">{{ c.desde }}{% if c.historial > 1 %}<div class="muted small">{{ c.historial }} cambios</div>{% endif %}</td>
+        <td class="co-desde">{{ fecha(c.desde) }}{% if c.historial | length > 1 %}
+          <details class="co-hist"><summary>{{ c.historial | length }} costes</summary>
+            <ul>{% for h in c.historial | reverse %}
+              <li><span>desde {{ fecha(h.desde) }}</span><strong>{{ ('%.2f €' % h.coste).replace('.', ',') }}</strong>
+                <form method="post" onsubmit="return confirm('¿Quitar el coste de {{ c.sku }} desde el {{ fecha(h.desde) }}?')">
+                  <input type="hidden" name="sku" value="{{ c.sku }}"><input type="hidden" name="desde" value="{{ h.desde }}">
+                  <button type="submit" name="borrar" value="1" class="co-del" aria-label="Quitar el coste desde el {{ fecha(h.desde) }}">Quitar</button>
+                </form></li>
+            {% endfor %}</ul>
+          </details>{% endif %}</td>
         <td class="r co-coste"><span class="co-label">Coste/u </span>{{ ('%.2f €' % c.coste).replace('.', ',') }}</td>
         <td class="r co-envio"><span class="co-label">Envío FBA/u </span>{{ ('%.2f €' % c.envio).replace('.', ',') }}</td>
         <td class="r co-iva"><span class="co-label">IVA </span>{{ '%g' % c.iva }} %</td>

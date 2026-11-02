@@ -7,12 +7,15 @@
   <div>
     <div class="g-title"><h1>Profit</h1>
       {% if last %}<span class="pill ok"><i class="dot me"></i> Amazon liquidado hasta {{ last | local }}</span>{% endif %}</div>
-    <p class="muted small">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido · <a href="{{ url_for('costes') }}">Costes por SKU</a></p>
+    <p class="muted small">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido</p>
   </div>
+  <div class="g-head-actions">
+  <a class="btn-ghost" href="{{ url_for('costes') }}">Costes de producto</a>
   <form method="post" action="{{ url_for('rentabilidad_actualizar') }}" onsubmit="const b=this.querySelector('button'); b.disabled=true; b.classList.add('is-busy'); b.textContent='Actualizando…'">
     <input type="hidden" name="volver" value="{{ request.full_path }}">
     <button type="submit" class="btn-ink{{ ' is-busy' if sync.running }}" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
   </form>
+  </div>
 </section>
 
 {% if sync.running or sync.msg %}<div class="{{ 'alert' if sync.msg.startswith('Error') else 'info' }}" id="sync-msg" data-running="{{ 1 if sync.running else 0 }}">{{ sync.msg }}</div>{% endif %}
