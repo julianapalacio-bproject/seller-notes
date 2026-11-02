@@ -1392,7 +1392,7 @@ body.glass:is(.apex, .navy) :is(input[type=search], input[type=text], input[type
 body.glass #costes button.co-del { background: none; border: 0; border-radius: 0; min-height: 0; box-shadow: none; padding: 2px 4px; font: inherit; font-size: 12px; color: var(--muted); text-decoration: underline; cursor: pointer; }
 body.glass #costes button.co-del:hover { color: var(--bad); }
 
-/* Dashboard: tarjetas de periodos (Hoy, Ayer, 7 días, Este mes, Mes pasado, Previsión), configurables */
+/* Profit: tarjetas de periodos (Hoy, Ayer, 7 días, Este mes, Mes pasado, Previsión), configurables */
 .dash-tiles { margin-bottom: var(--gap, 24px); }
 .tiles-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; position: relative; }
 .tiles-head h2.sec { margin: 0; }

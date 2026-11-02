@@ -470,7 +470,7 @@ def attention_items(con, rows, bb, money, fresh):
     return items
 
 
-# ---------------------------------------------------------------- dashboard: tarjetas de periodos (como Sellerboard)
+# ---------------------------------------------------------------- Profit: tarjetas de periodos (como Sellerboard)
 TILE_OPTIONS = {
     "hoy": "Hoy", "ayer": "Ayer", "7d": "Últimos 7 días", "esta_semana": "Esta semana", "semana_pasada": "Semana pasada",
     "30d": "Últimos 30 días", "este_mes": "Este mes", "prevision": "Previsión del mes", "mes_pasado": "Mes pasado",
@@ -549,7 +549,7 @@ def period_tiles(con, today):
     return tiles
 
 
-@app.route("/dashboard/tarjetas", methods=["POST"])
+@app.route("/rentabilidad/tarjetas", methods=["POST"])
 def guardar_tarjetas():
     con = sn.db()
     tiles_config(con)
@@ -557,7 +557,7 @@ def guardar_tarjetas():
     keys = [k for k in keys if k in TILE_OPTIONS] or TILES_DEFAULT
     with con:
         con.execute("INSERT OR REPLACE INTO ajustes VALUES ('tarjetas', ?)", (json.dumps(keys),))
-    return redirect(url_for("home"))
+    return redirect(url_for("rentabilidad"))
 
 
 @app.route("/")
@@ -620,8 +620,7 @@ def home():
         sin_stock=sum(1 for r in rows if r["stock"] == 0), unidades=sum(r["stock"] or 0 for r in rows),
         con_errores=sum(1 for r in rows if r["errores"]))
     return render_template("dashboard.html", page="dashboard", items=items, fresh=fresh, bb=bb, profit=profit,
-                           health=health, eur=eur, tiles=period_tiles(con, today), tile_options=TILE_OPTIONS,
-                           tiles_max=TILES_MAX,
+                           health=health, eur=eur,
                            fecha=f"{DIAS_ES[now.weekday()].capitalize()} {now.day} de {MONTHS_ES[now.month].lower()} · {now:%H:%M}")
 
 
@@ -865,7 +864,8 @@ def rentabilidad():
     return render_template("rentabilidad.html", page="rentabilidad", rows=rows, acc=acc, tot=tot, periods=periods,
                            chart=json.dumps([dict(l=p["label"], p=round(p["producto"], 2), n=round(p["neto"], 2)) for p in periods]),
                            start=start, end=end, group=group, groups=GROUPS, preset=preset, presets=presets,
-                           last=last, sync=_sync_state, error=request.args.get("error"))
+                           last=last, sync=_sync_state, error=request.args.get("error"),
+                           tiles=period_tiles(con, today), tile_options=TILE_OPTIONS, tiles_max=TILES_MAX)
 
 
 @app.route("/rentabilidad/actualizar", methods=["POST"])

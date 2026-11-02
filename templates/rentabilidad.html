@@ -20,6 +20,8 @@
 
 {% if sync.running or sync.msg %}<div class="{{ 'alert' if sync.msg.startswith('Error') else 'info' }}" id="sync-msg" data-running="{{ 1 if sync.running else 0 }}">{{ sync.msg }}</div>{% endif %}
 
+{% include "_resumen.html" %}
+
 <section class="g-filters">
   <div class="g-seg">
     {% for key, (label, a, b) in presets.items() %}
