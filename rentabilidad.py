@@ -13,7 +13,7 @@ Uso:
 """
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import requests
 
@@ -385,7 +385,7 @@ def aggregate(con, start=None, end=None, group="mes"):
 
     skus, account = {}, {}
     for posted, tipo, pedido, sku, qty, concepto, importe in con.execute(
-            "SELECT posted, tipo, pedido, sku, cantidad, concepto, importe FROM fin_lineas"):
+            "SELECT posted, tipo, pedido, sku, cantidad, concepto, importe FROM fin_lineas WHERE tipo != 'publicidad'"):
         d = take(purchase.get(pedido, posted) if tipo == "venta" else posted)
         if d is None:
             continue
@@ -416,10 +416,28 @@ def aggregate(con, start=None, end=None, group="mes"):
                 pass
             else:
                 r["comisiones"] += importe  # cualquier otra tarifa por unidad
-        elif tipo in ("servicio", "publicidad", "ajuste"):
+        elif tipo in ("servicio", "ajuste"):
             label = ACCOUNT_LABELS.get(concepto, concepto)
             acc = account.setdefault(k, {})
             acc[label] = acc.get(label, 0.0) + importe
+
+    # Publicidad: Amazon la cobra en facturas (el día 2 de cada mes, o antes si llegas al límite). Cada factura
+    # se reparte a partes iguales entre los días que cubre: desde el día siguiente a la factura anterior.
+    prev = None
+    for posted, concepto, importe in con.execute(
+            "SELECT posted, concepto, importe FROM fin_lineas WHERE tipo='publicidad' ORDER BY posted"):
+        last = local_date(posted)
+        first = max(prev + timedelta(days=1) if prev else last - timedelta(days=30), last - timedelta(days=30))
+        first = min(max(first, date.fromisoformat(DEFAULT_FROM)), last)
+        prev = last
+        days = (last - first).days + 1
+        label = ACCOUNT_LABELS.get(concepto, concepto)
+        for i in range(days):
+            d = first + timedelta(days=i)
+            if (start and d < start) or (end and d > end):
+                continue
+            acc = account.setdefault(period_key(d, group), {})
+            acc[label] = acc.get(label, 0.0) + importe / days
 
     # Pedidos enviados que Amazon aún no ha liquidado: comisiones y FBA estimadas con el histórico del SKU
     settled = {r[0] for r in con.execute("SELECT DISTINCT pedido FROM fin_lineas WHERE tipo='venta'")}
