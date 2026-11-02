@@ -1391,3 +1391,52 @@ body.glass:is(.apex, .navy) :is(input[type=search], input[type=text], input[type
 .co-hist form { margin: 0; }
 body.glass #costes button.co-del { background: none; border: 0; border-radius: 0; min-height: 0; box-shadow: none; padding: 2px 4px; font: inherit; font-size: 12px; color: var(--muted); text-decoration: underline; cursor: pointer; }
 body.glass #costes button.co-del:hover { color: var(--bad); }
+
+/* Dashboard: tarjetas de periodos (Hoy, Ayer, 7 días, Este mes, Mes pasado, Previsión), configurables */
+.dash-tiles { margin-bottom: var(--gap, 24px); }
+.tiles-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; position: relative; }
+.tiles-head h2.sec { margin: 0; }
+.tiles-config summary { display: inline-flex; }
+.tiles-form { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; width: min(320px, 100%); display: grid; gap: 10px;
+  padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--sh-md); }
+.tiles-form p { margin: 0; }
+.tiles-form label { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.tiles-form select { min-height: 36px; }
+.tiles-grid { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (max-width: 1360px) { .tiles-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ptile { display: flex; flex-direction: column; gap: 12px; padding: 14px 13px; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--r-card, 16px); box-shadow: var(--sh); min-width: 0; }
+.ptile.forecast { background: var(--soft, var(--card)); border-style: dashed; }
+.ptile header { display: flex; flex-direction: column; gap: 2px; }
+.ptile h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+.ptile header span { font-size: 12px; color: var(--sub, var(--muted)); }
+.ptile-sales { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.ptile-sales span, .ptile-net span { font-size: 11px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--sub, var(--muted)); }
+.ptile-sales b { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.15; }
+.ptile-lines, .ptile-more dl { margin: 0; display: grid; gap: 6px; }
+.ptile-lines > div, .ptile-more dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 8px; font-size: 12px; }
+.ptile-lines dt, .ptile-more dt { color: var(--muted); }
+.ptile-lines dd, .ptile-more dd { margin: 0 0 0 auto; font-weight: 600; color: var(--text); text-align: right; }
+.ptile-net { margin: 0; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.ptile-net b { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.ptile-net.pos b { color: var(--ok); }
+.ptile-net.neg b { color: var(--bad); }
+.ptile-net small { font-size: 11px; color: var(--muted); }
+.ptile-more summary { font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.ptile-more dl { margin-top: 10px; }
+.ptile-more dl > div.sum { padding-top: 6px; border-top: 1px solid var(--line); }
+.ptile-more dl > div.sum :is(dt, dd) { font-weight: 700; color: var(--text); }
+.ptile-more p { margin: 8px 0 0; }
+.ptile-go { margin-top: auto; font-size: 12px; font-weight: 600; color: var(--text); text-decoration: none; }
+.ptile-go:hover { text-decoration: underline; }
+.ptile-note { margin: -6px 0 0; font-size: 11px; color: var(--sub, var(--muted)); }
+.money-trend { margin: 0 0 16px; font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.money-trend b { font-size: 16px; color: var(--text); }
+.money-trend b.neg, .money-trend .neg { color: var(--bad); }
+.money-trend .pos { color: var(--ok); }
+@media (max-width: 560px) {
+  .tiles-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .ptile { padding: 14px; }
+  .ptile-sales b { font-size: 18px; }
+  .ptile-net b { font-size: 17px; }
+}

@@ -16,6 +16,61 @@
   </ul>
 </section>
 
+<section class="dash-tiles" aria-labelledby="tiles-title">
+  <div class="tiles-head">
+    <h2 class="sec" id="tiles-title">Resumen</h2>
+    <details class="tiles-config">
+      <summary class="btn-ghost small">Configurar</summary>
+      <form method="post" action="{{ url_for('guardar_tarjetas') }}" class="tiles-form">
+        <p class="muted small">Elige qué periodo muestra cada tarjeta.</p>
+        {% for i in range(tiles_max) %}
+        <label><span>Tarjeta {{ i + 1 }}</span>
+          <select name="t{{ i }}">
+            <option value="">— Ninguna —</option>
+            {% for k, v in tile_options.items() %}<option value="{{ k }}" {{ 'selected' if tiles[i] is defined and tiles[i].key == k }}>{{ v }}</option>{% endfor %}
+          </select></label>
+        {% endfor %}
+        <button type="submit" class="btn-ink">Guardar</button>
+      </form>
+    </details>
+  </div>
+  {% macro uds(v) %}{{ '%.0f' % v }}{% endmacro %}
+  <div class="tiles-grid" style="--n: {{ tiles | length }}">
+    {% for tile in tiles %}{% set t = tile.t %}
+    <article class="ptile{{ ' forecast' if tile.forecast }}">
+      <header><h3>{{ tile.label }}</h3><span>{{ tile.dates }}</span></header>
+      <p class="ptile-sales"><span>Ventas</span><b>{{ eur(t.ventas) }}</b></p>
+      <dl class="ptile-lines">
+        <div><dt>Pedidos / uds</dt><dd>{{ uds(t.pedidos) }} / {{ uds(t.uds) }}</dd></div>
+        <div><dt>Devoluciones</dt><dd>{{ uds(t.devueltas) }}</dd></div>
+        <div><dt>Publicidad</dt><dd>{{ eur(t.publicidad) }}</dd></div>
+        <div><dt>Tarifas</dt><dd>{{ eur(t.amazon) }}</dd></div>
+      </dl>
+      <p class="ptile-net {{ 'neg' if t.neto < 0 else 'pos' }}"><span>Beneficio neto</span><b>{{ eur(t.neto) }}</b>
+        <small>{% if t.margen is not none %}Margen {{ ('%.1f' % t.margen).replace('.', ',') }}&nbsp;%{% endif %}{% if t.roi is not none %} · ROI {{ '%.0f' % t.roi }}&nbsp;%{% endif %}</small></p>
+      <details class="ptile-more">
+        <summary>Más detalle</summary>
+        <dl>
+          <div><dt>Ventas</dt><dd>{{ eur(t.ventas) }}</dd></div>
+          <div><dt>Devoluciones</dt><dd>{{ eur(t.devoluciones) }}</dd></div>
+          <div><dt>IVA</dt><dd>{{ eur(-t.iva) }}</dd></div>
+          <div><dt>Comisiones</dt><dd>{{ eur(t.comisiones) }}</dd></div>
+          <div><dt>FBA</dt><dd>{{ eur(t.fba) }}</dd></div>
+          {% if t.reembolsos %}<div><dt>Reembolsos</dt><dd>{{ eur(t.reembolsos) }}</dd></div>{% endif %}
+          <div><dt>Coste</dt><dd>{{ eur(-t.coste) }}</dd></div>
+          <div><dt>Publicidad</dt><dd>{{ eur(t.publicidad) }}</dd></div>
+          <div><dt>Otros gastos</dt><dd>{{ eur(t.otros) }}</dd></div>
+          <div class="sum"><dt>Beneficio neto</dt><dd>{{ eur(t.neto) }}</dd></div>
+        </dl>
+        <p class="muted small">Ventas con IVA. Otros gastos: suscripción, envíos a Amazon, almacenaje y retiradas.{% if t.estimadas %} {{ uds(t.estimadas) }} uds con comisiones estimadas.{% endif %}</p>
+      </details>
+      <a class="ptile-go" href="{{ tile.href }}">{% if tile.forecast %}Ver lo que va de mes{% else %}Ver en Profit{% endif %} <span aria-hidden="true">→</span></a>
+      {% if tile.forecast %}<p class="ptile-note">Lo que va de mes más el ritmo de los últimos 30 días.</p>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="g-card dash-attn" aria-labelledby="attn-title">
   <div class="g-card-head">
     <h2 class="sec" id="attn-title">Atención hoy</h2>
@@ -81,16 +136,12 @@
   <div class="dash-side">
   <section class="g-card dash-money" aria-labelledby="money-title">
     <div class="g-card-head">
-      <h2 class="sec" id="money-title">Beneficio neto</h2>
+      <h2 class="sec" id="money-title">Beneficio neto · 14 días</h2>
       <a class="dash-more" href="{{ url_for('rentabilidad') }}">Profit →</a>
     </div>
     {% set diff = profit.semana - profit.semana_antes %}
-    <dl class="money-lines">
-      <div><dt>Ayer</dt><dd class="{{ 'neg' if profit.ayer.neto < 0 }}">{{ eur(profit.ayer.neto) }}</dd></div>
-      <div><dt>Últimos 7 días</dt><dd class="{{ 'neg' if profit.semana < 0 }}">{{ eur(profit.semana) }}
-        <small class="{{ 'pos' if diff >= 0 else 'neg' }}">{{ '+' if diff >= 0 }}{{ eur(diff) }} vs. 7 días antes</small></dd></div>
-      <div><dt>Este mes</dt><dd class="{{ 'neg' if profit.mes < 0 }}">{{ eur(profit.mes) }}</dd></div>
-    </dl>
+    <p class="money-trend">Últimos 7 días cerrados: <b class="{{ 'neg' if profit.semana < 0 }}">{{ eur(profit.semana) }}</b>
+      <small class="{{ 'pos' if diff >= 0 else 'neg' }}">{{ '+' if diff >= 0 }}{{ eur(diff) }} vs. los 7 anteriores</small></p>
     {% set top = [profit.dias | map(attribute='neto') | map('abs') | max, 0.01] | max %}
     <figure class="money-days" aria-label="Beneficio neto de los últimos 14 días">
       <ol>

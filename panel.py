@@ -470,6 +470,96 @@ def attention_items(con, rows, bb, money, fresh):
     return items
 
 
+# ---------------------------------------------------------------- dashboard: tarjetas de periodos (como Sellerboard)
+TILE_OPTIONS = {
+    "hoy": "Hoy", "ayer": "Ayer", "7d": "Últimos 7 días", "esta_semana": "Esta semana", "semana_pasada": "Semana pasada",
+    "30d": "Últimos 30 días", "este_mes": "Este mes", "prevision": "Previsión del mes", "mes_pasado": "Mes pasado",
+    "todo": "Desde el inicio",
+}
+TILES_DEFAULT = ["hoy", "ayer", "7d", "este_mes", "mes_pasado", "prevision"]
+TILES_MAX = 6
+ADS_LABEL = rt.ACCOUNT_LABELS["ProductAds"]
+
+
+def tile_range(key, today):
+    """(desde, hasta) de una tarjeta; la previsión abarca el mes entero."""
+    first = today.replace(day=1)
+    monday = today - timedelta(days=today.weekday())
+    if key == "esta_semana":
+        return monday, today
+    if key == "semana_pasada":
+        return monday - timedelta(days=7), monday - timedelta(days=1)
+    if key == "prevision":
+        return first, (first + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    return date_presets(today)[key][1:]
+
+
+def tiles_config(con):
+    con.execute("CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT)")
+    r = con.execute("SELECT valor FROM ajustes WHERE clave='tarjetas'").fetchone()
+    keys = [k for k in json.loads(r[0]) if k in TILE_OPTIONS] if r else []
+    return keys or TILES_DEFAULT
+
+
+def period_tiles(con, today):
+    """Una tarjeta por periodo elegido: ventas, pedidos, devoluciones, publicidad, gastos y beneficio neto."""
+    keys = tiles_config(con)
+    ranges = {k: tile_range(k, today) for k in keys}
+    start = min([a for a, _ in ranges.values()] + [today - timedelta(days=30)])
+    skus, account = rt.aggregate(con, start, today, "dia")
+    orders = defaultdict(int)
+    for compra, in con.execute("SELECT compra FROM pedidos WHERE estado != 'Canceled' AND compra >= ?",
+                               ((start - timedelta(days=1)).isoformat(),)):
+        orders[rt.local_date(compra).isoformat()] += 1
+
+    def total(a, b):
+        t = defaultdict(float)
+        d = a
+        while d <= b:
+            k = d.isoformat()
+            for r in skus.get(k, {}).values():
+                for f in ("ventas", "devoluciones", "ingresos", "comisiones", "fba", "reembolsos", "coste", "beneficio",
+                          "uds", "devueltas", "estimadas"):
+                    t[f] += r[f]
+            for label, v in account.get(k, {}).items():
+                t["publicidad" if label == ADS_LABEL else "otros"] += v
+            t["pedidos"] += orders.get(k, 0)
+            d += timedelta(days=1)
+        return t
+
+    tiles = []
+    for k in keys:
+        a, b = ranges[k]
+        if k == "prevision":  # lo que va de mes hasta ayer + el ritmo diario de los últimos 30 días cerrados
+            t, rate = total(a, today - timedelta(days=1)), total(today - timedelta(days=30), today - timedelta(days=1))
+            left = (b - today).days + 1
+            for f, v in rate.items():
+                t[f] += v / 30 * left
+        else:
+            t = total(a, b)
+        t["iva"] = t["ventas"] + t["devoluciones"] - t["ingresos"]
+        t["amazon"] = t["comisiones"] + t["fba"]
+        t["neto"] = t["beneficio"] + t["publicidad"] + t["otros"]
+        t["margen"] = 100 * t["neto"] / t["ingresos"] if t["ingresos"] else None
+        t["roi"] = 100 * t["neto"] / t["coste"] if t["coste"] > 0 else None
+        fmt = lambda d: d.strftime("%d/%m")
+        tiles.append(dict(key=k, label=TILE_OPTIONS[k], t=t, forecast=k == "prevision",
+                          dates=fmt(a) if a == b else f"{fmt(a)} – {fmt(b)}",
+                          href=url_for("rentabilidad", desde=a.isoformat(), hasta=min(b, today).isoformat())))
+    return tiles
+
+
+@app.route("/dashboard/tarjetas", methods=["POST"])
+def guardar_tarjetas():
+    con = sn.db()
+    tiles_config(con)
+    keys = [request.form.get(f"t{i}", "") for i in range(TILES_MAX)]
+    keys = [k for k in keys if k in TILE_OPTIONS] or TILES_DEFAULT
+    with con:
+        con.execute("INSERT OR REPLACE INTO ajustes VALUES ('tarjetas', ?)", (json.dumps(keys),))
+    return redirect(url_for("home"))
+
+
 @app.route("/")
 def home():
     sn.ASINS[:] = sn.read_asins()
@@ -530,7 +620,8 @@ def home():
         sin_stock=sum(1 for r in rows if r["stock"] == 0), unidades=sum(r["stock"] or 0 for r in rows),
         con_errores=sum(1 for r in rows if r["errores"]))
     return render_template("dashboard.html", page="dashboard", items=items, fresh=fresh, bb=bb, profit=profit,
-                           health=health, eur=eur,
+                           health=health, eur=eur, tiles=period_tiles(con, today), tile_options=TILE_OPTIONS,
+                           tiles_max=TILES_MAX,
                            fecha=f"{DIAS_ES[now.weekday()].capitalize()} {now.day} de {MONTHS_ES[now.month].lower()} · {now:%H:%M}")
 
 
