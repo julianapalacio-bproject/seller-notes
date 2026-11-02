@@ -459,7 +459,6 @@ body.glass .pill.warn { background: var(--warn-bg); color: var(--warn); }
 .ls-stock { min-width: 120px; }
 .ls-stock b { display: block; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
 .g-track.bad span { background: var(--bad) !important; }
-.ls-stock .g-track span { background: var(--ink-3); }
 body.glass tr.warn-row td { background: color-mix(in srgb, var(--bad-bg) 45%, transparent); }
 .ls-count { padding: 0 22px 18px; margin: 0; }
 body.glass .neg { color: var(--bad); } body.glass .pos { color: var(--ok); }
@@ -925,8 +924,6 @@ body.glass.apex .ls-prod a { font-size: 11px; font-weight: 500; color: var(--mut
 body.glass.apex .ls-name { font-size: 12px; font-weight: 600; color: var(--text); margin-top: 2px; }
 body.glass.apex tr:hover .ls-name { color: var(--primary); }
 body.glass.apex .ls-stock b { font-size: 12px; margin-bottom: 6px; }
-body.glass.apex .ls-stock .g-track { max-width: 96px; }
-body.glass.apex .ls-stock .g-track span { background: var(--primary); }
 body.glass.apex tr.warn-row td { background: rgba(255, 218, 214, .1); }
 [data-theme="dark"] body.glass.apex tr.warn-row td { background: rgba(255, 180, 171, .1); }
 body.glass.apex td > .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; }
@@ -1315,7 +1312,6 @@ body.glass.apex .ls-flags a:hover { filter: brightness(.97); text-decoration: un
   body.glass.apex #listings .ls-sku { grid-area: sku; min-width: 0; overflow-wrap: break-word; }
   body.glass.apex #listings .ls-price { grid-area: price; }
   body.glass.apex #listings .ls-stock { grid-area: stock; min-width: 0; }
-  body.glass.apex #listings .ls-stock .g-track { max-width: 200px; }
   body.glass.apex #listings .ls-state { grid-area: state; justify-self: start; }
   body.glass.apex #listings .ls-inc { grid-area: inc; }
   body.glass.apex #listings .ls-inc.none { display: none; }
@@ -1440,3 +1436,32 @@ body.glass #costes button.co-del:hover { color: var(--bad); }
   .ptile-sales b { font-size: 18px; }
   .ptile-net b { font-size: 17px; }
 }
+
+/* Dashboard: avisos en cuadrícula por ASIN; cada tarjeta abre la lista de avisos de ese producto */
+.attn-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.attn-grid > li { display: flex; }
+body.glass:not(#_) .attn-grid button.attn-tile { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0;
+  padding: 14px 16px; text-align: left; font: inherit; font-weight: 400; color: var(--text); cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 14px; box-shadow: var(--sh);
+  transition: border-color .15s var(--ease-out, ease-out), transform .15s var(--ease-out, ease-out); }
+body.glass:not(#_) .attn-grid button.attn-tile.bad { border-left-color: var(--bad); }
+body.glass:not(#_) .attn-grid button.attn-tile.warn { border-left-color: var(--warn-num, var(--warn)); }
+body.glass:not(#_) .attn-grid button.attn-tile:hover { border-color: var(--edge, var(--line)); }
+body.glass:not(#_) .attn-grid button.attn-tile:active { transform: scale(.985); }
+.attn-tile.bad .attn-tone { color: var(--bad-ink); } .attn-tile.bad .dot { background: var(--bad); }
+.attn-tile.warn .attn-tone { color: var(--warn); } .attn-tile.warn .dot { background: var(--warn-num); }
+.attn-tile .dot { width: 8px; height: 8px; }
+.attn-tile-name { font-size: 14px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.attn-tile-id { font-size: 12px; color: var(--sub, var(--muted)); }
+.attn-tile-top { font-size: 12px; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.attn-tile-areas { display: flex; flex-wrap: wrap; gap: 4px; }
+.attn-tile-areas .attn-area { margin: 0; }
+.attn-tile-go { margin-top: auto; padding-top: 4px; font-size: 12px; font-weight: 600; }
+.attn-dialog { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 20px; color: var(--text);
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--sh-md); }
+.attn-dialog::backdrop { background: rgba(17, 17, 17, .35); }
+.attn-dialog header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.attn-dialog h3 { margin: 0 0 2px; font-size: 16px; font-weight: 700; }
+.attn-dialog header p { margin: 0; }
+.attn-dialog header form { margin: 0; }
+@media (prefers-reduced-motion: reduce) { body.glass:not(#_) .attn-grid button.attn-tile { transition: none; } body.glass:not(#_) .attn-grid button.attn-tile:active { transform: none; } }

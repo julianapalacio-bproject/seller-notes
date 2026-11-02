@@ -17,7 +17,7 @@
 {% set con_inc = rows | selectattr('lista_incidencias') | list | length %}
 {% set sin_stock = rows | selectattr('stock', 'equalto', 0) | list | length %}
 {% set unidades = tiles[-1][1] %}
-{% set max_stock = [rows | map(attribute='stock') | reject('none') | max | default(0), 1] | max %}
+{% set stock_bajo = rows | selectattr('stock_bajo') | list | length %}
 <section class="g-card g-head">
   <div>
     <div class="g-title"><h1>Listings</h1>
@@ -40,9 +40,10 @@
     <p class="ls-units"><b>{{ '{:,}'.format(unidades).replace(',', '.') }}</b> uds en stock</p>
     <ul class="ls-flags" aria-label="Qué revisar">
       {% if sin_stock %}<li><a class="bad" href="?tab=sin-stock" data-tab="sin-stock">{{ sin_stock }} sin stock</a></li>{% endif %}
+      {% if stock_bajo %}<li><a class="warn" href="?tab=stock-bajo" data-tab="stock-bajo" title="Stock para menos de {{ dias_aviso }} días al ritmo de venta actual">{{ stock_bajo }} con stock bajo</a></li>{% endif %}
       {% if total - activos %}<li><a class="{{ 'bad' if tiles[2][1] or tiles[3][1] else 'warn' }}" href="?tab=no-activo" data-tab="no-activo">{{ total - activos }} no activo{{ 's' if total - activos != 1 }}</a></li>{% endif %}
       {% if con_inc %}<li><a class="warn" href="?tab=incidencias" data-tab="incidencias">{{ con_inc }} con incidencias</a></li>{% endif %}
-      {% if not (sin_stock or total - activos or con_inc) %}<li class="ok">Todo activo, con stock y sin incidencias</li>{% endif %}
+      {% if not (sin_stock or stock_bajo or total - activos or con_inc) %}<li class="ok">Todo activo, con stock para más de {{ dias_aviso }} días y sin incidencias</li>{% endif %}
     </ul>
   </div>
   {% endif %}
@@ -70,6 +71,7 @@
       <a href="?tab=activo" data-tab="activo">Activos ({{ activos }})</a>
       <a href="?tab=incidencias" data-tab="incidencias">Con incidencias ({{ con_inc }})</a>
       <a href="?tab=sin-stock" data-tab="sin-stock">Sin stock ({{ sin_stock }})</a>
+      <a href="?tab=stock-bajo" data-tab="stock-bajo">Stock bajo ({{ stock_bajo }})</a>
       <a href="?tab=no-activo" data-tab="no-activo">No activos ({{ total - activos }})</a>
     </div>
     <input type="search" id="filtro" placeholder="Filtrar por ASIN, SKU o nombre…" aria-label="Filtrar listings"
@@ -83,7 +85,7 @@
     <tbody>
     {% for r in rows %}
       <tr class="{{ 'warn-row' if r.stock == 0 or r.estado != 'ACTIVO' }}"
-          data-tags="{{ 'activo' if r.estado == 'ACTIVO' else 'no-activo' }}{{ ' incidencias' if r.lista_incidencias }}{{ ' sin-stock' if r.stock == 0 }}">
+          data-tags="{{ 'activo' if r.estado == 'ACTIVO' else 'no-activo' }}{{ ' incidencias' if r.lista_incidencias }}{{ ' sin-stock' if r.stock == 0 }}{{ ' stock-bajo' if r.stock_bajo }}">
         <td><div class="ls-prod"><span class="pill {{ 'ink' if r.canal == 'FBA' else 'warn' }}">{{ r.canal }}</span>
           <a class="mono" href="https://www.amazon.es/dp/{{ r.asin }}" target="_blank" rel="noopener">{{ r.asin }}</a></div>
           <div class="ls-name">{{ r.nombre }}</div>
@@ -91,8 +93,10 @@
         <td class="mono ls-sku"><b>{{ r.sku }}</b></td>
         <td class="r ls-price"><b>{{ n(r.precio) ~ ' €' if r.precio is not none else '—' }}</b></td>
         <td class="ls-stock">{% if r.stock is none %}<span class="muted">?</span>{% else %}
-          <b class="{{ 'neg' if r.stock == 0 }}">{{ r.stock }} uds</b>
-          <span class="g-track {{ 'bad' if r.stock == 0 }}"><span style="width: {{ '%.1f' % ([100 * r.stock / max_stock, 3 if r.stock else 0] | max) }}%"></span></span>{% endif %}</td>
+          <b class="{{ 'neg' if r.stock == 0 }}">{{ r.stock }} ud{{ 's' if r.stock != 1 }}</b>
+          {% if r.stock and r.dias is not none %}
+          <span class="cover {{ 'warn' if r.stock_bajo }}" title="Vendes unas {{ ('%.1f' % r.ventas_dia).replace('.', ',') }} al día (media de 30 días)">≈ {{ '%.0f' % r.dias if r.dias < 1000 else 'más de 999' }} día{{ 's' if r.dias >= 1.5 }}</span>
+          {% elif r.stock %}<span class="cover none">sin ventas en 30 días</span>{% endif %}{% endif %}</td>
         <td class="ls-inc{{ ' none' if not r.lista_incidencias }}">
           {% if r.lista_incidencias %}
           <details>
@@ -123,6 +127,10 @@
     const url = new URL(location.href);
     let tab = document.querySelector(`.tabs a[data-tab="${url.searchParams.get('tab')}"]`) ? url.searchParams.get('tab') : 'todos';
     document.querySelectorAll('.tabs a').forEach(t => (t.classList.toggle('on', t.dataset.tab === tab), t.dataset.tab === tab ? t.setAttribute('aria-current', 'true') : t.removeAttribute('aria-current')));
+    { // en el móvil las pestañas se deslizan: deja a la vista la que viene en la dirección
+      const on = document.querySelector('.tabs a.on'), box = on && on.parentElement;
+      if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2;
+    }
     const apply = () => {
       const q = filtro.value.trim().toLowerCase();
       // la pestaña y el filtro van en la dirección: sobreviven al recargar o al cambiar de modo y se pueden compartir

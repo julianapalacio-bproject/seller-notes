@@ -19,11 +19,9 @@
 <section class="g-card dash-attn" aria-labelledby="attn-title">
   <div class="g-card-head">
     <h2 class="sec" id="attn-title">Atención hoy</h2>
-    {% if items %}<span class="muted small">De lo más urgente a lo menos</span>{% endif %}
+    {% if items %}<span class="muted small">Por producto, de lo más urgente a lo menos · pulsa uno para ver sus avisos</span>{% endif %}
   </div>
   {% if items %}
-  {# todo lo urgente a la vista; de lo que solo hay que revisar, los tres primeros y el resto se despliega #}
-  {% set shown = n_bad + 3 %}
   {% macro attn(i) %}
     <li class="attn {{ i.tone }}">
       <span class="attn-tone"><i class="dot"></i>{{ tone_label[i.tone] }}</span>
@@ -35,13 +33,37 @@
       {% if i.href %}<a class="btn-ghost small attn-go" href="{{ i.href }}">{{ i.cta }} <span aria-hidden="true">→</span></a>{% else %}<span></span>{% endif %}
     </li>
   {% endmacro %}
-  <ol class="attn-list">{% for i in items[:shown] %}{{ attn(i) }}{% endfor %}</ol>
-  {% if items | length > shown %}
-  <details class="attn-more">
-    <summary>Mostrar {{ items | length - shown }} aviso{{ 's' if items | length - shown != 1 }} más</summary>
-    <ol class="attn-list">{% for i in items[shown:] %}{{ attn(i) }}{% endfor %}</ol>
-  </details>
-  {% endif %}
+  {# una tarjeta por ASIN; al pulsarla se abren todos sus avisos #}
+  <ul class="attn-grid">
+    {% for g in groups %}
+    <li>
+      <button type="button" class="attn-tile {{ g.tone }}" data-open="attn-g{{ loop.index }}" aria-haspopup="dialog">
+        <span class="attn-tone"><i class="dot"></i>{% if g.n_bad %}{{ g.n_bad }} urgente{{ 's' if g.n_bad != 1 }}{% else %}Revisar{% endif %}</span>
+        <span class="attn-tile-name">{{ g.nombre }}</span>
+        <span class="attn-tile-id">{% if g.asin %}{{ g.sku ~ ' · ' if g.sku }}{{ g.asin }}{% else %}Monitor, datos y costes{% endif %}</span>
+        <span class="attn-tile-top">{{ g['items'][0].title }}</span>
+        <span class="attn-tile-areas">{% for area, n in g.areas.items() %}<span class="attn-area">{{ area }}{% if n > 1 %} · {{ n }}{% endif %}</span>{% endfor %}</span>
+        <span class="attn-tile-go">{{ g['items'] | length }} aviso{{ 's' if g['items'] | length != 1 }} <span aria-hidden="true">→</span></span>
+      </button>
+      <dialog class="attn-dialog" id="attn-g{{ loop.index }}" aria-labelledby="attn-g{{ loop.index }}-t">
+        <header>
+          <div>
+            <h3 id="attn-g{{ loop.index }}-t">{{ g.nombre }}</h3>
+            <p class="muted small">{% if g.asin %}{{ g.sku ~ ' · ' if g.sku }}{{ g.asin }} · {% endif %}{{ g['items'] | length }} aviso{{ 's' if g['items'] | length != 1 }}, de lo más urgente a lo menos</p>
+          </div>
+          <form method="dialog"><button class="btn-ghost small" aria-label="Cerrar">Cerrar</button></form>
+        </header>
+        <ol class="attn-list">{% for i in g['items'] %}{{ attn(i) }}{% endfor %}</ol>
+      </dialog>
+    </li>
+    {% endfor %}
+  </ul>
+  <script>
+    document.querySelectorAll('.attn-tile[data-open]').forEach(b => b.addEventListener('click', () => {
+      const d = document.getElementById(b.dataset.open); d.showModal();
+    }));
+    document.querySelectorAll('.attn-dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+  </script>
   {% else %}
   <p class="attn-clear"><i class="dot"></i> Tienes la Buy Box en todo lo que vendes, todos tus listings están activos y con stock, y ayer no perdiste dinero.</p>
   {% endif %}
