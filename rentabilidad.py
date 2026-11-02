@@ -45,7 +45,12 @@ def ensure_tables(con):
             pedido TEXT, sku TEXT, cantidad INTEGER, precio REAL, promo REAL);
         CREATE TABLE IF NOT EXISTS gastos_manual (
             mes TEXT, concepto TEXT, importe REAL, PRIMARY KEY (mes, concepto));
+        CREATE TABLE IF NOT EXISTS tarifas_estimadas (  -- tarifa de Amazon para SKUs aún sin ventas liquidadas
+            sku TEXT PRIMARY KEY, fecha TEXT, comision REAL, fba REAL);
     """)
+    if "pais" not in [r[1] for r in con.execute("PRAGMA table_info(pedidos)")]:
+        con.execute("ALTER TABLE pedidos ADD COLUMN pais TEXT")
+        con.execute("ALTER TABLE pedidos ADD COLUMN cp TEXT")
 
 
 # ---------------------------------------------------------------- movimientos de Amazon (Finances API)
@@ -186,9 +191,12 @@ def sync_orders(full=False, progress=print):
         params = {"MarketplaceIds": sn.MARKETPLACE_ID, "NextToken": p["NextToken"]}
         time.sleep(1)
     with con:
-        con.executemany("INSERT OR REPLACE INTO pedidos VALUES (?,?,?,?,?)", [
+        con.executemany("INSERT OR REPLACE INTO pedidos(pedido, compra, estado, total, actualizado, pais, cp) "
+                        "VALUES (?,?,?,?,?,?,?)", [
             (o["AmazonOrderId"], o["PurchaseDate"], o["OrderStatus"],
-             float((o.get("OrderTotal") or {}).get("Amount") or 0), o.get("LastUpdateDate")) for o in orders])
+             float((o.get("OrderTotal") or {}).get("Amount") or 0), o.get("LastUpdateDate"),
+             (o.get("ShippingAddress") or {}).get("CountryCode"), (o.get("ShippingAddress") or {}).get("PostalCode"))
+            for o in orders])
     settled = {r[0] for r in con.execute("SELECT DISTINCT pedido FROM fin_lineas WHERE tipo='venta'")}
     pending = [r[0] for r in con.execute("SELECT pedido FROM pedidos WHERE estado != 'Canceled'") if r[0] not in settled]
     items = []
@@ -202,7 +210,42 @@ def sync_orders(full=False, progress=print):
         con.execute("DELETE FROM pedido_items")
         con.executemany("INSERT INTO pedido_items VALUES (?,?,?,?,?)", items)
     progress(f"{len(orders)} pedidos · {len(pending)} aún sin liquidar")
+    try:
+        estimate_new_fees(con, items)
+    except Exception as e:  # sin tarifa estimada se usa la media de la cuenta
+        progress(f"No se pudo consultar la tarifa de Amazon: {e}")
     return len(orders)
+
+
+def estimate_new_fees(con, items):
+    """Para SKUs vendidos sin apenas ventas liquidadas, guarda la tarifa que Amazon calcula para su precio
+    (comisión como fracción del precio con IVA y FBA por unidad). Se refresca cada 7 días."""
+    import analizador as an
+    rates, _ = fee_rates(con, estimated=False)
+    old = (datetime.now(sn.TZ) - timedelta(days=7)).date().isoformat()
+    fresh = {r[0] for r in con.execute("SELECT sku FROM tarifas_estimadas WHERE fecha >= ?", (old,))}
+    asin = dict(con.execute("SELECT sku, asin FROM costes WHERE asin != ''"))
+    try:
+        listed = dict(con.execute("SELECT sku, precio FROM listings WHERE ts=(SELECT MAX(ts) FROM listings) AND precio > 0"))
+    except Exception:
+        listed = {}
+    prices = {}
+    for _, sku, qty, precio, promo in items:
+        if sku and sku not in rates and sku not in fresh and asin.get(sku) and qty:
+            p = (precio - (promo or 0)) / qty if precio else listed.get(sku)
+            if p:
+                prices[sku] = p
+    if not prices:
+        return
+    fees = an.fees_batch({asin[s]: p for s, p in prices.items()}, lambda f: None)
+    today = datetime.now(sn.TZ).date().isoformat()
+    with con:
+        for sku, p in prices.items():
+            if asin[sku] in fees:
+                total, _, fba = fees[asin[sku]]
+                # Amazon añade un 3 % de impuesto de servicios digitales sobre la comisión
+                con.execute("INSERT OR REPLACE INTO tarifas_estimadas VALUES (?,?,?,?)",
+                            (sku, today, -(total - fba) * 1.03 / p, -fba))
 
 
 def sync(full=False, progress=print, returns=True):
@@ -275,8 +318,9 @@ def period_key(d, group):
     return d.strftime("%Y-%m")
 
 
-def fee_rates(con):
-    """Por SKU: (comisión / venta con IVA, tarifa FBA por unidad) según sus ventas ya liquidadas.
+def fee_rates(con, estimated=True):
+    """Por SKU: (comisión / venta con IVA, tarifa FBA por unidad) según sus ventas ya liquidadas (3 o más
+    unidades); si no las hay, la tarifa que Amazon calcula para su precio (tarifas_estimadas).
     Sirve para estimar los pedidos que Amazon aún no ha liquidado."""
     acc = {}
     for sku, concepto, qty, importe in con.execute(
@@ -292,8 +336,31 @@ def fee_rates(con):
             a[3] += qty
     total = [sum(x[i] for x in acc.values()) for i in range(4)]
     default = (total[1] / total[0] if total[0] else -0.155, total[2] / total[3] if total[3] else -3.0)
-    rates = {sku: (a[1] / a[0], a[2] / a[3]) for sku, a in acc.items() if a[0] and a[3]}
+    rates = {sku: (a[1] / a[0], a[2] / a[3]) for sku, a in acc.items() if a[0] and a[3] >= 3}
+    if estimated:
+        for sku, comision, fba in con.execute("SELECT sku, comision, fba FROM tarifas_estimadas"):
+            rates.setdefault(sku, (comision, fba))
     return rates, default
+
+
+# IVA general de cada país de la UE (ventas a distancia por OSS); fuera de la UE la venta va sin IVA
+EU_VAT = {"AT": 20, "BE": 21, "BG": 20, "CY": 19, "CZ": 21, "DE": 19, "DK": 25, "EE": 24, "ES": 21, "FI": 25.5,
+          "FR": 20, "GR": 24, "HR": 25, "HU": 27, "IE": 23, "IT": 22, "LT": 21, "LU": 17, "LV": 21, "MT": 18,
+          "NL": 21, "PL": 23, "PT": 23, "RO": 21, "SE": 25, "SI": 22, "SK": 23}
+
+
+def vat_rate(country, cp, iva):
+    """IVA % de un pedido según su destino; iva es el del producto en España."""
+    cp = str(cp or "")
+    if not country or country == "ES":
+        return 0.0 if cp[:2] in ("35", "38", "51", "52") else iva  # Canarias, Ceuta y Melilla: sin IVA
+    if country not in EU_VAT:
+        return 0.0
+    if iva != EU_VAT["ES"]:  # tipo reducido: se mantiene el del producto
+        return iva
+    if country == "PT" and cp[:1] == "9":  # Madeira (90-93) y Azores (95-99)
+        return 22.0 if cp[:2] < "94" else 16.0
+    return float(EU_VAT[country])
 
 
 def aggregate(con, start=None, end=None, group="mes"):
@@ -302,7 +369,9 @@ def aggregate(con, start=None, end=None, group="mes"):
     Las ventas cuentan en la fecha del pedido (como Sellerboard); devoluciones, reembolsos y gastos de la
     cuenta en la fecha en que Amazon los registra. Los pedidos aún sin liquidar se estiman."""
     ensure_tables(con)
-    purchase = dict(con.execute("SELECT pedido, compra FROM pedidos"))
+    purchase, dest = {}, {}
+    for pedido, compra, pais, cp in con.execute("SELECT pedido, compra, pais, cp FROM pedidos"):
+        purchase[pedido], dest[pedido] = compra, (pais, cp)
     costs = {}
 
     def cost(sku, d):
@@ -324,7 +393,7 @@ def aggregate(con, start=None, end=None, group="mes"):
         if tipo in ("venta", "devolucion", "ajuste") and sku:
             r = _sku_row(skus, k, sku)
             c, iva = cost(sku, d)
-            iva = 21.0 if iva is None else iva
+            iva = vat_rate(*dest.get(pedido, (None, None)), 21.0 if iva is None else iva)
             if concepto == "UNIDADES":
                 if tipo == "venta":
                     r["uds"] += qty
@@ -374,7 +443,7 @@ def aggregate(con, start=None, end=None, group="mes"):
             continue
         r = _sku_row(skus, period_key(d, group), sku)
         c, iva = cost(sku, d)
-        iva = 21.0 if iva is None else iva
+        iva = vat_rate(*dest.get(pedido, (None, None)), 21.0 if iva is None else iva)
         gross = (precio or 0) - (promo or 0)
         if not precio:
             gross = qty * list_price.get(sku, 0.0)
