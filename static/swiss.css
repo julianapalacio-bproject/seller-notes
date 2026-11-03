@@ -376,3 +376,42 @@ body.glass.swiss:not(#_) .bb-menu li a { border-radius: 12px; }
   body.glass.swiss:not(#_) .g-card, body.glass.swiss:not(#_) .g-dark { padding: 16px; }
   body.glass.swiss:not(#_) .bb-menu { top: 120px; }
 }
+
+/* ------------------------------------------------------------------ Detalles al estilo Apple (skill apple-design) */
+/* Respuesta al pulsar: todo lo que se toca reacciona en el momento de apretar, no al soltar */
+body.glass.swiss:not(#_) :is(button, .btn-ink, .btn-ghost, nav a, .g-seg a, .bb-menu li a, .attn-more summary, .theme-toggle span) {
+  transition: transform 100ms ease-out, background-color .15s, color .15s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+body.glass.swiss:not(#_) :is(button, .btn-ink, .btn-ghost, nav a, .g-seg a, .bb-menu li a, .attn-more summary):active { transform: scale(.97); }
+body.glass.swiss:not(#_) .theme-toggle:active span { transform: scale(.95); }
+body.glass.swiss:not(#_) :is(a, button, summary, select, input):focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Letra: el espaciado cambia con el tamaño — títulos grandes más apretados, texto pequeño un poco más abierto */
+body.glass.swiss:not(#_) { font-optical-sizing: auto; line-height: 1.5; }
+body.glass.swiss:not(#_) :is(.g-title h1, .dash-verdict h1), body.glass.navy.swiss:not(#_) .g-title h1 { line-height: 1.15; letter-spacing: -.025em; }
+body.glass.swiss:not(#_) :is(.g-big, .g-num, .health-num b, .bb-ring b, .g-donut b) { line-height: 1.1; letter-spacing: -.025em; }
+body.glass.swiss:not(#_) :is(h2, h3).sec { letter-spacing: -.012em; }
+body.glass.swiss:not(#_) :is(.muted.small, .g-label, .brand-sub, .attn-since, .attn-detail, th) { letter-spacing: .005em; }
+body.glass.swiss:not(#_) :is(.pill, .attn-tone) { letter-spacing: .03em; }
+
+/* Material: en pantallas pequeñas la barra superior es translúcida y el contenido pasa por debajo */
+@media (max-width: 1023px) {
+  body.glass.swiss:not(#_) .top { background: color-mix(in srgb, var(--card) 72%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
+}
+
+/* Cambio claro ↔ oscuro sin salto brusco de brillo */
+html.theme-anim body.glass.swiss:not(#_), html.theme-anim body.glass.swiss:not(#_) :is(.top, .g-card, .g-dark, nav a, th, td, .theme-toggle, .theme-toggle span) {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease !important; }
+
+/* Accesibilidad: si el Mac pide menos movimiento, menos transparencia o más contraste */
+@media (prefers-reduced-motion: reduce) {
+  body.glass.swiss:not(#_) *, body.glass.swiss:not(#_) *::before, body.glass.swiss:not(#_) *::after {
+    transition-duration: 0s !important; animation-duration: 0s !important; scroll-behavior: auto !important; }
+  body.glass.swiss:not(#_) :is(button, .btn-ink, .btn-ghost, nav a, .g-seg a, .bb-menu li a, .attn-more summary):active { transform: none; opacity: .7; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  body.glass.swiss:not(#_) .top { background: var(--card) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
+@media (prefers-contrast: more) {
+  body.glass.swiss:not(#_) { --sub: var(--muted); --line: var(--edge); --card-edge: var(--edge); }
+}
