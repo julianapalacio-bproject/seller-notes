@@ -415,3 +415,25 @@ html.theme-anim body.glass.swiss:not(#_), html.theme-anim body.glass.swiss:not(#
 @media (prefers-contrast: more) {
   body.glass.swiss:not(#_) { --sub: var(--muted); --line: var(--edge); --card-edge: var(--edge); }
 }
+
+/* ------------------------------------------------------------------ Deslizar hacia abajo para actualizar (static/pull.js) */
+html { overscroll-behavior-y: none; }  /* sin el «tirar para recargar» propio del navegador: usamos el nuestro */
+.ptr { position: fixed; top: 0; left: 50%; z-index: 60; width: 40px; height: 40px; display: grid; place-items: center;
+  border-radius: 999px; background: var(--card, #fff); border: 1px solid var(--line, #e5e7eb); box-shadow: 0 4px 14px rgba(17, 17, 17, .12);
+  color: var(--ink, #111); opacity: 0; pointer-events: none; transform: translate(-50%, -48px); will-change: transform, opacity; }
+.ptr.suelta { transition: transform .35s cubic-bezier(.2, .9, .3, 1), opacity .25s ease; }
+.ptr svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ptr-track { stroke: var(--soft-3, #eee); }
+.ptr-arc { stroke-dasharray: calc(var(--p, 0) * 1) 100; transform: rotate(-90deg); transform-origin: center; transition: stroke .15s; }
+.ptr-arrow { transition: opacity .15s; }
+.ptr.listo .ptr-arrow { opacity: 0; }
+.ptr.gira svg { animation: ptr-gira .8s linear infinite; }
+.ptr.gira .ptr-arc { stroke-dasharray: 30 100; }
+.ptr.gira .ptr-arrow { opacity: 0; }
+@keyframes ptr-gira { to { transform: rotate(360deg); } }
+.ptr-voz { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (min-width: 1024px) { body.swiss .ptr { left: calc(50% + 125px); } }  /* centrado en el contenido, no sobre la barra lateral */
+@media (prefers-reduced-motion: reduce) {
+  .ptr.suelta { transition: opacity .2s ease; }
+  .ptr.gira svg { animation: none; }
+}

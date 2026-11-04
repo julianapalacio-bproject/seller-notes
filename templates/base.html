@@ -59,6 +59,7 @@
       setTimeout(() => location.reload(), quieto ? 0 : 260);
     });
   </script>
+  <script src="{{ url_for('static', filename='pull.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
