@@ -437,3 +437,12 @@ html { overscroll-behavior-y: none; }  /* sin el «tirar para recargar» propio 
   .ptr.suelta { transition: opacity .2s ease; }
   .ptr.gira svg { animation: none; }
 }
+
+/* Aviso arriba de cada página: la forma de actualizar es deslizar hacia abajo */
+.ptr-hint { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 0 4px; padding-top: 12px;
+  font-size: 12px; letter-spacing: .005em; color: var(--sub); transition: opacity .2s ease; }
+.ptr-hint svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  animation: ptr-pista 1.8s ease-in-out infinite; }
+@keyframes ptr-pista { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(2px); } }
+html.tirando .ptr-hint { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .ptr-hint svg { animation: none; } }

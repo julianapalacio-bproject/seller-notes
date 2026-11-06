@@ -1,6 +1,6 @@
 // Deslizar hacia abajo para actualizar (como en las apps de Apple).
 // Arriba del todo, arrastra hacia abajo con el dedo (o con dos dedos en el trackpad) y suelta cuando el círculo se complete:
-// en Listings y Profit pide los datos nuevos a Amazon (el mismo botón «Actualizar» de la página); en las demás recarga la página.
+// en Listings y Profit pide los datos nuevos a Amazon (el formulario oculto de la página); en las demás recarga la página.
 (() => {
   const UMBRAL = 72;          // px de recorrido visible del círculo para que se active
   const MAX = 160;            // el círculo no baja más de esto (hace falta tirar unos 240 px)
@@ -26,6 +26,7 @@
     ind.style.opacity = Math.min(v / 24, 1);
     ind.style.setProperty('--p', (p * 100).toFixed(1));
     ind.classList.toggle('listo', p >= 1);
+    document.documentElement.classList.toggle('tirando', v > 0);
   };
   const vuelve = () => pinta(0, true);
 

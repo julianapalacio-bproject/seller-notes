@@ -25,7 +25,7 @@
     <p class="muted small">{% if ts %}{{ total }} listing{{ 's' if total != 1 }} en Amazon.es{% else %}Todavía no hay consultas{% endif %}
       {% if ignored %} · {{ ignored }} SKU ignorados (skus_ignorados.txt){% endif %}</p>
   </div>
-  <form method="post" action="{{ url_for('refresh_listings') }}" onsubmit="const b=this.querySelector('button'); b.disabled=true; b.classList.add('is-busy'); b.textContent='Consultando…'">
+  <form method="post" action="{{ url_for('refresh_listings') }}" hidden onsubmit="const b=this.querySelector('button'); b.disabled=true; b.classList.add('is-busy'); b.textContent='Consultando…'">
     <button type="submit" class="btn-ink" {{ 'disabled' if not has_seller_id }}>Actualizar ahora</button>
   </form>
   {% if rows %}
@@ -60,7 +60,7 @@
 {% elif updated %}
 <div class="info" role="status">Listings actualizados: {{ rows | length }} consultados en Amazon.es ahora mismo.</div>
 {% endif %}
-{% if fresh and fresh.tone == 'bad' and not error %}<div class="alert" role="alert">Estos datos tienen {{ fresh.text | replace('hace ', '') }}: el monitor no los está actualizando. Abre «2 - Iniciar monitor» o pulsa «Actualizar ahora».</div>{% endif %}
+{% if fresh and fresh.tone == 'bad' and not error %}<div class="alert" role="alert">Estos datos tienen {{ fresh.text | replace('hace ', '') }}: el monitor no los está actualizando. Abre «2 - Iniciar monitor» o desliza hacia abajo para actualizar.</div>{% endif %}
 {% if not has_seller_id %}<div class="alert">Falta MY_SELLER_ID en el archivo .env.</div>{% endif %}
 
 {% if rows %}
@@ -115,7 +115,7 @@
   <p class="muted small ls-count" id="count" aria-live="polite"></p>
 </section>
 {% else %}
-<p class="empty">No hay datos de listings. Pulsa «Actualizar ahora».</p>
+<p class="empty">No hay datos de listings. Desliza hacia abajo para actualizar.</p>
 {% endif %}
 {% endblock %}
 
