@@ -41,7 +41,9 @@ def read_table(path):
     if suffix in (".xlsx", ".xlsm"):
         import openpyxl
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-        rows = [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)]
+        ws = wb.worksheets[0]
+        ws.reset_dimensions()  # algunos programas guardan un tamaño de hoja falso (p. ej. A1:A1) y se perderían las filas
+        rows = [list(r) for r in ws.iter_rows(values_only=True)]
         wb.close()
     elif suffix in (".csv", ".txt"):
         raw = path.read_bytes()
@@ -73,7 +75,7 @@ FIELDS = {
     "ean": ["ean", "ean13", "ean 13", "gtin", "barcode", "codigo de barras", "cod barras", "upc"],
     "coste": ["coste", "costo", "pvd", "precio neto", "net price", "neto", "wholesale", "precio distribuidor",
               "precio unitario", "unit price", "precio", "price", "tarifa", "cost"],
-    "nombre": ["descripcion", "nombre", "producto", "product", "description", "articulo", "designacao",
+    "nombre": ["descripcion", "nombre", "name", "producto", "product", "description", "articulo", "designacao",
                "denominacion", "item name", "titulo", "title"],
     "marca": ["marca", "brand", "fabricante", "manufacturer"],
     "referencia": ["referencia", "ref", "sku", "codigo", "code", "cod"],
@@ -82,7 +84,8 @@ FIELDS = {
 FIELD_LABELS = {"ean": "EAN", "coste": "Precio de coste (sin IVA)", "nombre": "Nombre / descripción",
                 "marca": "Marca", "referencia": "Referencia del proveedor", "iva": "IVA de venta (%)"}
 EXCLUDE = {"coste": ["pvp", "rrp", "retail", "recomendado", "msrp", "con iva", "iva incl"],
-           "ean": ["caja", "box", "case", "carton", "outer", "pack"]}
+           "ean": ["caja", "box", "case", "carton", "outer", "pack"],
+           "nombre": ["brand", "marca", "fabricante"]}
 
 
 def detect_columns(rows):
