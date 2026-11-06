@@ -78,6 +78,7 @@ ENDPOINT = os.getenv("SPAPI_ENDPOINT", "https://sellingpartnerapi-eu.amazon.com"
 INTERVAL_MINUTES = float(os.getenv("INTERVAL_MINUTES", "5"))
 LISTINGS_MINUTES = float(os.getenv("LISTINGS_MINUTES", "60"))  # cada cuánto revisar tus listings en "run"
 FINANCES_MINUTES = float(os.getenv("FINANCES_MINUTES", "30"))  # cada cuánto actualizar la rentabilidad en "run"
+ORDERS_MINUTES = float(os.getenv("ORDERS_MINUTES", "5"))  # cada cuánto pedir solo los pedidos nuevos en "run"
 DB_PATH = BASE / os.getenv("DB_FILE", "seller_notes.db")
 SELLERS_CSV = BASE / "sellers.csv"
 
@@ -413,6 +414,16 @@ def sync_finances(with_returns):
         print(f"[{datetime.now(TZ):%H:%M}] Rentabilidad actualizada{' (con devoluciones)' if with_returns else ''}", flush=True)
     except Exception as e:
         print(f"    (Error actualizando la rentabilidad: {e})", flush=True)
+
+
+def sync_new_orders():
+    try:
+        import rentabilidad
+        msg = []
+        rentabilidad.sync_orders(progress=msg.append, recent=True)
+        print(f"[{datetime.now(TZ):%H:%M}] Pedidos: {msg[-1] if msg else 'al día'}", flush=True)
+    except Exception as e:
+        print(f"    (Error actualizando los pedidos: {e})", flush=True)
 
 
 # ---------------------------------------------------------------- informe diario
@@ -807,7 +818,7 @@ def main():
     print(f"Seller Notes · vigilando {', '.join(ASINS)} cada {INTERVAL_MINUTES:g} min. Ctrl+C para parar.", flush=True)
     last_report_day = datetime.now(TZ).date()
     last_listings = 0.0
-    last_finances, last_returns = 0.0, 0.0
+    last_finances, last_returns, last_orders = 0.0, 0.0, 0.0
     finances_job = None
     while True:
         started = time.time()
@@ -824,14 +835,19 @@ def main():
             last_listings = started
         # rentabilidad (pedidos y movimientos de dinero) cada FINANCES_MINUTES; el informe de devoluciones, una vez
         # al día. Va en segundo plano para no retrasar la vigilancia de la Buy Box.
+        # Entre medias, cada ORDERS_MINUTES, solo los pedidos nuevos: así una venta sale enseguida en Profit.
         busy = finances_job is not None and finances_job.is_alive()
         if not busy and started - last_finances >= FINANCES_MINUTES * 60:
             with_returns = started - last_returns >= 24 * 3600
             finances_job = threading.Thread(target=sync_finances, args=(with_returns,), daemon=True)
             finances_job.start()
-            last_finances = started
+            last_finances = last_orders = started
             if with_returns:
                 last_returns = started
+        elif not busy and started - last_orders >= ORDERS_MINUTES * 60:
+            finances_job = threading.Thread(target=sync_new_orders, daemon=True)
+            finances_job.start()
+            last_orders = started
         today = datetime.now(TZ).date()
         if today != last_report_day:  # al cambiar de día, genera el informe del día anterior
             report(last_report_day.isoformat())

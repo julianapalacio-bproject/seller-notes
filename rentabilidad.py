@@ -173,16 +173,21 @@ def _get(path, params=None):
     raise RuntimeError("Amazon sigue limitando las peticiones (429)")
 
 
-def sync_orders(full=False, progress=print):
-    """Pedidos con su fecha de compra (Orders API) y artículos de los que aún no se han liquidado."""
+def sync_orders(full=False, progress=print, recent=False):
+    """Pedidos con su fecha de compra (Orders API) y artículos de los que aún no se han liquidado.
+    recent=True solo pide los pedidos nuevos o cambiados desde la última vez (el monitor lo hace cada pocos minutos)."""
     con = sn.db()
     ensure_tables(con)
-    has = con.execute("SELECT COUNT(*) FROM pedidos").fetchone()[0]
+    has, last = con.execute("SELECT COUNT(*), MAX(actualizado) FROM pedidos").fetchone()
     after = DEFAULT_FROM + "T00:00:00Z"
     if has and not full:
         after = (datetime.now(timezone.utc) - timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    since = {"CreatedAfter": after}
+    if recent and has and last:  # margen de 2 h por si Amazon publica algún cambio con retraso
+        changed = datetime.fromisoformat(last.replace("Z", "+00:00")) - timedelta(hours=2)
+        since = {"LastUpdatedAfter": changed.strftime("%Y-%m-%dT%H:%M:%SZ")}
     progress("Descargando pedidos…")
-    params, orders = {"MarketplaceIds": sn.MARKETPLACE_ID, "CreatedAfter": after, "MaxResultsPerPage": 100}, []
+    params, orders = {"MarketplaceIds": sn.MARKETPLACE_ID, **since, "MaxResultsPerPage": 100}, []
     while True:
         p = _get("/orders/v0/orders", params)
         orders += p.get("Orders", [])
@@ -190,6 +195,8 @@ def sync_orders(full=False, progress=print):
             break
         params = {"MarketplaceIds": sn.MARKETPLACE_ID, "NextToken": p["NextToken"]}
         time.sleep(1)
+    seen = dict(con.execute("SELECT pedido, actualizado FROM pedidos"))
+    touched = {o["AmazonOrderId"] for o in orders if seen.get(o["AmazonOrderId"]) != o.get("LastUpdateDate")}
     with con:
         con.executemany("INSERT OR REPLACE INTO pedidos(pedido, compra, estado, total, actualizado, pais, cp) "
                         "VALUES (?,?,?,?,?,?,?)", [
@@ -199,19 +206,26 @@ def sync_orders(full=False, progress=print):
             for o in orders])
     settled = {r[0] for r in con.execute("SELECT DISTINCT pedido FROM fin_lineas WHERE tipo='venta'")}
     pending = [r[0] for r in con.execute("SELECT pedido FROM pedidos WHERE estado != 'Canceled'") if r[0] not in settled]
+    # Los artículos de un pedido no cambian: solo se piden los de pedidos nuevos, los que acaban de cambiar
+    # y los «Pending», que Amazon da sin precio hasta que se envían
+    known = {r[0] for r in con.execute("SELECT DISTINCT pedido FROM pedido_items WHERE precio > 0")}
+    fetch = [p for p in pending if full or p not in known or p in touched]
     items = []
-    for i, pedido in enumerate(pending):
+    for pedido in fetch:
         for it in _get(f"/orders/v0/orders/{pedido}/orderItems").get("OrderItems", []):
             items.append((pedido, it.get("SellerSKU"), int(it.get("QuantityOrdered") or 0),
                           float((it.get("ItemPrice") or {}).get("Amount") or 0),
                           float((it.get("PromotionDiscount") or {}).get("Amount") or 0)))
         time.sleep(2.1)  # 0,5 peticiones/segundo
     with con:
-        con.execute("DELETE FROM pedido_items")
+        con.executemany("DELETE FROM pedido_items WHERE pedido=?", [(p,) for p in fetch])
         con.executemany("INSERT INTO pedido_items VALUES (?,?,?,?,?)", items)
-    progress(f"{len(orders)} pedidos · {len(pending)} aún sin liquidar")
+        keep = set(pending)  # fuera los ya liquidados o cancelados
+        gone = [r[0] for r in con.execute("SELECT DISTINCT pedido FROM pedido_items") if r[0] not in keep]
+        con.executemany("DELETE FROM pedido_items WHERE pedido=?", [(p,) for p in gone])
+    progress(f"{len(orders)} pedidos · {len(pending)} aún sin liquidar · {len(fetch)} consultados")
     try:
-        estimate_new_fees(con, items)
+        estimate_new_fees(con, con.execute("SELECT * FROM pedido_items").fetchall())
     except Exception as e:  # sin tarifa estimada se usa la media de la cuenta
         progress(f"No se pudo consultar la tarifa de Amazon: {e}")
     return len(orders)
