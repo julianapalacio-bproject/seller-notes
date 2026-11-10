@@ -1,86 +1,64 @@
-# Seller Notes – monitor de Buy Box (Amazon.es)
+# Seller Notes
 
-Vigila **B0G643D8ZG** y **B0CNCL35CH** cada 5 minutos con la SP-API de Amazon y registra:
+**A private control center for a small Amazon FBA business (Amazon.es), built on Amazon's Selling Partner API.**
 
-- quién tiene la **Buy Box** y a qué precio,
-- **vendedores que entran y salen**,
-- **cuántas veces cambia el precio** (de la Buy Box y de cada vendedor),
-- el **% del día** que cada vendedor tuvo la Buy Box.
+Seller Notes replaces checking Seller Central, Keepa-style and Sellerboard-style tools separately. It has three jobs:
 
-## 1. Instalar (una vez)
+1. **Defend the Buy Box**: polls watched ASINs every 5 minutes and records who holds the Buy Box, at what price, which sellers enter or leave, how often prices change, and each seller's share of the day.
+2. **Know the real profit**: profit, margin and ROI per SKU for any date range, built from Amazon's money movements (sales, fees, FBA fees, refunds, returns) plus the seller's own product costs (with date-effective cost history).
+3. **Decide what to buy**: upload a supplier catalog (EAN + cost) and get the ASIN, BSR, number of offers, whether Amazon itself sells it, Buy Box price, Amazon + FBA fees, profit per unit, ROI and margin, exportable to Excel.
 
-Necesitas Python 3.9 o superior.
+It also tracks **listing health** for every SKU: active, visible but not buyable, inactive or suppressed, with issues, price and stock.
 
-```bash
-pip install requests
-```
+> UI language is Spanish. 🇪🇸 Spanish README: [README.es.md](README.es.md)
 
-## 2. Probar sin claves (modo demo)
+## Tech stack
 
-```bash
-python seller_notes.py demo
-```
+- **Python 3.9+**: `requests`, `sqlite3`
+- **Flask** web panel with Jinja templates, a custom CSS design system, light/dark theme and an installable PWA (manifest + service worker)
+- **Amazon SP-API** with LWA OAuth: Product Pricing, Catalog Items, Product Fees, Listings, Orders, Finances and Reports APIs
+- **SQLite** for Buy Box history, listings, finances and catalog jobs
+- Runs locally or on a small cloud server (Oracle Cloud Free Tier)
 
-Genera un día de datos simulados y muestra cómo será el informe.
+## Project structure
 
-## 3. Poner las claves
-
-Cuando Amazon apruebe tu app con el rol **Pricing**:
-
-1. Copia `.env.example` como `.env`.
-2. Pega el Client ID, el Client Secret y el Refresh Token.
-3. Pon tu `MY_SELLER_ID` para que el informe te marque como "YO".
-
-## 4. Usarlo
-
-| Comando | Qué hace |
+| File | What it does |
 |---|---|
-| `python seller_notes.py once` | Una consulta ahora (para comprobar que las claves funcionan) |
-| `python seller_notes.py listings` | Estado de todos tus SKU: activo/inactivo/suprimido, incidencias, precio y stock |
-| `python seller_notes.py run` | Vigila sin parar cada 5 min (y tus listings cada hora, avisando si cambia su estado); a medianoche genera el informe del día |
-| `python seller_notes.py report` | Informe de hoy |
-| `python seller_notes.py report 2026-10-15` | Informe de un día concreto |
+| `seller_notes.py` | Monitor: polls Buy Box offers, syncs listings and orders, writes daily reports (CLI: `demo`, `once`, `run`, `report`, `listings`) |
+| `rentabilidad.py` | Profit engine: imports product costs, downloads Finances API events, computes profit per SKU and month |
+| `analizador.py` | Supplier catalog analyzer: EAN → ASIN matching, pricing and fee estimates in batches |
+| `panel.py` | Flask web panel with login: Dashboard, Buy Box analysis, Profit, Catalogs |
+| `templates/`, `static/` | HTML templates, CSS, icons and PWA files |
 
-Los informes se guardan en la carpeta `informes/`:
+## Getting started
 
-- `informe_FECHA.txt`: el resumen del día.
-- `eventos_FECHA.csv`: cada movimiento con su hora; se abre en Excel.
-- `listings_FECHA.csv`: el último estado de cada uno de tus SKU ese día.
-
-Para que un SKU no se analice, escríbelo (uno por línea) en `skus_ignorados.txt`.
-
-El estado de tus listings necesita el rol **Publicación de productos** (Product Listing) en la app y `MY_SELLER_ID` en `.env`. Estados:
-
-- **ACTIVO**: se puede comprar.
-- **VISIBLE, NO COMPRABLE**: aparece en Amazon pero sin oferta comprable (normalmente sin stock o con errores).
-- **INACTIVO**: no aparece.
-- **SUPRIMIDO**: Amazon lo ha ocultado por alguna incidencia.
-
-## Panel web
-
-Doble clic en **`6 - Abrir panel.command`** (o `python panel.py`) y se abre `http://127.0.0.1:5050` en el navegador:
-
-- **Mis listings**: estado de cada SKU, incidencias, precio y stock, con botón para actualizar desde Amazon.
-- **Buy Box**: por cada ASIN vigilado, quién la tiene, precio a lo largo del día, reparto, ofertas actuales y movimientos. Se puede ver cualquier día anterior.
-
-- **Rentabilidad**: beneficio real por SKU para cualquier rango de fechas (hoy, ayer, 7/30 días, este mes, mes pasado o fechas a medida), agrupado por día, semana o mes. Las ventas cuentan en la fecha del pedido, como Sellerboard (Orders API, rol Seguimiento de pedidos); los pedidos que Amazon aún no ha liquidado se incluyen con comisiones estimadas por el histórico del SKU. Se calcula con los movimientos de dinero de Amazon (ventas, comisiones, tarifas FBA, devoluciones y reembolsos) y tus costes de producto (`Costes por SKU`, con fecha «desde» para cuando cambia un precio). Los gastos de la cuenta (publicidad, suscripción, envíos a almacenes, almacenamiento, retiradas) se muestran aparte. Una unidad reembolsada solo recupera su coste si Amazon la recibe como vendible (informe de devoluciones FBA). Necesita el rol **Finanzas y contabilidad**. El monitor lo actualiza una vez al día; también hay un botón. Desde la terminal: `python rentabilidad.py informe`.
-- **Catálogos**: sube el Excel/CSV de un proveedor (EAN + precio de coste). Seller Notes busca cada EAN en Amazon.es y calcula BSR, nº de ofertas (y si vende Amazon), precio de la Buy Box, comisiones de venta y FBA, beneficio por unidad, ROI y margen (todo sin IVA). Se puede filtrar, ordenar y descargar en Excel. También desde la terminal: `python analizador.py catalogo.xlsx`.
-  - Las comisiones son la estimación de Amazon al precio actual de la Buy Box. Si Amazon no da la tarifa FBA (faltan medidas del producto), se avisa porque el beneficio saldría inflado.
-  - Si la marca del proveedor no coincide con la de Amazon para ese EAN, se avisa para revisarlo a mano.
-
-El panel solo lee lo que guarda el monitor: para que la Buy Box se actualice, deja también en marcha `2 - Iniciar monitor`. Solo es accesible desde tu ordenador.
-
-## 5. Ponerle nombre a los vendedores
-
-La API solo da el ID del vendedor. Para ver quién es, abre `amazon.es/sp?seller=ID` y apunta el nombre en `sellers.csv`:
-
-```
-seller_id,nombre
-A2XXXXXXXXXXX,Farmacia Ejemplo
+```bash
+pip install requests flask openpyxl
+python seller_notes.py demo      # simulated day of data, no API keys needed
 ```
 
-## Limitaciones
+To use real data:
 
-- Consulta cada 5 minutos: si alguien cambia el precio varias veces dentro de ese intervalo, solo se ve el último cambio.
-- Solo vigila mientras el ordenador esté encendido y el script en marcha.
-- Amazon devuelve como máximo las 20 mejores ofertas nuevas.
+1. Create a private SP-API app in Amazon's Solution Provider Portal (roles: Pricing, Product Listing, Finance and Accounting, Order Tracking).
+2. Copy `.env.example` to `.env` and fill in your LWA credentials and seller ID. **`.env` is git-ignored and must never be committed.**
+3. Start the monitor and the panel:
+
+```bash
+python seller_notes.py run       # polls every 5 minutes; daily report at midnight
+python panel.py                  # opens http://127.0.0.1:5050
+```
+
+## Design decisions
+
+- **Real numbers only.** Estimates (e.g., fees for unsettled orders) are always labeled as estimates.
+- **Sales count on the order date**, like Sellerboard. Unsettled orders get fees estimated from each SKU's history.
+- **A refunded unit only recovers its cost if Amazon receives it back as sellable** (FBA returns report).
+- **Data limits are shown, not hidden:** 5-minute polling can miss faster price changes, Amazon returns at most the top 20 offers, and missing FBA fees (no product dimensions) are flagged because they would inflate profit.
+
+## Privacy
+
+API keys, the SQLite database, daily reports and supplier catalogs are excluded through `.gitignore`. The repository contains code only.
+
+## How it was built
+
+Designed and product-managed by me, the business owner, and developed with an AI coding assistant (Claude). I defined the requirements and business rules, tested every feature against real Amazon data, and iterated on the UI designs I created in Google Stitch.

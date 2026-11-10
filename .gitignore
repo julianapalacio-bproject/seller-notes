@@ -14,3 +14,10 @@ __pycache__/
 
 # Catálogos de proveedores subidos al panel
 catalogos/
+
+# Usuarios y clave de sesión del panel
+usuarios.json
+.panel_secret
+
+# Skills locales de Claude (herramientas de terceros)
+.claude/skills/
