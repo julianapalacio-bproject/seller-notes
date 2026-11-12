@@ -210,10 +210,10 @@
     new Chart(c, {
       type: 'bar',
       data: { labels: d.map(x => x.l), datasets: [
-        { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--ink-3'), borderRadius: 4 },
-        { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--primary'), borderRadius: 4 } ] },
+        { label: 'Beneficio de productos', data: d.map(x => x.p), backgroundColor: v('--ink-3'), borderRadius: 0 },
+        { label: 'Beneficio neto', data: d.map(x => x.n), backgroundColor: v('--primary'), borderRadius: 0 } ] },
       options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-                 plugins: { legend: { align: 'end', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } },
+                 plugins: { legend: { align: 'end', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: false } },
                             tooltip: { callbacks: { label: t => `${t.dataset.label}: ${eur(t.parsed.y)}` } } },
                  scales: { x: { ticks: { maxTicksLimit: 16 }, grid: { display: false }, border: { display: false } },
                            y: { ticks: { callback: n => n + ' €' }, grid: { color: v('--line') }, border: { display: false } } } }
@@ -225,7 +225,7 @@
     const vals = JSON.parse(vb.dataset.v), top = Math.max(...vals);
     new Chart(vb, {
       type: 'bar',
-      data: { labels: JSON.parse(vb.dataset.l), datasets: [{ data: vals, borderRadius: 99, borderSkipped: false, maxBarThickness: 14,
+      data: { labels: JSON.parse(vb.dataset.l), datasets: [{ data: vals, borderRadius: 0, borderSkipped: false, maxBarThickness: 14,
               backgroundColor: vals.map(x => x === top ? v('--primary') : v('--ink-2')) }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false },
                  tooltip: { displayColors: false, callbacks: { label: t => eur(t.parsed.y) } } }, scales: bare }
@@ -254,7 +254,7 @@
     new Chart(g, {
       type: 'doughnut',
       data: { labels: JSON.parse(g.dataset.l), datasets: [{ data: JSON.parse(g.dataset.v).map(Math.abs), backgroundColor: shades,
-              borderColor: v('--card'), borderWidth: 3, borderRadius: 4 }] },
+              borderColor: v('--card'), borderWidth: 3, borderRadius: 0 }] },
       options: { cutout: '72%', maintainAspectRatio: false, plugins: { legend: { display: false },
                  tooltip: { callbacks: { label: t => `${t.label}: ${eur(-t.parsed)}` } } } }
     });

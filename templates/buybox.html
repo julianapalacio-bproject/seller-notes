@@ -237,7 +237,7 @@
     new Chart(s, {
       type: 'doughnut',
       data: { labels: JSON.parse(s.dataset.l), datasets: [{ data: JSON.parse(s.dataset.v), backgroundColor: colors,
-              borderColor: v('--card'), borderWidth: 3, borderRadius: 4 }] },
+              borderColor: v('--card'), borderWidth: 3, borderRadius: 0 }] },
       options: { cutout: '72%', maintainAspectRatio: false, plugins: { legend: { display: false },
                  tooltip: { callbacks: { label: t => `${t.label}: ${t.parsed.toFixed(1).replace('.', ',')} %` } } } }
     });
