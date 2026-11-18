@@ -1,0 +1,6 @@
+# Lo que genera Xcode al compilar
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+SellerNotesGratis.xcodeproj/

@@ -9,26 +9,36 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap">
   <title>Seller Notes</title>
-  <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ url_for('static', filename='logo.png') }}" type="image/png">
+  <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='iconos/apple-touch-icon.png') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Seller Notes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f5f5f4" id="theme-color">
+  <script>if (document.documentElement.dataset.theme === 'dark') document.getElementById('theme-color').content = '#111213';</script>
   <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='swiss.css') }}">
 </head>
 <body class="{% block body_class %}{% endblock %} swiss">
   <header class="top">
     <div class="wrap top-inner">
-      <a class="brand" href="{{ url_for('home') }}">
-        <img src="{{ url_for('static', filename='logo.svg') }}" alt="" width="34" height="34">
+      <a class="brand" href="{{ url_for('rentabilidad') }}">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="" width="34" height="34">
         <span><span class="brand-name">Seller Notes</span><span class="brand-sub">The Blue Project · Amazon.es</span></span>
       </a>
       <div class="top-right">
       <nav>
-        <a href="{{ url_for('home') }}" class="{{ 'on' if page == 'dashboard' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</a>
+        <a href="{{ url_for('rentabilidad') }}" class="{{ 'on' if page == 'rentabilidad' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Profit</a>
+        <a href="{{ url_for('avisos') }}" class="{{ 'on' if page == 'avisos' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Avisos</a>
         <a href="{{ url_for('listings') }}" class="{{ 'on' if page == 'listings' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Listings</a>
         <a href="{{ url_for('buybox') }}" class="{{ 'on' if page == 'buybox' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Análisis Productos</a>
-        <a href="{{ url_for('rentabilidad') }}" class="{{ 'on' if page == 'rentabilidad' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Profit</a>
+        <a href="{{ url_for('repricer') }}" class="{{ 'on' if page == 'repricer' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Repricer</a>
         <a href="{{ url_for('catalogos') }}" class="{{ 'on' if page == 'catalogos' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3"/></svg>Catálogos</a>
       </nav>
       <button type="button" class="theme-toggle" id="theme-toggle" title="Cambiar entre modo claro y oscuro" aria-label="Cambiar entre modo claro y oscuro"><span class="tt-light">Claro</span><span class="tt-dark">Oscuro</span></button>
+      {% if session.usuario %}<form method="post" action="{{ url_for('logout') }}" class="logout-form"><button type="submit" class="btn-ghost small" title="Cerrar sesión de {{ session.usuario }}">Salir</button></form>{% endif %}
       </div>
     </div>
   </header>
@@ -60,6 +70,7 @@
       setTimeout(() => location.reload(), quieto ? 0 : 260);
     });
   </script>
+  <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
   <script src="{{ url_for('static', filename='pull.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>

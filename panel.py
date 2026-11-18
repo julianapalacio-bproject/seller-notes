@@ -13,19 +13,23 @@ Uso:
 import io
 import json
 import os
+import sqlite3
 import sys
+import time
 import webbrowser
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Thread, Timer
 
 import requests
-from flask import Flask, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
+from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 import analizador as an
 import rentabilidad as rt
+import repricer as rp
 import seller_notes as sn
 
 PORT = 5050
@@ -53,6 +57,62 @@ def day_range(day):
 
 
 app.jinja_env.filters["local"] = local
+
+
+# ---------------------------------------------------------------- inicio de sesión
+# Usuarios en usuarios.json ({"usuario": "hash de la contraseña"}, fuera del historial). Sin ese archivo
+# (el panel en tu Mac) no se pide contraseña. La sesión dura 30 días, también en la app de la pantalla de inicio.
+USERS_FILE = sn.BASE / "usuarios.json"
+USERS = json.loads(USERS_FILE.read_text()) if USERS_FILE.exists() else {}
+SECRET_FILE = sn.BASE / ".panel_secret"
+if not SECRET_FILE.exists():
+    SECRET_FILE.write_text(os.urandom(32).hex())
+    SECRET_FILE.chmod(0o600)
+app.secret_key = SECRET_FILE.read_text().strip()
+app.config.update(PERMANENT_SESSION_LIFETIME=timedelta(days=30), SESSION_COOKIE_SAMESITE="Lax",
+                  SESSION_COOKIE_SECURE=bool(USERS))  # en el servidor solo se entra por https
+PUBLIC = {"login", "static", "manifest", "service_worker", "sin_conexion"}
+MAX_FAILS, LOCK_SECONDS = 5, 15 * 60
+_failed = {}  # usuario → horas de los intentos fallidos recientes
+
+
+@app.before_request
+def require_login():
+    if not USERS or request.endpoint in PUBLIC or session.get("usuario") in USERS:
+        return None
+    if request.method == "GET" and request.accept_mimetypes.accept_html:
+        return redirect(url_for("login", next=request.full_path.rstrip("?")))
+    return jsonify(error="Sesión caducada: vuelve a entrar"), 401
+
+
+@app.route("/entrar", methods=["GET", "POST"])
+def login():
+    nxt = request.values.get("next") or ""
+    nxt = nxt if nxt.startswith("/") and not nxt.startswith("//") else url_for("rentabilidad")
+    error = None
+    if request.method == "POST":
+        user = request.form.get("usuario", "").strip()
+        match = next((u for u in USERS if u.lower() == user.lower()), None)
+        fails = [t for t in _failed.get(match, []) if time.time() - t < LOCK_SECONDS]
+        if len(fails) >= MAX_FAILS:  # contraseñas cortas: tras 5 fallos, ese usuario espera 15 min
+            error = f"Demasiados intentos. Prueba de nuevo dentro de {int(LOCK_SECONDS - (time.time() - fails[0])) // 60 + 1} min"
+        elif match and check_password_hash(USERS[match], request.form.get("contrasena", "")):
+            _failed.pop(match, None)
+            session.clear()
+            session.permanent = True
+            session["usuario"] = match
+            return redirect(nxt)
+        else:
+            _failed[match] = fails + [time.time()]
+            time.sleep(1)  # frena a quien pruebe contraseñas a ciegas
+            error = "Usuario o contraseña incorrectos"
+    return render_template("login.html", error=error, next=nxt, usuario=request.form.get("usuario", ""))
+
+
+@app.route("/salir", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 # ---------------------------------------------------------------- mis listings
@@ -591,8 +651,8 @@ def guardar_tarjetas():
     return redirect(url_for("rentabilidad"))
 
 
-@app.route("/")
-def home():
+@app.route("/avisos")
+def avisos():
     sn.ASINS[:] = sn.read_asins()
     con = sn.db()
     rt.ensure_tables(con)
@@ -632,6 +692,16 @@ def home():
         items.append(dict(tone="warn", area="Profit", title=f"Ayer perdiste dinero: {eur(yesterday['neto'])}",
                           detail="Mira qué productos o gastos de la cuenta lo causaron.", since=None,
                           href=url_for("rentabilidad", rango="ayer"), cta="Ver ayer"))
+    asin_of = {r["sku"]: r["asin"] for r in rows}
+    for it in refunds_view(con, first, today, prows)["productos"]:
+        if not it["tone"]:
+            continue
+        motivo = f" Motivo más repetido: {it['motivos'][0][0].lower()} ({it['motivos'][0][1]})." if it["motivos"] else ""
+        items.append(dict(tone=it["tone"], area="Reembolsos",
+                          title=f"{it['sku']}: {it['devueltas']} reembolsos en 30 días ({it['tasa']:.0f} % de lo vendido)",
+                          detail=f"{it['nombre'][:60]}. Restan {eur(-it['efecto'])} a tu beneficio.{motivo}".lstrip(". "),
+                          since=None, href=url_for("rentabilidad", rango="30d", _anchor="reembolsos"),
+                          cta="Ver reembolsos", asin=asin_of.get(it["sku"])))
     if profit["sin_coste"]:
         n = len(profit["sin_coste"])
         items.append(dict(tone="warn", area="Profit", title=f"{n} SKU vendido{'s' if n > 1 else ''} sin coste de producto",
@@ -646,9 +716,62 @@ def home():
         ("ACTIVO", "ok"), ("VISIBLE, NO COMPRABLE", "warn"), ("INACTIVO", "bad"), ("SUPRIMIDO", "bad")) if count[e]],
         sin_stock=sum(1 for r in rows if r["stock"] == 0), unidades=sum(r["stock"] or 0 for r in rows),
         con_errores=sum(1 for r in rows if r["errores"]))
-    return render_template("dashboard.html", page="dashboard", items=items, fresh=fresh, bb=bb, profit=profit,
+    return render_template("dashboard.html", page="avisos", items=items, fresh=fresh, bb=bb, profit=profit,
                            health=health, eur=eur, groups=attention_groups(items, labels, rows),
                            fecha=f"{DIAS_ES[now.weekday()].capitalize()} {now.day} de {MONTHS_ES[now.month].lower()} · {now:%H:%M}")
+
+
+# ---------------------------------------------------------------- repricer
+def _num(v):
+    try:
+        return round(float(str(v).replace(",", ".").replace("€", "").strip()), 2) if str(v).strip() else None
+    except ValueError:
+        return None
+
+
+@app.route("/repricer")
+def repricer():
+    con = sn.db()
+    rp.ensure_tables(con)
+    names = sn.seller_names()
+    ts, rows = latest_listings(con)
+    conf = rp.settings(con)
+    watched = set(sn.read_asins())
+    items = []
+    sin_stock = [r for r in rows if not r["stock"]]
+    for r in rows:
+        if not r["stock"]:  # sin stock no hay oferta que ajustar
+            continue
+        c = conf.get(r["sku"]) or dict(estrategia="igualar", activo=0, minimo=None, maximo=None, margen=None, rebaja=None)
+        d = rp.decide(con, r["sku"], r["asin"], c, r["precio"]) if r["asin"] in watched else None
+        bb = d and d["bb"]
+        items.append(dict(r, conf=c, d=d, vigilado=r["asin"] in watched,
+                          bb_nombre=sn.name(bb["seller_id"], names) if bb else None,
+                          bb_soy_yo=bool(bb and bb["seller_id"] == sn.MY_SELLER_ID)))
+    items.sort(key=lambda i: (not i["vigilado"], not i["conf"]["activo"], i["sku"]))
+    activos = sum(1 for i in items if i["conf"]["activo"])
+    ver = request.args.get("ver") if request.args.get("ver") in ("activados", "sin_activar") else "todos"
+    filtros = [("todos", "Todos", len(items)), ("activados", "Activados", activos),
+               ("sin_activar", "Sin activar", len(items) - activos)]
+    if ver != "todos":
+        items = [i for i in items if bool(i["conf"]["activo"]) == (ver == "activados")]
+    log = con.execute("SELECT ts, sku, antes, nuevo, bb_precio, motivo, aplicado, error FROM repricer_log "
+                      "ORDER BY ts DESC LIMIT 60").fetchall()
+    return render_template("repricer.html", page="repricer", items=items, log=log, strategies=rp.STRATEGIES,
+                           default_margin=rp.DEFAULT_MARGIN,
+                           saved=request.args.get("ok"), sin_stock=len(sin_stock), activos=activos, ver=ver, filtros=filtros)
+
+
+@app.route("/repricer/guardar", methods=["POST"])
+def repricer_guardar():
+    con = sn.db()
+    f = request.form
+    sku, asin = f.get("sku", ""), f.get("asin", "")
+    strategy = f.get("estrategia") if f.get("estrategia") in rp.STRATEGIES else "igualar"
+    rp.save(con, sku, asin, estrategia=strategy, activo=1 if f.get("activo") else 0,
+            minimo=_num(f.get("minimo")), maximo=_num(f.get("maximo")), margen=_num(f.get("margen")))
+    ver = f.get("ver") if f.get("ver") in ("activados", "sin_activar") else None
+    return redirect(url_for("repricer", ok=sku, ver=ver, _anchor="p-" + sku))
 
 
 # ---------------------------------------------------------------- catálogos de proveedor
@@ -706,10 +829,21 @@ def analizar_catalogo():
         "INSERT INTO catalogos(ts, archivo, proveedor, estado, progreso, mensaje, opciones) VALUES (?,?,?,?,?,?,?)",
         (datetime.now(timezone.utc).isoformat(timespec="seconds"), form.get("original") or path.name,
          form.get("proveedor", "").strip(), "en_curso", 0, "Empezando…",
-         json.dumps({"iva": iva, "envio": envio, "mapping": mapping})))
+         json.dumps({"iva": iva, "envio": envio, "mapping": mapping, "ruta": path.name,
+                     "header_idx": int(form["header_idx"])})))
     con.commit()
-    job_id = cur.lastrowid
-    Thread(target=an.run_job, args=(job_id, path, int(form["header_idx"]), mapping, iva, envio), daemon=True).start()
+    an.start_job(cur.lastrowid)
+    return redirect(url_for("catalogo", job_id=cur.lastrowid))
+
+
+@app.route("/catalogos/<int:job_id>/reiniciar", methods=["POST"])
+def reiniciar_catalogo(job_id):
+    """Vuelve a analizar el catálogo desde el principio con las mismas columnas y opciones."""
+    con = sn.db()
+    con.row_factory = sqlite3.Row
+    job = con.execute("SELECT * FROM catalogos WHERE id=?", (job_id,)).fetchone()
+    if job and not (job["estado"] == "en_curso" and an.job_alive(job)):
+        an.start_job(job_id)
     return redirect(url_for("catalogo", job_id=job_id))
 
 
@@ -865,7 +999,92 @@ def profit_view(con, start, end, group):
     return rows, sorted(acc.items(), key=lambda x: x[1]), tot, periods
 
 
+# ---------------------------------------------------------------- Profit: reembolsos
+RETURN_REASONS = {
+    "ORDERED_WRONG_ITEM": "Pidió el producto equivocado", "UNWANTED_ITEM": "Ya no lo quiere",
+    "NOT_AS_DESCRIBED": "No es como se describe", "FOUND_BETTER_PRICE": "Encontró mejor precio",
+    "NO_REASON_GIVEN": "Sin motivo", "SWITCHEROO": "Devolvió otro artículo", "NOT_COMPATIBLE": "No le sirve",
+    "QUALITY_UNACCEPTABLE": "Mala calidad", "DEFECTIVE": "Defectuoso", "DAMAGED_BY_FC": "Dañado en el almacén",
+    "DAMAGED_BY_CARRIER": "Dañado en el envío", "MISSED_ESTIMATED_DELIVERY": "Llegó tarde",
+    "UNDELIVERABLE_UNKNOWN": "No se pudo entregar", "UNDELIVERABLE_REFUSED": "Rechazado en la entrega",
+    "UNAUTHORIZED_PURCHASE": "Compra no autorizada", "EXTRA_ITEM": "Le llegó de más", "MISSING_PARTS": "Faltan piezas",
+}
+RETURN_STATES = {"SELLABLE": "Vendible", "CUSTOMER_DAMAGED": "Dañado por el cliente", "DEFECTIVE": "Defectuoso",
+                 "CARRIER_DAMAGED": "Dañado en el envío", "DISTRIBUTOR_DAMAGED": "Dañado en el almacén",
+                 "EXPIRED": "Caducado"}
+REFUND_ALERT_UNITS, REFUND_ALERT_RATE, REFUND_BAD_RATE = 3, 15, 20  # aviso: 3+ reembolsos y 15 % o más de lo vendido
+
+
+def return_details(con, start, end):
+    """Devoluciones físicas del rango por SKU: motivos y estado en que llegaron al almacén."""
+    out = defaultdict(lambda: dict(motivos=Counter(), estados=Counter()))
+    for fecha, sku, qty, estado, motivo in con.execute(
+            "SELECT fecha, sku, cantidad, estado, motivo FROM devoluciones_fba"):
+        if start <= rt.local_date(fecha) <= end:
+            out[sku]["motivos"][RETURN_REASONS.get(motivo, (motivo or "Sin motivo").replace("_", " ").capitalize())] += qty or 1
+            out[sku]["estados"][RETURN_STATES.get(estado, (estado or "").replace("_", " ").capitalize())] += qty or 1
+    return out
+
+
+def refunds_view(con, start, end, rows):
+    """Productos con reembolsos en el rango: unidades, % sobre lo vendido, dinero y motivos."""
+    details = return_details(con, start, end)
+    items, motivos, estados = [], Counter(), Counter()
+    for d in details.values():
+        motivos.update(d["motivos"])
+        estados.update(d["estados"])
+    for r in rows:
+        if not r["devueltas"]:
+            continue
+        d = details.get(r["sku"], dict(motivos=Counter(), estados=Counter()))
+        items.append(dict(sku=r["sku"], nombre=r["nombre"], uds=r["uds"], devueltas=r["devueltas"],
+                          tasa=100 * r["devueltas"] / r["uds"] if r["uds"] else None,
+                          importe=-r["devoluciones"], efecto=r["dev_neto"] + r["recuperado"],
+                          vendibles=r["vendibles"], motivos=d["motivos"].most_common(3)))
+    for it in items:
+        t = it["tasa"]
+        it["tone"] = "bad" if t is not None and t >= REFUND_BAD_RATE and it["devueltas"] >= REFUND_ALERT_UNITS else \
+            "warn" if t is not None and t >= REFUND_ALERT_RATE and it["devueltas"] >= REFUND_ALERT_UNITS else ""
+    items.sort(key=lambda x: (-x["devueltas"], x["efecto"]))
+    uds = sum(r["uds"] for r in rows)
+    dev = sum(i["devueltas"] for i in items)
+    return dict(productos=items, devueltas=dev, uds=uds, tasa=100 * dev / uds if uds else None,
+                importe=sum(i["importe"] for i in items), efecto=sum(i["efecto"] for i in items),
+                vendibles=sum(i["vendibles"] for i in items), motivos=motivos.most_common(6),
+                estados=estados.most_common(), fisicas=sum(estados.values()))
+
+
+# App instalable (PWA): el manifest y el service worker se sirven desde la raíz para que la app abarque todo el panel
+@app.route("/manifest.webmanifest")
+def manifest():
+    r = send_file(Path(app.static_folder) / "manifest.webmanifest", mimetype="application/manifest+json")
+    r.headers["Cache-Control"] = "no-cache"
+    return r
+
+
+@app.route("/sw.js")
+def service_worker():
+    r = send_file(Path(app.static_folder) / "sw.js", mimetype="text/javascript")
+    r.headers["Cache-Control"] = "no-cache"
+    return r
+
+
+@app.route("/sin-conexion")
+def sin_conexion():
+    return """<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Sin conexión · Seller Notes</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f5f4;color:#111;
+font:16px/1.5 -apple-system,system-ui,sans-serif;text-align:center;padding:24px;box-sizing:border-box}
+h1{font-size:20px;margin:16px 0 4px}p{margin:0 0 20px;color:#6b7280}
+button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 22px;background:#111;color:#fff}
+@media (prefers-color-scheme:dark){body{background:#111213;color:#f1f1f0}button{background:#fff;color:#111}}</style></head>
+<body><div><img src="/static/logo.png" width="64" height="64" alt="" style="border-radius:14px">
+<h1>Sin conexión</h1><p>Seller Notes necesita internet para mostrar tus datos.</p>
+<button onclick="location.reload()">Reintentar</button></div></body></html>"""
+
+
 @app.route("/rentabilidad")
+@app.route("/")  # Profit es la página de inicio
 def rentabilidad():
     con = sn.db()
     rt.ensure_tables(con)
@@ -889,6 +1108,8 @@ def rentabilidad():
     rows, acc, tot, periods = profit_view(con, start, end, group)
     last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
     return render_template("rentabilidad.html", page="rentabilidad", rows=rows, acc=acc, tot=tot, periods=periods,
+                           today=today,
+                           refunds=refunds_view(con, start, end, rows),
                            chart=json.dumps([dict(l=p["label"], p=round(p["producto"], 2), n=round(p["neto"], 2)) for p in periods]),
                            start=start, end=end, group=group, groups=GROUPS, preset=preset, presets=presets,
                            last=last, sync=_sync_state, error=request.args.get("error"),
@@ -951,13 +1172,19 @@ def costes():
 
 
 def mark_interrupted_jobs():
-    """Si el panel se cerró a mitad de un análisis, ese análisis no va a terminar."""
+    """Los análisis van en su propio proceso; si ese proceso ya no existe (p. ej. se reinició el servidor), no va a terminar."""
     con = sn.db()
     an.ensure_tables(con)
-    con.execute("UPDATE catalogos SET estado='error', mensaje='Interrumpido: el panel se cerró durante el análisis' "
-                "WHERE estado='en_curso'")
+    con.row_factory = sqlite3.Row
+    for job in con.execute("SELECT * FROM catalogos WHERE estado='en_curso'").fetchall():
+        if not an.job_alive(job):
+            con.execute("UPDATE catalogos SET estado='error', mensaje='Interrumpido antes de terminar' WHERE id=?",
+                        (job["id"],))
     con.commit()
 
+
+import api  # noqa: E402  API JSON para la app de iPhone (/api/...), con el mismo inicio de sesión
+api.init(app, sys.modules[__name__])
 
 if __name__ == "__main__":
     if "--puerto" in sys.argv:  # otro puerto para probar cambios sin cerrar el panel abierto

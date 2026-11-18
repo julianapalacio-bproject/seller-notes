@@ -18,6 +18,7 @@ import io
 import json
 import os
 import re
+import sqlite3
 import sys
 import time
 import unicodedata
@@ -31,6 +32,7 @@ import seller_notes as sn
 AMAZON_SELLER_ID = "A1AT7YVPFBWXBL"  # Amazon como vendedor en Amazon.es
 IVA_VENTA = float(os.getenv("IVA_VENTA", "21"))  # % de IVA de venta en España por defecto
 OUT_DIR = sn.BASE / "informes" / "catalogos"
+UPLOAD_DIR = sn.BASE / "catalogos"  # catálogos subidos al panel
 
 
 # ---------------------------------------------------------------- leer el archivo del proveedor
@@ -404,7 +406,7 @@ def ensure_tables(con):
 
 
 def run_job(job_id, path, header_idx, mapping, iva, envio_unidad):
-    """Ejecuta un análisis guardando el progreso en la base de datos (se llama en un hilo del panel)."""
+    """Ejecuta un análisis guardando el progreso en la base de datos (en un proceso aparte, ver start_job)."""
     con = sn.db()
     ensure_tables(con)
 
@@ -426,8 +428,68 @@ def run_job(job_id, path, header_idx, mapping, iva, envio_unidad):
     con.commit()
 
 
+def job_file(job):
+    """Archivo subido de un análisis: el guardado en sus opciones o, en los antiguos, el último con ese nombre."""
+    opts = json.loads(job["opciones"] or "{}")
+    if opts.get("ruta"):
+        return UPLOAD_DIR / opts["ruta"]
+    from werkzeug.utils import secure_filename
+    found = sorted(UPLOAD_DIR.glob(f"*_{secure_filename(job['archivo'])}"))
+    if not found:
+        raise FileNotFoundError(f"No encuentro el archivo {job['archivo']}: vuelve a subirlo")
+    return found[-1]
+
+
+def job_alive(job):
+    """¿Sigue en marcha el proceso de este análisis?"""
+    pid = json.loads(job["opciones"] or "{}").get("pid")
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (TypeError, ValueError, OSError):
+        return False
+
+
+def start_job(job_id):
+    """Lanza el análisis en un proceso aparte: sigue aunque el panel se reinicie o se cierre."""
+    import subprocess
+    from threading import Thread
+    con = sn.db()
+    with con:
+        con.execute("DELETE FROM catalogo_items WHERE catalogo_id=?", (job_id,))
+        con.execute("UPDATE catalogos SET estado='en_curso', progreso=0, mensaje='Empezando…', n=NULL WHERE id=?", (job_id,))
+    p = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--job", str(job_id)], cwd=sn.BASE,
+                         start_new_session=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+    Thread(target=p.wait, daemon=True).start()  # recoge el proceso al terminar
+
+
+def run_saved_job(job_id):
+    """Ejecuta (en este proceso) un análisis con las opciones guardadas al pedirlo."""
+    con = sn.db()
+    con.row_factory = sqlite3.Row
+    job = con.execute("SELECT * FROM catalogos WHERE id=?", (job_id,)).fetchone()
+    opts = json.loads(job["opciones"] or "{}")
+    try:
+        path = job_file(job)
+        mapping = {k: int(v) for k, v in opts["mapping"].items()}
+        header_idx = opts.get("header_idx")
+        if header_idx is None:  # análisis antiguos: la fila de títulos se vuelve a detectar
+            header_idx = detect_columns(read_table(path))[0]
+    except Exception as e:
+        con.execute("UPDATE catalogos SET estado='error', mensaje=? WHERE id=?", (str(e)[:500], job_id))
+        con.commit()
+        return
+    opts.update(pid=os.getpid(), ruta=path.name, header_idx=header_idx)
+    con.execute("UPDATE catalogos SET opciones=? WHERE id=?", (json.dumps(opts), job_id))
+    con.commit()
+    run_job(job_id, path, header_idx, mapping, opts.get("iva", IVA_VENTA), opts.get("envio", 0.0))
+
+
 # ---------------------------------------------------------------- línea de comandos
 def main():
+    if sys.argv[1:2] == ["--job"]:
+        return run_saved_job(int(sys.argv[2]))
     if len(sys.argv) < 2:
         sys.exit("Uso: python analizador.py catalogo.xlsx")
     path = Path(sys.argv[1])

@@ -12,7 +12,12 @@
     <div class="g-title"><h1>{{ job.proveedor or job.archivo }}</h1></div>
     <p class="muted small">{{ job.archivo }} · {{ job.ts | local }} · <a href="{{ url_for('catalogos') }}">Todos los catálogos</a></p>
   </div>
-  {% if job.estado == 'terminado' %}<a class="btn-ink plain" href="{{ url_for('catalogo_excel', job_id=job.id) }}">Descargar Excel</a>{% endif %}
+  {% if job.estado == 'terminado' %}<div class="cat-actions">
+    <form method="post" action="{{ url_for('reiniciar_catalogo', job_id=job.id) }}" onsubmit="return confirm('¿Volver a analizar este catálogo desde el principio? Se reemplazan los resultados actuales.')">
+      <button type="submit" class="btn-ghost">Reiniciar análisis</button>
+    </form>
+    <a class="btn-ink plain" href="{{ url_for('catalogo_excel', job_id=job.id) }}">Descargar Excel</a>
+  </div>{% endif %}
   {% if job.estado == 'terminado' %}
   <div class="ls-summary">
     {% for label, value, tone in tiles %}
@@ -30,6 +35,10 @@
 </section>
 {% elif job.estado == 'error' %}
 <div class="alert" role="alert">El análisis no terminó: {{ job.mensaje }}</div>
+<form method="post" action="{{ url_for('reiniciar_catalogo', job_id=job.id) }}" class="cat-restart">
+  <button type="submit" class="btn-ink plain">Reiniciar análisis</button>
+  <span class="muted small">Vuelve a empezar con las mismas columnas y opciones.</span>
+</form>
 {% else %}
 
 <form class="g-card cat-filters" method="get" id="filtros">

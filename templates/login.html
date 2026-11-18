@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem('tema') || 'light'; } catch (e) { document.documentElement.dataset.theme = 'light'; }</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <title>Entrar · Seller Notes</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo.png') }}" type="image/png">
+  <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='iconos/apple-touch-icon.png') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Seller Notes">
+  <meta name="theme-color" content="#f5f5f4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='swiss.css') }}">
+</head>
+<body class="glass swiss login-page">
+  <main class="login-box">
+    <div class="login-brand">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="" width="44" height="44">
+      <div><h1>Seller Notes</h1><p class="muted small">The Blue Project · Amazon.es</p></div>
+    </div>
+    <form method="post" class="g-card login-form">
+      <input type="hidden" name="next" value="{{ next }}">
+      {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+      <label><span>Usuario</span>
+        <input type="text" name="usuario" value="{{ usuario }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required {% if not usuario %}autofocus{% endif %}></label>
+      <label><span>Contraseña</span>
+        <input type="password" name="contrasena" autocomplete="current-password" required {% if usuario %}autofocus{% endif %}></label>
+      <button type="submit" class="btn-ink plain">Entrar</button>
+      <p class="muted small">Seguirás dentro 30 días en este dispositivo.</p>
+    </form>
+  </main>
+</body>
+</html>

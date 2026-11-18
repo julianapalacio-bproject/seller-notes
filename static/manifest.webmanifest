@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "Seller Notes",
+  "short_name": "Seller Notes",
+  "description": "Profit, avisos, listings y catálogos de The Blue Project en Amazon.es",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#136472",
+  "theme_color": "#f5f5f4",
+  "icons": [
+    { "src": "/static/iconos/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/iconos/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

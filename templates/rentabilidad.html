@@ -10,7 +10,7 @@
     <p class="muted small">{{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }} · ventas por fecha de pedido</p>
   </div>
   <div class="g-head-actions">
-  <a class="btn-ghost" href="{{ url_for('costes') }}">Costes de producto</a>
+  <a class="btn-ghost" href="{{ url_for('costes') }}">COG</a>
   <form method="post" action="{{ url_for('rentabilidad_actualizar') }}" hidden onsubmit="const b=this.querySelector('button'); b.disabled=true; b.classList.add('is-busy'); b.textContent='Actualizando…'">
     <input type="hidden" name="volver" value="{{ request.full_path }}">
     <button type="submit" class="btn-ink{{ ' is-busy' if sync.running }}" {{ 'disabled' if sync.running }}>{{ 'Actualizando…' if sync.running else 'Actualizar desde Amazon' }}</button>
@@ -42,14 +42,14 @@
 {% set unidad = groups[group] | lower %}
 {% set unidades = unidad ~ ('es' if group == 'mes' else 's') %}
 {% set ingresos = rows | sum(attribute='ingresos') %}
-{% set partes = [('Beneficio de productos', tot.producto), ('Coste de producto', rows | sum(attribute='coste')),
+{% set partes = [('Beneficio de productos', tot.producto), ('COG', rows | sum(attribute='coste')),
                  ('Comisiones de Amazon', -(rows | sum(attribute='comisiones'))), ('Tarifas FBA', -(rows | sum(attribute='fba')))] %}
 
 <div class="g-row r1">
   <section class="g-card g-dark {{ 'ok' if tot.neto > 0 else 'bad' }}">
     <div class="g-label">Beneficio neto <i class="dot {{ 'me' if tot.neto > 0 else 'bad' }}"></i></div>
     <div class="g-big">{{ eur(tot.neto) }}</div>
-    <p>{% if tot.margen is not none %}Margen {{ n(tot.margen)[:-1] }} %{% endif %}<br>Después de costes de producto, comisiones, FBA y gastos de la cuenta</p>
+    <p>{% if tot.margen is not none %}Margen {{ n(tot.margen)[:-1] }} %{% endif %}<br>Después de COG, comisiones, FBA y gastos de la cuenta</p>
     <div class="g-foot"><span>Productos <b>{{ eur(tot.producto) }}</b></span><span>Cuenta <b>{{ eur(tot.cuenta) }}</b></span></div>
   </section>
 
@@ -133,6 +133,58 @@
   <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}' role="img" aria-label="Evolución por {{ unidad }}: beneficio de productos {{ eur(tot.producto) }} y beneficio neto {{ eur(tot.neto) }} en total"></canvas></div>
 </section>
 
+<section class="g-card flush" id="reembolsos">
+  <div class="g-card-head pad">
+    <div><h2 class="sec">Reembolsos {% if refunds.tasa is not none and refunds.devueltas %}<span class="pill {{ 'bad' if refunds.tasa >= 15 else 'ink' }}">{{ ('%.1f' % refunds.tasa) | replace('.', ',') }} % de lo vendido</span>{% endif %}</h2>
+      <p class="muted small">Dinero devuelto a clientes en estas fechas y por qué lo devolvieron</p></div>
+  </div>
+  {% if not refunds.devueltas and not refunds.fisicas %}
+  <p class="muted pad-x">Sin reembolsos en estas fechas.</p>
+  {% else %}
+  <div class="g-stats refund-stats pad-x">
+    <div><span class="muted small">Unidades reembolsadas</span><b>{{ refunds.devueltas }} uds</b><span class="muted small">de {{ refunds.uds }} vendidas</span></div>
+    <div><span class="muted small">Devuelto a clientes</span><b>{{ eur(refunds.importe) }}</b><span class="muted small">con IVA</span></div>
+    <div><span class="muted small">Restan al beneficio</span><b class="neg">{{ eur(-refunds.efecto) }}</b><span class="muted small">ventas sin IVA − comisión devuelta</span></div>
+    <div><span class="muted small">Volvieron vendibles</span><b>{{ refunds.vendibles }} uds</b><span class="muted small">su coste se recupera</span></div>
+  </div>
+  <div class="refund-grid">
+    <div class="table-scroll flat">
+    <table class="refund-table">
+      <thead><tr><th>SKU / Producto</th><th class="r">Reemb.</th><th class="r">% vendido</th><th class="r">Devuelto</th><th class="r">Resta</th><th>Motivos</th></tr></thead>
+      <tbody>
+      {% for it in refunds.productos %}
+        <tr class="{{ 'is-' ~ it.tone if it.tone }}">
+          <td><strong class="mono">{{ it.sku }}</strong><div class="muted small">{{ it.nombre[:50] }}</div></td>
+          <td class="r"><b>{{ it.devueltas }}</b><div class="muted small">de {{ it.uds }}</div></td>
+          <td class="r">{% if it.tasa is not none %}<span class="roi {{ 'low' if it.tone == 'bad' else 'mid' if it.tone == 'warn' else 'good' }}">{{ '%.0f' % it.tasa }} %</span>{% else %}—{% endif %}</td>
+          <td class="r mono">{{ eur(it.importe) }}</td>
+          <td class="r mono neg">{{ eur(-it.efecto) }}</td>
+          <td class="small">{% for m, c in it.motivos %}<div>{{ m }} <span class="muted">· {{ c }}</span></div>{% else %}<span class="muted">Aún sin devolución física</span>{% endfor %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div class="refund-side">
+      {% if refunds.motivos %}
+      <h3 class="sec small-h">Motivos</h3>
+      {% set top = refunds.motivos[0][1] %}
+      <ul class="g-split">
+        {% for m, c in refunds.motivos %}
+        <li><div><span>{{ m }}</span><b>{{ c }}</b></div><span class="g-track"><span style="width: {{ 100 * c / top }}%"></span></span></li>
+        {% endfor %}
+      </ul>
+      <h3 class="sec small-h">Cómo llegaron al almacén</h3>
+      <ul class="refund-states">
+        {% for e, c in refunds.estados %}<li><span>{{ e }}</span><b>{{ c }}</b></li>{% endfor %}
+      </ul>
+      {% else %}<p class="muted small">Amazon aún no ha recibido ninguna de estas devoluciones.</p>{% endif %}
+    </div>
+  </div>
+  <p class="muted small pad-x">Un producto sale en Avisos si tiene {{ 3 }} o más reembolsos en 30 días y son el 15 % o más de lo vendido.</p>
+  {% endif %}
+</section>
+
 <section class="g-card flush">
   <div class="g-card-head pad">
     <div><h2 class="sec">Rentabilidad por producto <span class="pill ink">{{ rows | length }} SKU</span></h2>
@@ -145,7 +197,7 @@
       <tr>
         <th data-sort="text">SKU / Producto</th><th data-sort="num" class="r">Uds</th><th data-sort="num" class="r">Reemb.</th>
         <th data-sort="num" class="r">Ventas con IVA</th><th data-sort="num" class="r">Ingresos sin IVA</th><th data-sort="num" class="r">Comisiones</th><th data-sort="num" class="r">FBA</th>
-        <th data-sort="num" class="r">Reembolsos Amazon</th><th data-sort="num" class="r">Coste producto</th>
+        <th data-sort="num" class="r">Reembolsos Amazon</th><th data-sort="num" class="r">COG</th>
         <th data-sort="num" class="r">Beneficio</th><th data-sort="num" class="r">/ud</th><th data-sort="num" class="r">Margen</th><th data-sort="num" class="r">ROI</th>
       </tr>
     </thead>
@@ -178,7 +230,7 @@
   Las ventas cuentan el día del pedido, como en Sellerboard. Las de pedidos que Amazon aún no ha liquidado usan comisiones
   y tarifas FBA estimadas con el histórico del SKU. Los reembolsos cuentan el día en que se devuelve el dinero, y una unidad
   reembolsada solo recupera su coste si Amazon la recibe como vendible.
-  Beneficio = ventas sin IVA − reembolsos − comisiones − FBA + reembolsos de Amazon − coste de producto.
+  Beneficio = ventas sin IVA − reembolsos − comisiones − FBA + reembolsos de Amazon − COG.
 </div></section>
 {% endif %}
 {% endblock %}

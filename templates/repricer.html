@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% macro eur(v) %}{{ '—' if v is none else ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') ~ ' €' }}{% endmacro %}
+{% block body_class %}glass navy{% endblock %}
+{% block content %}
+<section class="g-card g-head">
+  <div>
+    <div class="g-title"><h1>Repricer</h1>
+      <span class="pill {{ 'ok' if activos else 'ink' }}">{{ activos }} activado{{ 's' if activos != 1 }}</span></div>
+    <p class="muted small">Revisa la Buy Box cada 5 minutos y ajusta tu precio. Los productos sin activar solo muestran qué haría.{% if sin_stock %} Solo se muestran los que tienen stock ({{ sin_stock }} sin stock ocultos).{% endif %}</p>
+  </div>
+</section>
+
+<section class="g-card g-note small"><div>
+  <b>Estrategias.</b>
+  <b>Igualar Buy Box:</b> pone el mismo precio que la Buy Box.
+  <b>Competir con la Buy Box:</b> se pone 0,02 € por debajo del precio actual de la Buy Box.
+  Si ya tienes la Buy Box, tu precio se mantiene.
+  Solo se frena en lo que tú pongas, todo opcional: un <b>mínimo</b> y un <b>máximo</b> en euros, y un <b>margen mínimo %</b> (calculado con el coste, las comisiones y la tarifa FBA; si pones mínimo y margen, manda el más alto). También respeta los precios mínimo y máximo de la oferta en Seller Central, porque fuera de ellos Amazon desactiva la oferta.
+</div></section>
+
+<section class="g-filters rp-filter">
+  <div class="g-seg" role="tablist" aria-label="Filtrar productos">
+    {% for key, label, n in filtros %}
+    <a href="{{ url_for('repricer', ver=None if key == 'todos' else key) }}" class="{{ 'on' if key == ver }}" {{ 'aria-current="page"' if key == ver }}>{{ label }} <span class="rp-count">{{ n }}</span></a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if not items %}<p class="empty">{{ 'Ningún producto tiene el repricer activado.' if ver == 'activados' else 'Todos los productos con stock tienen el repricer activado.' if ver == 'sin_activar' else 'No hay productos con stock.' }}</p>{% endif %}
+<div class="rp-list">
+{% for i in items %}
+  {% set c, d = i.conf, i.d %}
+  <section class="g-card rp-card {{ 'is-on' if c.activo }} {{ 'is-off' if not i.vigilado }}" id="p-{{ i.sku }}">
+    <div class="rp-head">
+      <div><strong class="mono">{{ i.sku }}</strong><div class="muted small">{{ i.nombre[:70] }}</div></div>
+      {% if not i.vigilado %}<span class="pill ink">Sin vigilar</span>
+      {% elif c.activo %}<span class="pill ok"><i class="dot me"></i> Activado</span>
+      {% else %}<span class="pill ink">Sin activar</span>{% endif %}
+    </div>
+
+    {% if not i.vigilado %}
+    <p class="muted small">El monitor no vigila la Buy Box de este ASIN ({{ i.asin }}). Añádelo en <a href="{{ url_for('buybox') }}">Análisis Productos</a> para poder usar el repricer.</p>
+    {% else %}
+    <div class="rp-stats">
+      <div><span class="muted small">Tu precio</span><b>{{ eur(d.actual) }}</b></div>
+      <div><span class="muted small">Buy Box</span><b>{{ eur(d.bb.landed) if d.bb else 'Nadie' }}</b>
+        <span class="muted small">{{ 'Tú' if i.bb_soy_yo else (i.bb_nombre or '').split(' [')[0][:28] }}</span></div>
+      <div><span class="muted small">Mínimo</span><b>{{ eur(d.minimo) }}</b><span class="muted small">{{ ('margen ' ~ ('%g' % c.margen) ~ ' %') if c.margen is not none and d.minimo_margen is not none and d.minimo == d.minimo_margen else 'a mano' if c.minimo is not none else 'sin mínimo' }}</span></div>
+      <div class="rp-next {{ 'has' if d.objetivo is not none }}"><span class="muted small">{{ 'Pondría ahora' if not c.activo else 'Siguiente precio' }}</span>
+        <b>{{ eur(d.objetivo) if d.objetivo is not none else 'Sin cambios' }}</b></div>
+    </div>
+    <p class="small rp-why">{{ d.motivo }}</p>
+
+    <form method="post" action="{{ url_for('repricer_guardar') }}" class="rp-form">
+      <input type="hidden" name="sku" value="{{ i.sku }}"><input type="hidden" name="ver" value="{{ ver }}"><input type="hidden" name="asin" value="{{ i.asin }}">
+      <label>Estrategia
+        <select name="estrategia">
+          {% for k, v in strategies.items() %}<option value="{{ k }}" {{ 'selected' if c.estrategia == k }}>{{ v }}</option>{% endfor %}
+        </select></label>
+      <label>Mínimo (€)
+        <input name="minimo" inputmode="decimal" value="{{ ('%.2f' % c.minimo) if c.minimo is not none else '' }}" placeholder="opcional"></label>
+      <label>Máximo (€)
+        <input name="maximo" inputmode="decimal" value="{{ ('%.2f' % c.maximo) if c.maximo is not none else '' }}" placeholder="sin tope"></label>
+      <label>Margen mínimo (%)
+        <input name="margen" inputmode="decimal" value="{{ ('%g' % c.margen) if c.margen is not none else '' }}" placeholder="opcional"></label>
+      <label class="rp-switch"><input type="checkbox" name="activo" value="1" {{ 'checked' if c.activo }}
+        onchange="if (this.checked && !confirm('Seller Notes cambiará el precio de {{ i.sku }} en Amazon automáticamente, sin bajar de tu mínimo. ¿Activar?')) this.checked = false">
+        Cambiar el precio en Amazon</label>
+      <button type="submit" class="btn-ink">Guardar</button>
+      {% if saved == i.sku %}<span class="pill ok">Guardado</span>{% endif %}
+    </form>
+    {% endif %}
+  </section>
+{% endfor %}
+</div>
+
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Historial</h2>
+    <p class="muted small">Cambios hechos en Amazon y lo que habría hecho en simulación</p></div></div>
+  {% if log %}
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>Hora</th><th>SKU</th><th class="r">Antes</th><th class="r">Nuevo</th><th class="r">Buy Box</th><th>Resultado</th><th>Motivo</th></tr></thead>
+    <tbody>
+    {% for ts, sku, antes, nuevo, bbp, motivo, aplicado, error in log %}
+      <tr>
+        <td class="small">{{ ts | local }}</td><td class="mono small">{{ sku }}</td>
+        <td class="r mono">{{ eur(antes) }}</td><td class="r mono"><b>{{ eur(nuevo) }}</b></td><td class="r mono">{{ eur(bbp) }}</td>
+        <td>{% if aplicado == 1 %}<span class="pill ok">Cambiado</span>{% elif aplicado == -1 %}<span class="pill bad" title="{{ error }}">Error</span>{% else %}<span class="pill ink">Simulado</span>{% endif %}</td>
+        <td class="small">{{ motivo }}{% if error %}<div class="neg">{{ error }}</div>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted pad-x rp-empty">Aún no hay movimientos. Guarda la estrategia de un producto y el repricer empezará a anotar qué haría en la siguiente ronda.</p>{% endif %}
+</section>
+{% endblock %}

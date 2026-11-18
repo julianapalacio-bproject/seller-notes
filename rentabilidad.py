@@ -315,7 +315,8 @@ ACCOUNT_LABELS = {
 def _sku_row(skus, period, sku):
     return skus.setdefault(period, {}).setdefault(sku, dict(
         sku=sku, uds=0, estimadas=0, devueltas=0, vendibles=0, ventas=0.0, devoluciones=0.0, ingresos=0.0,
-        comisiones=0.0, fba=0.0, reembolsos=0.0, coste=0.0, sin_coste=False))
+        comisiones=0.0, fba=0.0, reembolsos=0.0, coste=0.0, sin_coste=False,
+        dev_neto=0.0, recuperado=0.0))  # dev_neto: efecto de los reembolsos (sin IVA); recuperado: coste de las vendibles
 
 
 def local_date(ts):
@@ -420,16 +421,24 @@ def aggregate(con, start=None, end=None, group="mes"):
             elif concepto in INCOME:
                 r["ventas" if tipo == "venta" else "devoluciones"] += importe
                 r["ingresos"] += importe / (1 + iva / 100)
+                if tipo == "devolucion":
+                    r["dev_neto"] += importe / (1 + iva / 100)
             elif concepto in REFERRAL:
                 r["comisiones"] += importe
+                if tipo == "devolucion":
+                    r["dev_neto"] += importe
             elif concepto in FBA:
                 r["fba"] += importe
+                if tipo == "devolucion":
+                    r["dev_neto"] += importe
             elif tipo == "ajuste":
                 r["reembolsos"] += importe  # Amazon te paga por unidades perdidas, dañadas o no devueltas
             elif concepto in VAT_ONLY or concepto.startswith("Withheld:"):
                 pass
             else:
                 r["comisiones"] += importe  # cualquier otra tarifa por unidad
+                if tipo == "devolucion":
+                    r["dev_neto"] += importe
         elif tipo in ("servicio", "ajuste"):
             label = ACCOUNT_LABELS.get(concepto, concepto)
             acc = account.setdefault(k, {})
@@ -499,6 +508,7 @@ def aggregate(con, start=None, end=None, group="mes"):
         r = _sku_row(skus, period_key(d, group), sku)
         r["vendibles"] += qty
         r["coste"] -= qty * (cost(sku, d)[0] or 0)
+        r["recuperado"] += qty * (cost(sku, d)[0] or 0)
     for m, concepto, importe in con.execute("SELECT mes, concepto, importe FROM gastos_manual"):
         d = datetime.strptime(m + "-01", "%Y-%m-%d").date()
         if (start and d < start.replace(day=1)) or (end and d > end):

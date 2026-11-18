@@ -1,0 +1,60 @@
+# Proyecto de Xcode de la app de iPhone. Se genera con:  cd ios && xcodegen
+name: SellerNotes
+options:
+  bundleIdPrefix: com.theblueproject
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: es
+settings:
+  base:
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_LANGUAGE: es
+    CODE_SIGN_STYLE: Automatic
+targets:
+  SellerNotes:
+    type: application
+    platform: iOS
+    sources:
+      - SellerNotes
+      - Compartido
+    dependencies:
+      - target: SellerNotesWidget
+    entitlements:
+      path: SellerNotes/SellerNotes.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.theblueproject.sellernotes
+        PRODUCT_NAME: Seller Notes
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Seller Notes
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "Para abrir Seller Notes con Face ID."
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.business
+  SellerNotesWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widget
+      - Compartido
+    entitlements:
+      path: Widget/Widget.entitlements
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Seller Notes
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.theblueproject.sellernotes.widget
+        PRODUCT_NAME: SellerNotesWidget
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES

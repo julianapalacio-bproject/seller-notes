@@ -823,6 +823,12 @@ def main():
     while True:
         started = time.time()
         poll_once(con)
+        if MY_SELLER_ID:
+            try:  # con la Buy Box recién consultada, el repricer ajusta los productos que tengas activados
+                import repricer
+                repricer.run(con)
+            except Exception as e:
+                print(f"    (Error en el repricer: {e})", flush=True)
         try:  # nombres de tiendas nuevas, leídos de su ficha en amazon.es
             fill_names(con)
         except Exception as e:
