@@ -23,7 +23,8 @@
     {% for tile in tiles %}{% set t = tile.t %}
     <article class="ptile{{ ' forecast' if tile.forecast }}">
       <header><h3>{{ tile.label }}</h3><span>{{ tile.dates }}</span></header>
-      <p class="ptile-sales"><span>Ventas</span><b>{{ money(t.ventas) }}</b></p>
+      <p class="ptile-sales"><span>Ventas</span><b>{{ money(t.ventas) }}</b>
+        {% if tile.cmp and tile.cmp.ventas %}{% set c = tile.cmp.ventas %}<small class="delta {{ 'up' if c.up else 'down' }}" title="Frente a {{ tile.cmp.dates }}">{{ '▲' if c.up else '▼' }} {{ ('%+.0f' % c.pct).replace('-', '−') }} %</small>{% endif %}</p>
       <dl class="ptile-lines">
         <div><dt>Pedidos / uds</dt><dd>{{ uds(t.pedidos) }} / {{ uds(t.uds) }}</dd></div>
         <div><dt>Devoluciones</dt><dd>{{ uds(t.devueltas) }}</dd></div>
@@ -31,6 +32,7 @@
         <div><dt>Tarifas</dt><dd>{{ money(t.amazon) }}</dd></div>
       </dl>
       <p class="ptile-net {{ 'neg' if t.neto < 0 else 'pos' }}"><span>Beneficio neto</span><b>{{ money(t.neto) }}</b>
+        {% if tile.cmp %}{% set c = tile.cmp.neto %}<small class="delta {{ 'up' if c.up else 'down' }}" title="Frente a {{ tile.cmp.dates }}: {{ money(tile.cmp.neto_antes) }}">{{ '▲' if c.up else '▼' }} {{ ('+' if c.diff >= 0 else '−') ~ money(c.diff | abs) }} vs {{ tile.cmp.dates }}</small>{% endif %}
         <small>{% if t.margen is not none %}Margen {{ ('%.1f' % t.margen).replace('.', ',') }}&nbsp;%{% endif %}{% if t.roi is not none %} · ROI {{ '%.0f' % t.roi }}&nbsp;%{% endif %}</small></p>
       <details class="ptile-more">
         <summary>Más detalle</summary>

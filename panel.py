@@ -18,7 +18,7 @@ import sys
 import time
 import webbrowser
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from threading import Thread, Timer
 
@@ -587,6 +587,51 @@ def tile_range(key, today):
     return date_presets(today)[key][1:]
 
 
+def _month_back(d, n=1):
+    """La misma fecha n meses antes (o el último día de ese mes si no existe)."""
+    y, m = d.year, d.month - n
+    while m < 1:
+        y, m = y - 1, m + 12
+    last = ((date(y, m, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)).day
+    return date(y, m, min(d.day, last))
+
+
+def prev_range(a, b):
+    """El periodo anterior equivalente: meses enteros → los meses de antes; un mes empezado → los mismos días del
+    mes anterior; cualquier otro rango → los mismos días justo antes."""
+    month_end = lambda d: (d.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    if a.day == 1 and b == month_end(b):
+        n = (b.year - a.year) * 12 + b.month - a.month + 1
+        return _month_back(a, n), month_end(_month_back(b, n))
+    if a.day == 1 and a.month == b.month and a.year == b.year:
+        return _month_back(a), _month_back(b)
+    days = (b - a).days + 1
+    return a - timedelta(days=days), a - timedelta(days=1)
+
+
+def tile_prev(key, a, b, today):
+    """Con qué se compara cada tarjeta (None = sin comparación: hoy va a medias y «desde el inicio» no tiene antes)."""
+    if key in ("hoy", "todo"):
+        return None
+    if key == "prevision":
+        first = today.replace(day=1)
+        pa, pb = _month_back(first), first - timedelta(days=1)
+    else:
+        pa, pb = prev_range(a, b)
+    return (pa, pb) if pa >= datetime.strptime(rt.DEFAULT_FROM, "%Y-%m-%d").date() else None
+
+
+def change(now, before, pct=True):
+    """Diferencia frente al periodo anterior: % para ventas y pedidos; en € para el beneficio (puede ser negativo)."""
+    if before is None:
+        return None
+    if not pct:
+        return dict(diff=now - before, up=now >= before)
+    if abs(before) < 0.005:
+        return None
+    return dict(pct=100 * (now - before) / abs(before), up=now >= before)
+
+
 def tiles_config(con):
     con.execute("CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT)")
     r = con.execute("SELECT valor FROM ajustes WHERE clave='tarjetas'").fetchone()
@@ -598,7 +643,8 @@ def period_tiles(con, today):
     """Una tarjeta por periodo elegido: ventas, pedidos, devoluciones, publicidad, gastos y beneficio neto."""
     keys = tiles_config(con)
     ranges = {k: tile_range(k, today) for k in keys}
-    start = min([a for a, _ in ranges.values()] + [today - timedelta(days=30)])
+    prevs = {k: tile_prev(k, *ranges[k], today) for k in keys}
+    start = min([a for a, _ in ranges.values()] + [p[0] for p in prevs.values() if p] + [today - timedelta(days=30)])
     skus, account = rt.aggregate(con, start, today, "dia")
     orders = defaultdict(int)
     for compra, in con.execute("SELECT compra FROM pedidos WHERE estado != 'Canceled' AND compra >= ?",
@@ -636,7 +682,15 @@ def period_tiles(con, today):
         t["margen"] = 100 * t["neto"] / t["ingresos"] if t["ingresos"] else None
         t["roi"] = 100 * t["neto"] / t["coste"] if t["coste"] > 0 else None
         fmt = lambda d: d.strftime("%d/%m")
-        tiles.append(dict(key=k, label=TILE_OPTIONS[k], t=t, forecast=k == "prevision",
+        cmp = None
+        if prevs[k]:
+            pa, pb = prevs[k]
+            p = total(pa, pb)
+            p_neto = p["beneficio"] + p["publicidad"] + p["otros"]
+            cmp = dict(dates=fmt(pa) if pa == pb else f"{fmt(pa)} – {fmt(pb)}",
+                       ventas=change(t["ventas"], p["ventas"]), neto=change(t["neto"], p_neto, pct=False),
+                       neto_antes=p_neto)
+        tiles.append(dict(key=k, label=TILE_OPTIONS[k], t=t, forecast=k == "prevision", cmp=cmp,
                           dates=fmt(a) if a == b else f"{fmt(a)} – {fmt(b)}",
                           href=url_for("rentabilidad", desde=a.isoformat(), hasta=min(b, today).isoformat())))
     return tiles
@@ -1102,6 +1156,71 @@ def profit_view(con, start, end, group):
     return rows, sorted(acc.items(), key=lambda x: x[1]), tot, periods
 
 
+# ---------------------------------------------------------------- Profit: mapa de ventas
+# Provincias por los 2 primeros dígitos del código postal: (nombre, abreviatura, columna, fila) en un mapa esquemático
+PROVINCIAS = {
+    "15": ("A Coruña", "C", 0, 0), "27": ("Lugo", "LU", 1, 0), "33": ("Asturias", "O", 2, 0), "39": ("Cantabria", "S", 3, 0),
+    "48": ("Bizkaia", "BI", 4, 0), "20": ("Gipuzkoa", "SS", 5, 0),
+    "36": ("Pontevedra", "PO", 0, 1), "32": ("Ourense", "OU", 1, 1), "24": ("León", "LE", 2, 1), "34": ("Palencia", "P", 3, 1),
+    "09": ("Burgos", "BU", 4, 1), "01": ("Álava", "VI", 5, 1), "31": ("Navarra", "NA", 6, 1), "22": ("Huesca", "HU", 7, 1),
+    "25": ("Lleida", "L", 8, 1), "17": ("Girona", "GI", 9, 1),
+    "49": ("Zamora", "ZA", 1, 2), "47": ("Valladolid", "VA", 2, 2), "40": ("Segovia", "SG", 3, 2), "42": ("Soria", "SO", 4, 2),
+    "26": ("La Rioja", "LO", 5, 2), "50": ("Zaragoza", "Z", 6, 2), "43": ("Tarragona", "T", 8, 2), "08": ("Barcelona", "B", 9, 2),
+    "37": ("Salamanca", "SA", 1, 3), "05": ("Ávila", "AV", 2, 3), "28": ("Madrid", "M", 3, 3), "19": ("Guadalajara", "GU", 4, 3),
+    "44": ("Teruel", "TE", 5, 3), "12": ("Castellón", "CS", 6, 3),
+    "10": ("Cáceres", "CC", 1, 4), "45": ("Toledo", "TO", 2, 4), "16": ("Cuenca", "CU", 3, 4), "46": ("Valencia", "V", 5, 4),
+    "07": ("Baleares", "IB", 8, 4),
+    "06": ("Badajoz", "BA", 1, 5), "13": ("Ciudad Real", "CR", 2, 5), "02": ("Albacete", "AB", 3, 5), "03": ("Alicante", "A", 5, 5),
+    "41": ("Sevilla", "SE", 1, 6), "14": ("Córdoba", "CO", 2, 6), "23": ("Jaén", "J", 3, 6), "30": ("Murcia", "MU", 4, 6),
+    "21": ("Huelva", "H", 0, 7), "11": ("Cádiz", "CA", 1, 7), "29": ("Málaga", "MA", 2, 7), "18": ("Granada", "GR", 3, 7),
+    "04": ("Almería", "AL", 4, 7),
+    "51": ("Ceuta", "CE", 1, 8), "52": ("Melilla", "ML", 3, 8), "38": ("S.C. de Tenerife", "TF", 7, 8), "35": ("Las Palmas", "GC", 8, 8),
+}
+PAISES = {"ES": "España", "PT": "Portugal", "FR": "Francia", "DE": "Alemania", "IT": "Italia", "NL": "Países Bajos",
+          "BE": "Bélgica", "CH": "Suiza", "AD": "Andorra", "GB": "Reino Unido", "IE": "Irlanda", "AT": "Austria",
+          "LU": "Luxemburgo", "PL": "Polonia", "SE": "Suecia"}
+
+
+def sales_map(con, start, end):
+    """Pedidos, unidades y ventas (con IVA) por país y, en España, por provincia (código postal del envío)."""
+    gross, units = defaultdict(float), defaultdict(int)
+    for pedido, concepto, cantidad, importe in con.execute(
+            "SELECT pedido, concepto, cantidad, importe FROM fin_lineas WHERE tipo='venta' "
+            "AND (concepto='UNIDADES' OR concepto IN ('Principal','ShippingCharge','GiftWrap','Promotion'))"):
+        if concepto == "UNIDADES":
+            units[pedido] += cantidad or 0
+        else:
+            gross[pedido] += importe or 0
+    pending = defaultdict(lambda: [0, 0.0])  # pedidos aún sin liquidar: lo que dice el pedido
+    for pedido, qty, precio, promo in con.execute("SELECT pedido, cantidad, precio, promo FROM pedido_items"):
+        pending[pedido][0] += qty or 0
+        pending[pedido][1] += (precio or 0) - (promo or 0)
+    countries = defaultdict(lambda: dict(pedidos=0, uds=0, ventas=0.0))
+    provinces = defaultdict(lambda: dict(pedidos=0, uds=0, ventas=0.0))
+    for pedido, compra, pais, cp in con.execute(
+            "SELECT pedido, compra, pais, cp FROM pedidos WHERE estado != 'Canceled' AND compra >= ?",
+            ((start - timedelta(days=1)).isoformat(),)):
+        d = rt.local_date(compra)
+        if d < start or d > end:
+            continue
+        u, v = (units[pedido], gross[pedido]) if pedido in units else pending.get(pedido, (0, 0.0))
+        for bucket in [countries[pais or "?"]] + ([provinces[(cp or "")[:2]]] if pais == "ES" and (cp or "")[:2] in PROVINCIAS else []):
+            bucket["pedidos"] += 1
+            bucket["uds"] += u
+            bucket["ventas"] += v
+    total = sum(c["pedidos"] for c in countries.values()) or 1
+    paises = sorted(({**c, "codigo": k, "nombre": PAISES.get(k, "Sin país (pedido pendiente)" if k == "?" else k),
+                      "parte": 100 * c["pedidos"] / total} for k, c in countries.items()), key=lambda c: -c["pedidos"])
+    top = max((p["pedidos"] for p in provinces.values()), default=0)
+    es = sum(p["pedidos"] for p in provinces.values()) or 1
+    tiles = [dict(codigo=k, nombre=n, abr=a, col=c, fila=f, **provinces.get(k, dict(pedidos=0, uds=0, ventas=0.0)),
+                  nivel=1 + min(3, int(4 * (provinces[k]["pedidos"] / top) ** 0.5)) if provinces.get(k) else 0,
+                  parte=100 * provinces.get(k, {}).get("pedidos", 0) / es)
+             for k, (n, a, c, f) in PROVINCIAS.items()]
+    ranking = sorted((t for t in tiles if t["pedidos"]), key=lambda t: -t["pedidos"])
+    return dict(paises=paises, provincias=tiles, ranking=ranking, total=sum(c["pedidos"] for c in countries.values()))
+
+
 # ---------------------------------------------------------------- Profit: reembolsos
 RETURN_REASONS = {
     "ORDERED_WRONG_ITEM": "Pidió el producto equivocado", "UNWANTED_ITEM": "Ya no lo quiere",
@@ -1267,10 +1386,18 @@ def rentabilidad():
         days = (end - start).days
         group = "dia" if days <= 31 else "semana" if days <= 120 else "mes"
     rows, acc, tot, periods = profit_view(con, start, end, group)
+    cmp = None
+    pa, pb = prev_range(start, end)
+    if pa >= datetime.strptime(rt.DEFAULT_FROM, "%Y-%m-%d").date():  # solo si el periodo anterior tiene datos completos
+        _, _, ptot, _ = profit_view(con, pa, pb, group)
+        cmp = dict(desde=pa, hasta=pb, ventas=change(tot["ventas"], ptot["ventas"]), uds=change(tot["uds"], ptot["uds"]),
+                   neto=change(tot["neto"], ptot["neto"], pct=False), antes=ptot,
+                   href=url_for("rentabilidad", desde=pa.isoformat(), hasta=pb.isoformat()))
     last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
     return render_template("rentabilidad.html", page="rentabilidad", rows=rows, acc=acc, tot=tot, periods=periods,
                            today=today,
-                           refunds=refunds_view(con, start, end, rows), payout=rt.payouts(con),
+                           refunds=refunds_view(con, start, end, rows), payout=rt.payouts(con), cmp=cmp,
+                           mapa=sales_map(con, start, end),
                            chart=json.dumps([dict(l=p["label"], p=round(p["producto"], 2), n=round(p["neto"], 2)) for p in periods]),
                            start=start, end=end, group=group, groups=GROUPS, preset=preset, presets=presets,
                            last=last, sync=_sync_state, error=request.args.get("error"),

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% macro n(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') }}{% endmacro %}
 {% macro eur(v) %}{{ n(v) }} €{% endmacro %}
+{% macro pct(c) %}{% if c %}<span class="delta {{ 'up' if c.up else 'down' }}">{{ '▲' if c.up else '▼' }} {{ ('%+.0f' % c.pct).replace('-', '−') }} %</span>{% endif %}{% endmacro %}
+{% macro dif(c) %}{% if c %}<span class="delta {{ 'up' if c.up else 'down' }}">{{ '▲' if c.up else '▼' }} {{ ('+' if c.diff >= 0 else '−') ~ n(c.diff | abs) }} €</span>{% endif %}{% endmacro %}
 {% block body_class %}glass navy{% endblock %}
 {% block content %}
 <section class="g-card g-head">
@@ -89,17 +91,18 @@
     <div class="g-label">Beneficio neto <i class="dot {{ 'me' if tot.neto > 0 else 'bad' }}"></i></div>
     <div class="g-big">{{ eur(tot.neto) }}</div>
     <p>{% if tot.margen is not none %}Margen {{ n(tot.margen)[:-1] }} %{% endif %}<br>Después de COG, comisiones, FBA y gastos de la cuenta</p>
+    {% if cmp %}<p class="g-cmp">{{ dif(cmp.neto) }} <a href="{{ cmp.href }}">vs {{ cmp.desde.strftime('%d/%m') }} – {{ cmp.hasta.strftime('%d/%m') }}</a> ({{ eur(cmp.antes.neto) }})</p>{% endif %}
     <div class="g-foot"><span>Productos <b>{{ eur(tot.producto) }}</b></span><span>Cuenta <b>{{ eur(tot.cuenta) }}</b></span></div>
   </section>
 
   <section class="g-card">
     <div class="g-card-head">
       <div><h2 class="sec">Ventas con IVA</h2><p class="muted small">Por {{ unidad }}</p></div>
-      <div class="g-num">{{ eur(tot.ventas) }}</div>
+      <div class="g-num">{{ eur(tot.ventas) }}{% if cmp and cmp.ventas %}<div class="g-cmp r">{{ pct(cmp.ventas) }} <span class="muted">vs {{ eur(cmp.antes.ventas) }}</span></div>{% endif %}</div>
     </div>
     <div class="g-minibars"><canvas id="ventas-bars" role="img" aria-label="Ventas con IVA por {{ unidad }}: {{ eur(periods | sum(attribute='ventas')) }} en {{ periods | length }} periodos, máximo {{ eur(periods | map(attribute='ventas') | max) if periods else '0' }}" data-l='{{ periods | map(attribute="label") | list | tojson }}' data-v='{{ periods | map(attribute="ventas") | list | tojson }}'></canvas></div>
     <div class="g-stats">
-      <div><span class="muted small">Unidades vendidas</span><b>{{ tot.uds }} uds</b>{% if tot.estimadas %}<span class="muted small">{{ tot.estimadas }} sin liquidar</span>{% endif %}</div>
+      <div><span class="muted small">Unidades vendidas</span><b>{{ tot.uds }} uds {{ pct(cmp.uds) if cmp }}</b>{% if tot.estimadas %}<span class="muted small">{{ tot.estimadas }} sin liquidar</span>{% endif %}</div>
       <div><span class="muted small">Reembolsado</span><b>{{ eur(-tot.devoluciones) if tot.devoluciones else '—' }}</b>{% if tot.devueltas %}<span class="muted small">{{ tot.devueltas }} uds</span>{% endif %}</div>
     </div>
   </section>
@@ -171,6 +174,40 @@
   <div class="g-card-head"><div><h2 class="sec">Evolución por {{ unidad }}</h2><p class="muted small">Beneficio de productos y beneficio neto</p></div></div>
   <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}' role="img" aria-label="Evolución por {{ unidad }}: beneficio de productos {{ eur(tot.producto) }} y beneficio neto {{ eur(tot.neto) }} en total"></canvas></div>
 </section>
+
+{% if mapa.total %}
+<section class="g-card" id="mapa" aria-labelledby="mapa-title">
+  <div class="g-card-head"><div><h2 class="sec" id="mapa-title">Dónde vendes</h2>
+    <p class="muted small">{{ mapa.total }} pedidos por dirección de envío. Mapa esquemático: cada cuadro es una provincia en su posición aproximada.</p></div></div>
+  <div class="map-grid">
+    <div class="es-map" role="img" aria-label="Pedidos por provincia: {% for t in mapa.ranking[:8] %}{{ t.nombre }} {{ t.pedidos }}{{ ', ' if not loop.last }}{% endfor %}">
+      {% for t in mapa.provincias %}
+      <div class="es-tile lv{{ t.nivel }}" style="grid-column: {{ t.col + 1 }}; grid-row: {{ t.fila + 1 }}"
+           title="{{ t.nombre }}: {{ t.pedidos }} pedido{{ 's' if t.pedidos != 1 }}, {{ t.uds }} uds, {{ eur(t.ventas) }}">
+        <b>{{ t.abr }}</b>{% if t.pedidos %}<span>{{ t.pedidos }}</span>{% endif %}</div>
+      {% endfor %}
+      <span class="es-note es-note-c" style="grid-column: 1 / 5; grid-row: 9">Ceuta · Melilla</span>
+      <span class="es-note" style="grid-column: 6 / 11; grid-row: 9">Canarias</span>
+    </div>
+    <div class="map-side">
+      <h3 class="small muted">Provincias</h3>
+      <ol class="map-rank">
+        {% for t in mapa.ranking[:10] %}
+        <li><span>{{ t.nombre }}</span><span class="map-bar"><i style="width: {{ '%.0f' % (100 * t.pedidos / mapa.ranking[0].pedidos) }}%"></i></span>
+          <b class="mono">{{ t.pedidos }}</b><span class="muted small mono">{{ '%.0f' % t.parte }} %</span></li>
+        {% endfor %}
+      </ol>
+      <h3 class="small muted">Países</h3>
+      <ol class="map-rank">
+        {% for c in mapa.paises %}
+        <li><span>{{ c.nombre }}</span><span class="map-bar"><i style="width: {{ '%.0f' % c.parte }}%"></i></span>
+          <b class="mono">{{ c.pedidos }}</b><span class="muted small mono">{{ eur(c.ventas) }}</span></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <section class="g-card flush" id="reembolsos">
   <div class="g-card-head pad">
