@@ -1,0 +1,112 @@
+/* Seller Notes · capa inspirada en Trade Republic (web y app). Se carga después de swiss.css.
+   Blanco y negro puros, sin bordes ni sombras: los bloques se separan con gris muy claro (#F4F4F4) en claro
+   y gris casi negro (#141414) en oscuro. Titulares muy gruesos y compactos, cifras grandes, texto secundario
+   en gris, botón principal negro y verde/rojo solo para ganar o perder. Esquinas rectas (ver swiss.css). */
+
+/* ------------------------------------------------------------------ Colores */
+body.glass.swiss:not(#_) {
+  --bg: #ffffff; --card: #f4f4f4; --text: #000000; --head: #000000; --muted: #3c3c3c; --sub: #8a8a8a; --body: #1f1f1f;
+  --line: #e6e6e6; --soft: #f4f4f4; --soft-2: #ebebeb; --soft-3: #e0e0e0; --edge: #c8c8c8; --card-edge: transparent;
+  --navy: #000000; --strong: #000000; --ink: #000000; --ink-hover: #2a2a2a; --on-ink: #ffffff;
+  --ink-2: #e6e6e6; --ink-3: #8a8a8a; --ink-4: #d4d4d4;
+  --primary: #000000; --primary-2: #2a2a2a; --on-primary: #ffffff; --primary-soft: #f4f4f4;
+  --ok: #00873c; --ok-bg: #e6f5ec; --ok-line: #b5e3c6; --ok-ink: #006b30;
+  --bad: #d4281c; --bad-bg: #fdecea; --bad-line: #f6c2bd; --bad-ink: #a81d14;
+  --warn: #a15c00; --warn-bg: #fff3dc; --warn-line: #f5d9a3; --warn-num: #a15c00;
+  --accent: #e6e6e6; --accent-soft: #f4f4f4; --accent-line: #e6e6e6;
+  --shade-0: #000000; --shade-1: #5c5c5c; --shade-2: #9a9a9a; --shade-3: #c8c8c8; --shade-4: #3c3c3c;
+  --shade-5: #b0b0b0; --shade-6: #767676; --shade-7: #e6e6e6;
+  --gauge-dark: #000000; --gauge-track: #e6e6e6;
+  --sh: none; --sh-md: none;
+  --f-head: "Inter Tight", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --gap: 16px;
+  background: var(--bg);
+}
+[data-theme="dark"] body.glass.swiss:not(#_) {
+  --bg: #000000; --card: #141414; --text: #ffffff; --head: #ffffff; --muted: #d0d0d0; --sub: #8c8c8c; --body: #e6e6e6;
+  --line: #262626; --soft: #141414; --soft-2: #1f1f1f; --soft-3: #2a2a2a; --edge: #3a3a3a; --card-edge: transparent;
+  --navy: #ffffff; --strong: #ffffff; --ink: #ffffff; --ink-hover: #e0e0e0; --on-ink: #000000;
+  --ink-2: #2a2a2a; --ink-3: #8c8c8c; --ink-4: #3a3a3a;
+  --primary: #ffffff; --primary-2: #e0e0e0; --on-primary: #000000; --primary-soft: #1f1f1f;
+  --ok: #2fd37a; --ok-bg: rgba(47, 211, 122, .12); --ok-line: rgba(47, 211, 122, .3); --ok-ink: #6fe3a3;
+  --bad: #ff5a4e; --bad-bg: rgba(255, 90, 78, .12); --bad-line: rgba(255, 90, 78, .3); --bad-ink: #ff8a80;
+  --warn: #ffb547; --warn-bg: rgba(255, 181, 71, .12); --warn-line: rgba(255, 181, 71, .3); --warn-num: #ffb547;
+  --accent: #2a2a2a; --accent-soft: #141414; --accent-line: #2a2a2a;
+  --shade-0: #ffffff; --shade-1: #a8a8a8; --shade-2: #6e6e6e; --shade-3: #3a3a3a; --shade-4: #d0d0d0;
+  --shade-5: #4a4a4a; --shade-6: #8c8c8c; --shade-7: #2a2a2a;
+  --gauge-dark: #ffffff; --gauge-track: #2a2a2a;
+  background: var(--bg);
+}
+
+/* ------------------------------------------------------------------ Barra lateral: mismo fondo que la página, marca en mayúsculas */
+body.glass.swiss:not(#_) .top { background: var(--bg); border-right: 1px solid var(--line); }
+body.glass.swiss:not(#_) .brand-name { font-family: var(--f-head); font-weight: 800; font-size: 15px; letter-spacing: .02em; text-transform: uppercase; }
+body.glass.swiss:not(#_) .brand-sub { color: var(--sub); }
+body.glass.swiss:not(#_) nav a { color: var(--sub); font-weight: 600; }
+body.glass.swiss:not(#_) nav a:hover { background: transparent; color: var(--text); }
+body.glass.swiss:not(#_) nav a.on, body.glass.swiss:not(#_) nav a.on:hover { background: var(--ink); color: var(--on-ink); font-weight: 700; }
+body.glass.swiss:not(#_) .theme-toggle { background: var(--card); border: 0; }
+html:not([data-theme="dark"]) body.glass.swiss:not(#_) .theme-toggle .tt-light,
+[data-theme="dark"] body.glass.swiss:not(#_) .theme-toggle .tt-dark { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+
+/* ------------------------------------------------------------------ Titulares gruesos y compactos */
+body.glass.swiss:not(#_) :is(.g-title h1, .dash-verdict h1),
+body.glass.navy.swiss:not(#_) .g-title h1 { font-family: var(--f-head); font-weight: 800; font-size: 40px; line-height: 1.05; letter-spacing: -.03em; }
+body.glass.swiss:not(#_) :is(h2, h3).sec, body.glass.swiss:not(#_) .g-card-head :is(h2, h3) {
+  font-family: var(--f-head); font-weight: 800; font-size: 20px; line-height: 1.15; letter-spacing: -.02em; }
+body.glass.swiss:not(#_) .g-head p.muted, body.glass.swiss:not(#_) .dash-date { font-size: 14px; color: var(--sub); }
+
+/* ------------------------------------------------------------------ Bloques grises sin borde ni sombra */
+body.glass.swiss:not(#_) .g-card, body.glass.navy.swiss:not(#_) .g-card { background: var(--card); border: 0; box-shadow: none; padding: 20px; }
+body.glass.swiss:not(#_) .g-card .g-card { background: var(--bg); }
+body.glass.swiss:not(#_) .g-head, body.glass.navy.swiss:not(#_) .g-card.g-head { background: transparent; padding: 20px 0 12px; }
+/* Recuadros dentro de las páginas: bloque gris sin borde (dentro de un bloque gris, blanco/negro) */
+body.glass.swiss:not(#_) :is(.ptile, .tiles-form, .g-box, .g-gauge, .es-note),
+body.glass.navy.swiss:not(#_) :is(.ptile, .tiles-form, .g-box, .g-gauge, .es-note) { border: 0; box-shadow: none; background: var(--card); }
+body.glass.swiss:not(#_) .g-card :is(.g-box, .g-gauge, .es-note),
+body.glass.navy.swiss:not(#_) .g-card :is(.g-box, .g-gauge, .es-note) { background: var(--bg); }
+body.glass.swiss:not(#_) .ptile.forecast, body.glass.navy.swiss:not(#_) .ptile.forecast { background: transparent; border: 1px dashed var(--edge); }
+
+/* ------------------------------------------------------------------ Botones: negro sólido o gris, sin sombra */
+body.glass.swiss:not(#_) :is(.btn-ink, .bb-add button) { background: var(--ink); color: var(--on-ink); font-size: 13px; font-weight: 700;
+  padding: 9px 18px; box-shadow: none; }
+body.glass.swiss:not(#_) .btn-ghost, body.glass.navy.swiss:not(#_) .btn-ghost { background: var(--soft-2); color: var(--text); border: 0;
+  font-size: 13px; font-weight: 700; padding: 8px 16px; box-shadow: none; }
+body.glass.swiss:not(#_) .btn-ghost:hover, body.glass.navy.swiss:not(#_) .btn-ghost:hover { background: var(--soft-3); }
+body.glass.swiss:not(#_) .g-card .btn-ghost { background: var(--bg); }
+
+/* ------------------------------------------------------------------ Filtros: texto gris, el elegido en negro */
+body.glass.swiss:not(#_) .g-seg, body.glass.navy.swiss:not(#_) .g-seg { background: transparent; border: 0; box-shadow: none; padding: 0; gap: 4px; }
+body.glass.swiss:not(#_) .g-seg a, body.glass.navy.swiss:not(#_) .g-seg a { color: var(--sub); font-weight: 600; padding: 6px 12px; }
+body.glass.swiss:not(#_) .g-seg a.on, body.glass.navy.swiss:not(#_) .g-seg a.on { background: var(--ink); color: var(--on-ink); font-weight: 700; box-shadow: none; }
+
+/* ------------------------------------------------------------------ Campos: gris lleno, sin borde */
+body.glass.swiss:not(#_) :is(input[type=date], input[type=text], input[type=number], input[type=email], input[type=password], select, textarea, .bb-add input),
+body.glass.swiss:not(#_) input[type=search], body.glass.navy.swiss:not(#_) input[type=search] {
+  background-color: var(--soft-2); border: 0; box-shadow: none; color: var(--text); }
+body.glass.swiss:not(#_) .g-card :is(input[type=date], input[type=text], input[type=number], input[type=search], select, textarea) { background-color: var(--bg); }
+
+/* ------------------------------------------------------------------ Etiquetas: texto con punto, sin fondo */
+body.glass.swiss:not(#_) .pill, body.glass.navy.swiss:not(#_) .pill { background: transparent; border: 0; padding: 2px 0; color: var(--sub); letter-spacing: .02em; }
+body.glass.swiss:not(#_) .pill.ok, body.glass.navy.swiss:not(#_) .pill.ok { background: transparent; color: var(--ok); }
+body.glass.swiss:not(#_) .pill.bad, body.glass.navy.swiss:not(#_) .pill.bad { background: transparent; color: var(--bad); }
+body.glass.swiss:not(#_) .pill.warn, body.glass.navy.swiss:not(#_) .pill.warn { background: transparent; color: var(--warn); }
+body.glass.swiss:not(#_) .pill.ink, body.glass.navy.swiss:not(#_) .pill.ink { background: var(--ink); color: var(--on-ink); padding: 2px 8px; }
+
+/* ------------------------------------------------------------------ Tablas: cabecera gris pequeña y líneas finas */
+body.glass.swiss:not(#_) th { color: var(--sub); font-weight: 600; background: transparent; border-bottom: 1px solid var(--line); }
+body.glass.swiss:not(#_) td { border-bottom: 1px solid var(--line); }
+body.glass.swiss:not(#_) tbody tr:hover td { background: var(--soft-2); }
+
+/* ------------------------------------------------------------------ Avisos: bloque de color suave, sin borde */
+body.glass.swiss:not(#_) :is(.alert, .info, .warn-box) { border: 0; box-shadow: none; }
+
+@media (max-width: 1023px) {
+  body.glass.swiss:not(#_) .top { background: color-mix(in srgb, var(--bg) 80%, transparent); border-right: 0; border-bottom: 1px solid var(--line); }
+  body.glass.swiss:not(#_) :is(.g-title h1, .dash-verdict h1), body.glass.navy.swiss:not(#_) .g-title h1 { font-size: 32px; }
+}
+body.glass.swiss:not(#_) .g-head .btn-ghost { background: var(--soft-2); }
+/* Cifras grandes con la misma letra gruesa de los títulos (en lugar de Anton condensada) */
+body.glass.swiss:not(#_) :is(.g-num, .g-big, .g-donut b, .bb-ring b, .ls-health b, .ls-units b) {
+  font-family: var(--f-head); font-weight: 800; letter-spacing: -.02em; }

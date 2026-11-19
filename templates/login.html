@@ -6,7 +6,7 @@
   <script>try { document.documentElement.dataset.theme = localStorage.getItem('tema') || 'light'; } catch (e) { document.documentElement.dataset.theme = 'light'; }</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@700;800&display=swap">
   <title>Entrar · Seller Notes</title>
   <link rel="icon" href="{{ url_for('static', filename='logo.png') }}" type="image/png">
   <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
@@ -17,6 +17,7 @@
   <meta name="theme-color" content="#f5f5f4">
   <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='swiss.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='tr.css') }}">
 </head>
 <body class="glass swiss login-page">
   <main class="login-box">
