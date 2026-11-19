@@ -110,3 +110,51 @@ body.glass.swiss:not(#_) .g-head .btn-ghost { background: var(--soft-2); }
 /* Cifras grandes con la misma letra gruesa de los títulos (en lugar de Anton condensada) */
 body.glass.swiss:not(#_) :is(.g-num, .g-big, .g-donut b, .bb-ring b, .ls-health b, .ls-units b) {
   font-family: var(--f-head); font-weight: 800; letter-spacing: -.02em; }
+
+/* ------------------------------------------------------------------ Barra superior como la app web de Trade Republic
+   Sustituye la barra lateral: logo a la izquierda, secciones en texto negrita a la derecha y contenido centrado.
+   Las páginas de cada sección (Resumen, COG, Gastos…) salen debajo como pestañas de texto, igual que 1D · 1W · 1M. */
+body.glass.swiss:not(#_) .top { position: sticky; top: 0; bottom: auto; width: auto; height: auto; border-right: 0;
+  border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
+body.glass.swiss:not(#_) .top-inner { max-width: 1180px; height: 64px; margin: 0 auto; padding: 0 24px; flex-direction: row; align-items: center; gap: 24px; }
+body.glass.swiss:not(#_) .top-right { flex: 1; flex-direction: row; align-items: center; justify-content: flex-end; gap: 16px; min-width: 0; }
+body.glass.swiss:not(#_) .brand { padding: 0; gap: 10px; flex: none; }
+body.glass.swiss:not(#_) .brand img { width: 28px; height: 28px; }
+body.glass.swiss:not(#_) .brand-sub { display: none; }
+body.glass.swiss:not(#_) .top nav { flex-direction: row; align-items: center; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+body.glass.swiss:not(#_) .top nav a, body.glass.swiss:not(#_) .top nav a:hover { padding: 8px 12px; font-size: 14px; font-weight: 700; color: var(--text);
+  background: transparent; white-space: nowrap; }
+body.glass.swiss:not(#_) .top nav a:not(.on) { color: var(--sub); }
+body.glass.swiss:not(#_) .top nav a:not(.on):hover { color: var(--text); }
+body.glass.swiss:not(#_) .top nav a.on, body.glass.swiss:not(#_) .top nav a.on:hover { background: var(--card); color: var(--text); }
+body.glass.swiss:not(#_) .theme-toggle { flex: none; padding: 3px; }
+body.glass.swiss:not(#_) .theme-toggle span { padding: 4px 8px; font-size: 12px; font-weight: 600; }
+body.glass.swiss:not(#_) :is(main, .foot) { margin-left: auto; margin-right: auto; max-width: 1180px; padding-left: 24px; padding-right: 24px; }
+body.glass.swiss:not(#_) main { padding-top: 8px; }
+@media (min-width: 1024px) { body.swiss .ptr { left: 50%; } }
+
+/* Pestañas de la sección: texto gris, la actual con fondo gris claro */
+body.glass.swiss:not(#_) .subnav { display: flex; flex-direction: row; gap: 4px; margin: 16px 0 0; padding: 0; overflow-x: auto; scrollbar-width: none; }
+body.glass.swiss:not(#_) .subnav a { padding: 6px 12px; font-size: 13px; font-weight: 700; color: var(--sub); text-decoration: none; white-space: nowrap; }
+body.glass.swiss:not(#_) .subnav a:hover { color: var(--text); }
+body.glass.swiss:not(#_) .subnav a.on { background: var(--card); color: var(--text); }
+
+/* Títulos más compactos, como «Portfolio» en la app; la cifra principal manda */
+body.glass.swiss:not(#_) :is(.g-title h1, .dash-verdict h1), body.glass.navy.swiss:not(#_) .g-title h1 { font-size: 32px; }
+
+@media (max-width: 1023px) {
+  body.glass.swiss:not(#_) .top-inner { height: auto; padding: 10px 16px; flex-wrap: wrap; gap: 8px 16px; }
+  body.glass.swiss:not(#_) .top-right { flex: 1 1 100%; justify-content: space-between; }
+  body.glass.swiss:not(#_) .top nav { flex: 1; }
+  body.glass.swiss:not(#_) :is(main, .foot) { padding-left: 16px; padding-right: 16px; }
+  body.glass.swiss:not(#_) :is(.g-title h1, .dash-verdict h1), body.glass.navy.swiss:not(#_) .g-title h1 { font-size: 28px; }
+}
+/* Filtro elegido como «1D» en la app: gris claro con texto negro */
+body.glass.swiss:not(#_) .g-seg a.on, body.glass.navy.swiss:not(#_) .g-seg a.on { background: var(--card); color: var(--text); }
+@media (max-width: 1023px) {
+  /* Móvil: logo y Claro/Oscuro arriba; el menú en su propia fila a todo lo ancho */
+  body.glass.swiss:not(#_) .top-right { display: contents; }
+  body.glass.swiss:not(#_) .theme-toggle { margin-left: auto; }
+  body.glass.swiss:not(#_) .top nav { order: 3; flex: 1 1 100%; margin: 0 -4px; }
+}
