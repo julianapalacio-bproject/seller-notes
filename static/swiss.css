@@ -455,3 +455,26 @@ body.swiss select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http
 body.swiss input[type="checkbox"] { -webkit-appearance: auto; appearance: auto; }
 body.swiss :is(.dot, .g-legend i, .bb-events .ev i, .ls-flags a::before, .ls-flags li.ok::before, .g-note::before),
 body.swiss .ptr { border-radius: 50% !important; }
+
+/* ------------------------------------------------------------------ Menú lateral con grupos desplegables */
+body.glass.swiss:not(#_) .nav-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--muted); font: 500 14px/1.5 var(--f-body); letter-spacing: -.01em; text-align: left; cursor: pointer; }
+body.glass.swiss:not(#_) .nav-head:hover { background: var(--soft-3); color: var(--text); }
+body.glass.swiss:not(#_) .nav-group.has-on .nav-head { color: var(--text); font-weight: 600; }
+body.glass.swiss:not(#_) .nav-head svg { flex: none; width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round; }
+body.glass.swiss:not(#_) .nav-head span { flex: 1; }
+body.glass.swiss:not(#_) .nav-head .nav-chev { width: 16px; height: 16px; color: var(--sub); transition: transform .2s ease-out; }
+body.glass.swiss:not(#_) .nav-group.closed .nav-chev { transform: rotate(-90deg); }
+body.glass.swiss:not(#_) .nav-sub { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 6px 21px; padding-left: 10px;
+  border-left: 1px solid var(--line); }
+body.glass.swiss:not(#_) .nav-group.closed .nav-sub { display: none; }
+body.glass.swiss:not(#_) .nav-sub a { padding: 8px 10px; font-size: 13.5px; }
+body.glass.swiss:not(#_) .nav-sub a svg { width: 17px; height: 17px; }
+@media (prefers-reduced-motion: reduce) { body.glass.swiss:not(#_) .nav-head .nav-chev { transition: none; } }
+/* En pantallas pequeñas el menú es una barra horizontal: sin grupos, todas las opciones seguidas */
+@media (max-width: 1023px) {
+  body.glass.swiss:not(#_) :is(.nav-group, .nav-group.closed .nav-sub, .nav-sub) { display: contents; }
+  body.glass.swiss:not(#_) .nav-head { display: none; }
+  body.glass.swiss:not(#_) .nav-sub a { padding: 7px 12px; font-size: 13px; }
+}

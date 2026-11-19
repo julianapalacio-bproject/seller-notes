@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 import analizador as an
 import rentabilidad as rt
 import repricer as rp
+import informes as inf
 import seller_notes as sn
 
 PORT = 5050
@@ -774,6 +775,42 @@ def repricer_guardar():
     return redirect(url_for("repricer", ok=sku, ver=ver, _anchor="p-" + sku))
 
 
+# ---------------------------------------------------------------- informes descargables
+def report_range():
+    """Periodo de los informes: un atajo (?rango=) o desde/hasta; por defecto, el mes pasado."""
+    today = datetime.now(sn.TZ).date()
+    presets = date_presets(today)
+    preset = request.args.get("rango", "" if request.args.get("desde") else "mes_pasado")
+    if preset in presets:
+        _, start, end = presets[preset]
+    else:
+        try:
+            start = datetime.strptime(request.args["desde"], "%Y-%m-%d").date()
+            end = datetime.strptime(request.args.get("hasta") or today.isoformat(), "%Y-%m-%d").date()
+        except (KeyError, ValueError):
+            preset, (_, start, end) = "mes_pasado", presets["mes_pasado"]
+        if end < start:
+            start, end = end, start
+    return preset, presets, start, min(end, today)
+
+
+@app.route("/informes")
+def informes():
+    preset, presets, start, end = report_range()
+    return render_template("informes.html", page="informes", reports=inf.REPORTS, preset=preset, presets=presets,
+                           start=start, end=end)
+
+
+@app.route("/informes/<kind>.xlsx")
+def informe_excel(kind):
+    if kind not in inf.REPORTS:
+        return redirect(url_for("informes"))
+    _, _, start, end = report_range()
+    name, data = inf.build(kind, start, end)
+    return send_file(io.BytesIO(data), as_attachment=True, download_name=name,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
 # ---------------------------------------------------------------- catálogos de proveedor
 UPLOAD_DIR = sn.BASE / "catalogos"
 
@@ -1167,7 +1204,7 @@ def costes():
     missing = sorted(sold - set(latest))
     a = request.args
     saved = dict(sku=a["ok"], desde=a.get("desde", ""), coste=float(a.get("coste", 0))) if a.get("ok") else None
-    return render_template("costes.html", page="rentabilidad", costs=sorted(latest.values(), key=lambda c: c["sku"]),
+    return render_template("costes.html", page="costes", costs=sorted(latest.values(), key=lambda c: c["sku"]),
                            missing=missing, today=datetime.now(sn.TZ).date().isoformat(), saved=saved)
 
 

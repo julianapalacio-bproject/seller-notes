@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block body_class %}glass navy{% endblock %}
+{% block content %}
+<section class="g-card g-head">
+  <div>
+    <div class="g-title"><h1>Informes</h1></div>
+    <p class="muted small">Descarga tus datos en Excel. Las cifras son las mismas que ves en Profit.</p>
+  </div>
+</section>
+
+<section class="g-filters">
+  <div class="g-seg">
+    {% for key, (label, a, b) in presets.items() %}
+    <a href="{{ url_for('informes', rango=key) }}" class="{{ 'on' if key == preset }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <form method="get" class="g-range">
+    <label>Desde <input type="date" name="desde" value="{{ start.isoformat() }}" min="2026-07-01"></label>
+    <label>Hasta <input type="date" name="hasta" value="{{ end.isoformat() }}" min="2026-07-01"></label>
+    <button type="submit" class="btn-ghost">Aplicar</button>
+  </form>
+</section>
+
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Periodo: {{ start.strftime('%d/%m/%Y') }} – {{ end.strftime('%d/%m/%Y') }}</h2>
+    <p class="muted small">Se aplica a todos los informes menos COG, que muestra los costes actuales.</p></div></div>
+  <ul class="inf-list">
+    {% for key, (title, desc, fn, uses_dates) in reports.items() %}
+    <li>
+      <div><b>{{ title }}</b><p class="muted small">{{ desc }}</p></div>
+      <a class="btn-ghost inf-dl" href="{{ url_for('informe_excel', kind=key, desde=start.isoformat(), hasta=end.isoformat()) }}"
+         onclick="const a=this; a.classList.add('is-busy'); a.textContent='Preparando…'; setTimeout(() => { a.classList.remove('is-busy'); a.textContent='Descargar Excel'; }, 4000)">Descargar Excel</a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="g-card g-note small"><div>
+  <b>No disponibles.</b> El informe de publicidad (CPC, ACOS, ROAS…) necesita los datos de campañas de Amazon Ads, que Seller Notes aún no descarga.
+  El de clientes que repiten no es posible: Amazon no comparte quién compra.
+</div></section>
+{% endblock %}
