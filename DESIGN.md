@@ -23,23 +23,23 @@ colors:
   card-white: "#ffffff"
 typography:
   display:
-    fontFamily: "Anton, Inter, sans-serif"
-    fontSize: "30px"
-    fontWeight: 400
-    lineHeight: 1
-    letterSpacing: "0.05em"
+    fontFamily: "Inter Tight, Inter, sans-serif"
+    fontSize: "40px"
+    fontWeight: 800
+    lineHeight: 1.05
+    letterSpacing: "-0.03em"
   headline:
-    fontFamily: "Anton, Inter, sans-serif"
+    fontFamily: "Inter Tight, Inter, sans-serif"
     fontSize: "20px"
-    fontWeight: 400
-    lineHeight: 1.3
-    letterSpacing: "0.025em"
+    fontWeight: 800
+    lineHeight: 1.15
+    letterSpacing: "-0.02em"
   figure:
-    fontFamily: "Anton, Inter, sans-serif"
+    fontFamily: "Inter Tight, Inter, sans-serif"
     fontSize: "30px"
-    fontWeight: 400
+    fontWeight: 800
     lineHeight: 1.2
-    letterSpacing: "0.025em"
+    letterSpacing: "-0.02em"
   title:
     fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "14px"
