@@ -69,6 +69,46 @@
   {% endif %}
 </section>
 
+<section class="g-card flush dash-market" id="mercado" aria-labelledby="market-title">
+  <div class="g-card-head pad">
+    <div><h2 class="sec" id="market-title">Precios y vendedores</h2>
+      <p class="muted small">Qué ha cambiado en los productos que vigilas: precio de la Buy Box, vendedores que entran o salen y señales de guerra de precios.</p></div>
+    <div class="g-seg" role="tablist" aria-label="Periodo">
+      {% for k, (label, _) in periodos.items() %}<a href="{{ url_for('avisos', mercado=None if k == '24h' else k, _anchor='mercado') }}" class="{{ 'on' if k == periodo }}" {% if k == periodo %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+    </div>
+  </div>
+  {% if moves %}
+  <div class="table-scroll flat">
+  <table class="mk-table">
+    <thead><tr><th>Producto</th><th class="r">Buy Box</th><th class="r">Cambio</th><th class="r">Tu precio</th><th>Vendedores</th><th>Guerra de precios</th></tr></thead>
+    <tbody>
+    {% for m in moves %}
+    {% set w = m.guerra %}
+    <tr>
+      <td><a href="{{ url_for('buybox', asin=m.asin) }}" class="mk-name"><b>{{ m.nombre[:60] }}</b></a>
+        <div class="muted small">{{ m.sku ~ ' · ' if m.sku }}{{ m.asin }}{{ '' if m.selling else ' · no vendes' }}</div></td>
+      <td class="r mono">{{ eur(m.precio) if m.precio is not none else 'Nadie' }}
+        {% if m.lo is not none and m.hi is not none and m.hi - m.lo >= 0.005 %}<div class="muted small">entre {{ eur(m.lo) }} y {{ eur(m.hi) }}</div>{% endif %}</td>
+      <td class="r mono">{% if m.pct is not none and m.pct | abs >= 0.05 %}<span class="delta {{ 'up' if m.pct > 0 else 'down' }}">{{ '▲' if m.pct > 0 else '▼' }} {{ ('%+.1f' % m.pct).replace('.', ',').replace('-', '−') }} %</span>
+        <div class="muted small">antes {{ eur(m.antes) }}</div>{% elif m.antes is none and m.precio is not none %}<span class="muted small">antes nadie la tenía</span>{% else %}<span class="muted">Igual</span>{% endif %}</td>
+      <td class="r mono">{% if m.mio is not none %}{{ eur(m.mio) }}{% if m.mio_antes is not none and (m.mio - m.mio_antes) | abs >= 0.005 %}<div class="muted small">antes {{ eur(m.mio_antes) }}</div>{% endif %}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="mk-sellers"><b>{{ m.vendedores }}</b>{% if m.vendedores != m.vendedores_antes %} <span class="muted small">(antes {{ m.vendedores_antes }})</span>{% endif %}
+        {% if m.entran %}<div class="small"><span class="delta down">+ Entran:</span> {% for n, p in m.entran %}{{ n }} ({{ eur(p) }}){{ ', ' if not loop.last }}{% endfor %}</div>{% endif %}
+        {% if m.salen %}<div class="small"><span class="delta up">− Salen:</span> {{ m.salen | join(', ') }}</div>{% endif %}
+        {% if not m.entran and not m.salen %}<div class="muted small">Sin cambios</div>{% endif %}</td>
+      <td>{% if w and w.active %}<span class="pill bad">Posible guerra</span>
+        <div class="small muted">{% if w.drop >= 5 %}Buy Box −{{ '%.0f' % w.drop }} % en 7 días. {% endif %}{% if m.bots %}Cambian sin parar: {% for n, c in m.bots %}{{ n }} ({{ c }} en 24 h){{ ', ' if not loop.last }}{% endfor %}.{% endif %}</div>
+        {% elif m.cambios >= 5 %}<span class="pill warn">Movido</span><div class="small muted">{{ m.cambios }} cambios de precio de otros</div>
+        {% else %}<span class="pill ok">Tranquilo</span>{% if m.cambios %}<div class="small muted">{{ m.cambios }} cambio{{ 's' if m.cambios != 1 }} de precio de otros</div>{% endif %}{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted small pad-x mk-note">Las subidas en verde y las bajadas en rojo. Vendedores que entran en rojo: más competencia; que salen, en verde. «Posible guerra»: la Buy Box ha bajado un 5 % o más en 7 días, o algún vendedor cambia de precio 10 veces o más al día.</p>
+  {% else %}<p class="muted pad-x rp-empty">No vigilas ningún ASIN todavía. Añádelos en Análisis Productos.</p>{% endif %}
+</section>
+
 <div class="g-row dash-row">
   <section class="g-card dash-bb" aria-labelledby="bb-title">
     <div class="g-card-head">

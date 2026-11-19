@@ -1600,3 +1600,12 @@ body.login-page:not(#_) .login-form .btn-ink { width: 100%; height: 48px; justif
 .map-bar i { display: block; height: 100%; background: var(--ink, #111); }
 @media (max-width: 800px) { .map-grid { grid-template-columns: 1fr; } .es-map { max-width: none; } }
 @media (max-width: 420px) { .es-tile b { font-size: 9px; } .es-tile span { font-size: 9px; } }
+
+/* Avisos: precios y vendedores */
+.dash-market .g-card-head { align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.mk-table td { vertical-align: top; }
+.mk-name { color: inherit; text-decoration: none; }
+.mk-name:hover b { text-decoration: underline; }
+.mk-sellers { max-width: 280px; }
+.mk-sellers .small { margin-top: 2px; line-height: 1.35; }
+.mk-note { margin: 10px 0 16px; }

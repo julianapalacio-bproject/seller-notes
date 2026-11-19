@@ -489,6 +489,49 @@ def dashboard_buybox(con, names, labels):
     return out
 
 
+MARKET_PERIODS = {"24h": ("Últimas 24 h", timedelta(hours=24)), "7d": ("Últimos 7 días", timedelta(days=7))}
+PRICE_ALERT_PCT = 10  # bajada del precio de la Buy Box en 24 h que merece aviso
+
+
+def market_moves(con, names, labels, period, bb):
+    """Por cada ASIN vigilado, qué ha cambiado en el periodo: precio de la Buy Box (y el tuyo), vendedores que
+    entran y salen, cuántos cambios de precio hacen los demás, y si hay señales de guerra de precios."""
+    since = datetime.now(timezone.utc) - period
+    me = sn.MY_SELLER_ID
+    war_of = {b["asin"]: b.get("war") for b in bb}
+    out = []
+    for asin in sn.ASINS:
+        last = con.execute("SELECT id, ts, bb_price FROM snapshots WHERE asin=? ORDER BY ts DESC, id DESC LIMIT 1",
+                           (asin,)).fetchone()
+        if not last:
+            continue
+        # la foto de entonces: la última antes del inicio del periodo (o la primera si el ASIN es más nuevo)
+        then = (con.execute("SELECT id, ts, bb_price FROM snapshots WHERE asin=? AND ts<=? ORDER BY ts DESC, id DESC LIMIT 1",
+                            (asin, since.isoformat())).fetchone()
+                or con.execute("SELECT id, ts, bb_price FROM snapshots WHERE asin=? ORDER BY ts, id LIMIT 1", (asin,)).fetchone())
+        offers = lambda sid: dict(con.execute("SELECT seller_id, landed FROM offers WHERE snapshot_id=?", (sid,)).fetchall())
+        now_o, then_o = offers(last[0]), offers(then[0])
+        lo, hi = con.execute("SELECT MIN(bb_price), MAX(bb_price) FROM snapshots WHERE asin=? AND ts>=? AND bb_price IS NOT NULL",
+                             (asin, since.isoformat())).fetchone()
+        changes = con.execute("SELECT COUNT(*) FROM events WHERE asin=? AND type='cambio_precio' AND ts>=? AND seller_id!=?",
+                              (asin, since.isoformat(), me or "")).fetchone()[0]
+        who = lambda s: (names.get(s) or s).split(" [")[0]
+        price, before = last[2], then[2]
+        sku, nombre = labels.get(asin, ("", ""))
+        out.append(dict(
+            asin=asin, sku=sku, nombre=nombre or asin, desde=then[1], selling=me in now_o,
+            precio=price, antes=before, lo=lo, hi=hi,
+            pct=100 * (price - before) / before if price and before else None,
+            mio=now_o.get(me), mio_antes=then_o.get(me),
+            entran=sorted((who(s), now_o[s]) for s in now_o.keys() - then_o.keys() if s != me),
+            salen=sorted(who(s) for s in then_o.keys() - now_o.keys() if s != me),
+            vendedores=len(now_o), vendedores_antes=len(then_o), cambios=changes, guerra=war_of.get(asin),
+            bots=[(n.split(" [")[0], c) for n, c, mine in (war_of.get(asin) or {}).get("bots", []) if not mine]))
+    # primero lo que más se ha movido
+    out.sort(key=lambda m: -(abs(m["pct"] or 0) + 5 * (len(m["entran"]) + len(m["salen"])) + (20 if (m["guerra"] or {}).get("active") else 0)))
+    return out
+
+
 def attention_items(con, rows, bb, money, fresh):
     """Lo que pide una acción hoy, de lo más grave a lo menos. Cada aviso dice desde cuándo y adónde ir."""
     items = []
@@ -795,6 +838,15 @@ def avisos():
                                  else f"{len(sellers)} vendedores nuevos en {name}"),
                           detail=". ".join(one(*x) for x in sellers) + ".",
                           since=sellers[0][1], href=url_for("buybox", asin=asin), cta="Ver producto", asin=asin))
+    periodo = request.args.get("mercado") if request.args.get("mercado") in MARKET_PERIODS else "24h"
+    moves = market_moves(con, names, labels, MARKET_PERIODS[periodo][1], bb)
+    for m in (moves if periodo == "24h" else market_moves(con, names, labels, MARKET_PERIODS["24h"][1], bb)):
+        if m["selling"] and m["pct"] is not None and m["pct"] <= -PRICE_ALERT_PCT:
+            items.append(dict(tone="warn", area="Precio",
+                              title=f"El precio de la Buy Box de {m['nombre'][:45]} ha bajado un {-m['pct']:.0f} % en 24 h",
+                              detail=f"De {eur(m['antes'])} a {eur(m['precio'])}." + (
+                                  f" Tu oferta está a {eur(m['mio'])}." if m["mio"] is not None else ""),
+                              since=m["desde"], href=url_for("buybox", asin=m["asin"]), cta="Ver producto", asin=m["asin"]))
     if profit["sin_coste"]:
         n = len(profit["sin_coste"])
         items.append(dict(tone="warn", area="Profit", title=f"{n} SKU vendido{'s' if n > 1 else ''} sin coste de producto",
@@ -809,7 +861,8 @@ def avisos():
         ("ACTIVO", "ok"), ("VISIBLE, NO COMPRABLE", "warn"), ("INACTIVO", "bad"), ("SUPRIMIDO", "bad")) if count[e]],
         sin_stock=sum(1 for r in rows if r["stock"] == 0), unidades=sum(r["stock"] or 0 for r in rows),
         con_errores=sum(1 for r in rows if r["errores"]))
-    return render_template("dashboard.html", page="avisos", items=items, fresh=fresh, bb=bb, profit=profit,
+    return render_template("dashboard.html", page="avisos", items=items, moves=moves, periodo=periodo,
+                           periodos=MARKET_PERIODS, fresh=fresh, bb=bb, profit=profit,
                            health=health, eur=eur, groups=attention_groups(items, labels, rows),
                            fecha=f"{DIAS_ES[now.weekday()].capitalize()} {now.day} de {MONTHS_ES[now.month].lower()} · {now:%H:%M}")
 
