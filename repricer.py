@@ -39,12 +39,17 @@ def ensure_tables(con):
             motivo TEXT, aplicado INTEGER, error TEXT);
         CREATE INDEX IF NOT EXISTS ix_replog ON repricer_log(sku, ts);
     """)
+    if "regla_amazon" not in [r[1] for r in con.execute("PRAGMA table_info(repricer)")]:
+        # 1 = el SKU está en una regla de «Automatizar precios» de Seller Central, que manda sobre nuestro precio
+        con.execute("ALTER TABLE repricer ADD COLUMN regla_amazon INTEGER")
+        con.execute("ALTER TABLE repricer ADD COLUMN regla_visto TEXT")
 
 
 def settings(con):
     """Ajustes por SKU (los que aún no tienen fila salen con los valores por defecto, desactivados)."""
     ensure_tables(con)
-    cols = ["sku", "asin", "estrategia", "activo", "minimo", "maximo", "margen", "rebaja", "ultimo_precio", "ultimo_cambio"]
+    cols = ["sku", "asin", "estrategia", "activo", "minimo", "maximo", "margen", "rebaja", "ultimo_precio", "ultimo_cambio",
+            "regla_amazon", "regla_visto"]
     return {r[0]: dict(zip(cols, r)) for r in con.execute(f"SELECT {', '.join(cols)} FROM repricer")}
 
 
@@ -139,9 +144,34 @@ def _listing(sku):
     return url, r.json()
 
 
+RULE_MSG = ("Amazon «Automatizar precios» controla este SKU y cambia el precio que pone Seller Notes. "
+            "Quítalo de la regla en Seller Central (Precios → Automatizar precios).")
+
+
+def _has_rule(item):
+    """¿Está la oferta dentro de una regla de «Automatizar precios» de Amazon?"""
+    attrs = item.get("attributes") or {}
+    if attrs.get("automated_pricing_merchandising_rule_plan"):
+        return True
+    return any(o.get("automated_pricing_merchandising_rule_plan") for o in attrs.get("purchasable_offer") or []
+               if o.get("marketplace_id") == sn.MARKETPLACE_ID)
+
+
+def check_rule(con, sku):
+    """Consulta en Amazon si el SKU está en una regla de precios automática y lo guarda. Devuelve True/False."""
+    _, item = _listing(sku)
+    rule = _has_rule(item)
+    con.execute("UPDATE repricer SET regla_amazon=?, regla_visto=? WHERE sku=?",
+                (1 if rule else 0, datetime.now(timezone.utc).isoformat(timespec="seconds"), sku))
+    con.commit()
+    return rule
+
+
 def set_price(sku, price):
     """Cambia tu precio (con IVA) en Amazon.es con la Listings Items API. Devuelve (ok, mensaje)."""
     url, item = _listing(sku)
+    if _has_rule(item):  # Amazon pisaría nuestro precio con el de su regla
+        return False, RULE_MSG
     ptype = next((s.get("productType") for s in item.get("summaries", []) if s.get("marketplaceId") == sn.MARKETPLACE_ID),
                  None) or "PRODUCT"
     offers = (item.get("attributes") or {}).get("purchasable_offer") or []
@@ -208,6 +238,10 @@ def run(con, quiet=False):
             ok, msg = set_price(sku, d["objetivo"])
         except Exception as e:
             ok, msg = False, str(e)[:300]
+        rule = 1 if msg == RULE_MSG else 0  # solo se sabe al intentar cambiar el precio de un SKU activado
+        if rule != (c.get("regla_amazon") or 0):
+            con.execute("UPDATE repricer SET regla_amazon=?, regla_visto=? WHERE sku=?", (rule, ts, sku))
+            con.commit()
         if ok and msg.startswith("Ya estaba"):
             continue  # nada que cambiar: no se anota
         if not ok and last and last[1] == -1 and last[0] == d["objetivo"]:

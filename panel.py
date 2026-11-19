@@ -705,6 +705,14 @@ def avisos():
                           since=None, href=url_for("rentabilidad", rango="30d", _anchor="reembolsos"),
                           cta="Ver reembolsos", asin=asin_of.get(it["sku"])))
     name_of = {r["sku"]: r["nombre"] or r["sku"] for r in rows}
+    for sku, c in rp.settings(con).items():
+        if c["activo"] and c["regla_amazon"]:
+            items.append(dict(tone="bad", area="Repricer",
+                              title=f"{sku}: el repricer no puede cambiar el precio por una regla de Amazon",
+                              detail="Quita este SKU de la regla en Seller Central (Precios → Automatizar precios); "
+                                     "si no, Amazon y Seller Notes se pelean por el precio.",
+                              since=None, href=url_for("repricer", _anchor="p-" + sku), cta="Ver repricer",
+                              asin=c["asin"] or asin_of.get(sku)))
     for f in fee_changes(con, today):
         if f["tipo"] == "fba":
             title = f"{f['sku']}: la tarifa FBA ha subido de {eur(f['antes'])} a {eur(f['ahora'])} por unidad"
@@ -801,6 +809,14 @@ def repricer_guardar():
     strategy = f.get("estrategia") if f.get("estrategia") in rp.STRATEGIES else "igualar"
     rp.save(con, sku, asin, estrategia=strategy, activo=1 if f.get("activo") else 0,
             minimo=_num(f.get("minimo")), maximo=_num(f.get("maximo")), margen=_num(f.get("margen")))
+    try:  # al activarlo, mira enseguida si una regla de precios automática de Amazon le impediría funcionar
+        if f.get("activo"):
+            rp.check_rule(con, sku)
+        else:
+            con.execute("UPDATE repricer SET regla_amazon=0 WHERE sku=?", (sku,))
+            con.commit()
+    except Exception:
+        pass
     ver = f.get("ver") if f.get("ver") in ("activados", "sin_activar") else None
     return redirect(url_for("repricer", ok=sku, ver=ver, _anchor="p-" + sku))
 

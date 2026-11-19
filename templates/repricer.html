@@ -34,6 +34,7 @@
     <div class="rp-head">
       <div><strong class="mono">{{ i.sku }}</strong><div class="muted small">{{ i.nombre[:70] }}</div></div>
       {% if not i.vigilado %}<span class="pill ink">Sin vigilar</span>
+      {% elif c.activo and c.regla_amazon %}<span class="pill bad">Regla de Amazon</span>
       {% elif c.activo %}<span class="pill ok"><i class="dot me"></i> Activado</span>
       {% else %}<span class="pill ink">Sin activar</span>{% endif %}
     </div>
@@ -50,6 +51,8 @@
         <b>{{ eur(d.objetivo) if d.objetivo is not none else 'Sin cambios' }}</b></div>
     </div>
     <p class="small rp-why">{{ d.motivo }}</p>
+    {% if c.activo and c.regla_amazon %}<div class="alert rp-rule" role="alert"><b>El repricer no puede cambiar este precio.</b>
+      El SKU está en una regla de «Automatizar precios» de Amazon, que pisaría el precio de Seller Notes. Quítalo de la regla en Seller Central (Precios → Automatizar precios); en la siguiente ronda (unos 5 minutos) el aviso desaparece y el repricer vuelve a funcionar.</div>{% endif %}
 
     <form method="post" action="{{ url_for('repricer_guardar') }}" class="rp-form">
       <input type="hidden" name="sku" value="{{ i.sku }}"><input type="hidden" name="ver" value="{{ ver }}"><input type="hidden" name="asin" value="{{ i.asin }}">
