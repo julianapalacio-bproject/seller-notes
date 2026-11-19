@@ -45,6 +45,11 @@ def ensure_tables(con):
             pedido TEXT, sku TEXT, cantidad INTEGER, precio REAL, promo REAL);
         CREATE TABLE IF NOT EXISTS gastos_manual (
             mes TEXT, concepto TEXT, importe REAL, PRIMARY KEY (mes, concepto));
+        CREATE TABLE IF NOT EXISTS gastos_indirectos (  -- gastos fuera de Amazon: gestor, software, prep center…
+            id INTEGER PRIMARY KEY, concepto TEXT, importe REAL, frecuencia TEXT, desde TEXT, hasta TEXT);
+        CREATE TABLE IF NOT EXISTS pagos (  -- liquidaciones de Amazon: la abierta es el próximo pago
+            grupo TEXT PRIMARY KEY, inicio TEXT, fin TEXT, estado TEXT, transferencia TEXT, total REAL,
+            fecha_pago TEXT, moneda TEXT);
         CREATE TABLE IF NOT EXISTS tarifas_estimadas (  -- tarifa de Amazon para SKUs aún sin ventas liquidadas
             sku TEXT PRIMARY KEY, fecha TEXT, comision REAL, fba REAL);
     """)
@@ -262,6 +267,44 @@ def estimate_new_fees(con, items):
                             (sku, today, -(total - fba) * 1.03 / p, -fba))
 
 
+def sync_payouts(progress=print):
+    """Liquidaciones de Amazon (grupos de movimientos): las cerradas son pagos hechos; la abierta, el próximo."""
+    params, groups = {"FinancialEventGroupStartedAfter": DEFAULT_FROM + "T00:00:00Z", "MaxResultsPerPage": 100}, []
+    while True:
+        p = _get("/finances/v0/financialEventGroups", params)
+        groups += p.get("FinancialEventGroupList") or []
+        if not p.get("NextToken"):
+            break
+        params = {"NextToken": p["NextToken"]}
+        time.sleep(2.1)
+    rows = [(g["FinancialEventGroupId"], g.get("FinancialEventGroupStart"), g.get("FinancialEventGroupEnd"),
+             g.get("ProcessingStatus"), g.get("FundTransferStatus"), _amt(g.get("OriginalTotal")),
+             g.get("FundTransferDate"), (g.get("OriginalTotal") or {}).get("CurrencyCode")) for g in groups]
+    con = sn.db()
+    ensure_tables(con)
+    with con:
+        con.execute("DELETE FROM pagos")
+        con.executemany("INSERT INTO pagos VALUES (?,?,?,?,?,?,?,?)", rows)
+    progress(f"{len(rows)} liquidaciones de Amazon")
+    return rows
+
+
+def payouts(con):
+    """Próximo pago (la liquidación abierta, con la fecha estimada según la duración de la anterior) y los anteriores."""
+    ensure_tables(con)
+    rows = [dict(zip(("inicio", "fin", "estado", "transferencia", "total", "fecha_pago"), r)) for r in con.execute(
+        "SELECT inicio, fin, estado, transferencia, total, fecha_pago FROM pagos WHERE moneda='EUR' ORDER BY inicio DESC")]
+    nxt = next((r for r in rows if r["estado"] == "Open"), None)
+    done = [r for r in rows if r["estado"] == "Closed"]
+    if nxt and nxt["inicio"]:
+        start = datetime.fromisoformat(nxt["inicio"].replace("Z", "+00:00"))
+        spans = [datetime.fromisoformat(r["fin"].replace("Z", "+00:00")) - datetime.fromisoformat(r["inicio"].replace("Z", "+00:00"))
+                 for r in done[:3] if r["inicio"] and r["fin"]]
+        span = max(spans) if spans else timedelta(days=14)  # Amazon.es suele liquidar cada 14 días
+        nxt["estimada"] = (start + span).astimezone(sn.TZ).date()
+    return nxt, done
+
+
 def sync(full=False, progress=print, returns=True):
     """Descarga los movimientos nuevos (los últimos 45 días, o todo desde julio) y reemplaza ese tramo.
     returns=False omite el informe de devoluciones, que tarda varios minutos (el monitor lo pide una vez al día)."""
@@ -294,6 +337,10 @@ def sync(full=False, progress=print, returns=True):
         con.executemany("INSERT INTO fin_lineas VALUES (?,?,?,?,?,?,?,?)", rows)
     progress(f"{len(rows)} líneas guardadas")
     sync_orders(full, progress)
+    try:
+        sync_payouts(progress)
+    except Exception as e:  # el próximo pago es un extra: no debe parar la actualización de la rentabilidad
+        progress(f"No se pudieron leer los pagos de Amazon: {e}")
     if returns:
         sync_returns(progress)
     return len(rows)
@@ -515,12 +562,43 @@ def aggregate(con, start=None, end=None, group="mes"):
             continue
         acc = account.setdefault(period_key(d, group), {})
         acc[concepto] = acc.get(concepto, 0.0) - abs(importe)
+    for (d, concepto), importe in indirect_by_day(con, start, end).items():
+        acc = account.setdefault(period_key(d, group), {})
+        acc[concepto] = acc.get(concepto, 0.0) - importe
     for by_sku in skus.values():
         for r in by_sku.values():
             r["beneficio"] = r["ingresos"] + r["comisiones"] + r["fba"] + r["reembolsos"] - r["coste"]
             r["margen"] = 100 * r["beneficio"] / r["ingresos"] if r["ingresos"] else None
             r["roi"] = 100 * r["beneficio"] / r["coste"] if r["coste"] > 0 else None
     return skus, account
+
+
+def indirect_by_day(con, start=None, end=None):
+    """{(día, concepto): importe} de los gastos indirectos. Los mensuales se reparten entre los días de cada mes
+    (así cuadran los días, semanas y meses sueltos); los puntuales cuentan el día que se pagan."""
+    start = start or date.fromisoformat(DEFAULT_FROM)
+    end = end or datetime.now(sn.TZ).date()
+    out = {}
+    for concepto, importe, frecuencia, desde, hasta in con.execute(
+            "SELECT concepto, importe, frecuencia, desde, hasta FROM gastos_indirectos"):
+        importe = abs(importe or 0)
+        first = date.fromisoformat(desde)
+        if frecuencia == "puntual":
+            if start <= first <= end:
+                out[(first, concepto)] = out.get((first, concepto), 0.0) + importe
+            continue
+        first = max(first.replace(day=1), start)  # el gasto mensual cubre el mes entero en que empieza
+        last = min(date.fromisoformat(hasta) if hasta else end, end)
+        if hasta:  # y también el mes entero en que termina
+            nxt = (last.replace(day=28) + timedelta(days=4)).replace(day=1)
+            last = min(nxt - timedelta(days=1), end)
+        d = first
+        while d <= last:
+            nxt = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+            share = importe / (nxt - d.replace(day=1)).days
+            out[(d, concepto)] = out.get((d, concepto), 0.0) + share
+            d += timedelta(days=1)
+    return out
 
 
 def monthly(con, mes=None):

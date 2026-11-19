@@ -46,7 +46,7 @@
           <div><dt>Otros gastos</dt><dd>{{ money(t.otros) }}</dd></div>
           <div class="sum"><dt>Beneficio neto</dt><dd>{{ money(t.neto) }}</dd></div>
         </dl>
-        <p class="muted small">Ventas con IVA. Otros gastos: suscripción, envíos a Amazon, almacenaje y retiradas.{% if t.estimadas %} {{ uds(t.estimadas) }} uds con comisiones estimadas.{% endif %}</p>
+        <p class="muted small">Ventas con IVA. Otros gastos: suscripción, envíos a Amazon, almacenaje, retiradas y tus gastos indirectos.{% if t.estimadas %} {{ uds(t.estimadas) }} uds con comisiones estimadas.{% endif %}</p>
       </details>
       <a class="ptile-go" href="{{ tile.href }}">{% if tile.forecast %}Ver lo que va de mes{% else %}Ver este periodo{% endif %} <span aria-hidden="true">→</span></a>
       {% if tile.forecast %}<p class="ptile-note">Lo que va de mes más el ritmo de los últimos 30 días.</p>{% endif %}

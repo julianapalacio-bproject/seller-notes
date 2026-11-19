@@ -1540,3 +1540,25 @@ body.login-page:not(#_) .login-form .btn-ink { width: 100%; height: 48px; justif
 .inf-list li p { margin: 3px 0 0; }
 .inf-dl { white-space: nowrap; flex: none; }
 @media (max-width: 600px) { .inf-list li { flex-direction: column; align-items: stretch; } .inf-dl { text-align: center; } }
+
+/* próximo pago de Amazon (Profit) */
+.payout-main { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+.payout-amount { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 6px 0 4px; }
+.payout-amount b { font-size: 28px; font-variant-numeric: tabular-nums; }
+.payout-amount.neg b { color: var(--bad); }
+.payout-last { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding-left: 24px; border-left: 1px solid var(--line); white-space: nowrap; }
+.payout-last b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.payout-hist { margin-top: 12px; }
+.payout-hist summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.payout-hist table { margin-top: 8px; }
+.gx-actions form { display: inline-flex; gap: 6px; justify-content: flex-end; }
+@media (max-width: 600px) {
+  .payout-main { flex-direction: column; gap: 12px; }
+  .payout-last { align-items: flex-start; padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 10px; width: 100%; }
+}
+.rv-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 20px; }
+.rv-form label:not(.rp-switch) { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.rv-form p { flex-basis: 100%; margin: 0; }
+.rv-stats { border-top: 0; padding-top: 0; }
+.rv-form .rp-switch { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; flex-basis: 100%; }
+@media (max-width: 600px) { .rv-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

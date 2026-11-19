@@ -31,6 +31,7 @@ import analizador as an
 import rentabilidad as rt
 import repricer as rp
 import informes as inf
+import resenas as rs
 import seller_notes as sn
 
 PORT = 5050
@@ -703,6 +704,35 @@ def avisos():
                           detail=f"{it['nombre'][:60]}. Restan {eur(-it['efecto'])} a tu beneficio.{motivo}".lstrip(". "),
                           since=None, href=url_for("rentabilidad", rango="30d", _anchor="reembolsos"),
                           cta="Ver reembolsos", asin=asin_of.get(it["sku"])))
+    name_of = {r["sku"]: r["nombre"] or r["sku"] for r in rows}
+    for f in fee_changes(con, today):
+        if f["tipo"] == "fba":
+            title = f"{f['sku']}: la tarifa FBA ha subido de {eur(f['antes'])} a {eur(f['ahora'])} por unidad"
+            detail = ("Si el producto no ha cambiado, suele ser un error de medidas o peso en el almacén de Amazon: "
+                      "pide en Seller Central que lo vuelvan a medir y que te devuelvan la diferencia.")
+        else:
+            pct = lambda v: f"{v:g}".replace(".", ",") + " %"
+            title = f"{f['sku']}: la comisión ha subido del {pct(f['antes'])} al {pct(f['ahora'])}"
+            detail = "Amazon ha podido cambiar la categoría del producto. Revisa la categoría en Seller Central."
+        items.append(dict(tone="warn", area="Tarifas", title=title,
+                          detail=f"{name_of.get(f['sku'], '')[:60]}. {detail}".lstrip(". "), since=f["desde"],
+                          href=url_for("rentabilidad", rango="30d"), cta="Ver Profit", asin=asin_of.get(f["sku"])))
+    my_asins = sorted({r["asin"] for r in rows if r["asin"]})
+    sku_of = {r["asin"]: r["sku"] for r in rows}
+    for asin, sellers in new_sellers(con, my_asins).items():
+        name = (labels.get(asin, (None, None))[1] or sku_of.get(asin) or asin)[:45]
+        def who(s):
+            return (names.get(s) or s).split(" [")[0]
+        def one(s, first, price):
+            return f"{who(s)} llegó el {local(first, '%d/%m a las %H:%M')} y está a {eur(price)}"
+        sellers = [x for x in sellers if x[2] is not None]  # solo los que siguen en la ficha
+        if not sellers:
+            continue
+        items.append(dict(tone="warn", area="Buy Box",
+                          title=(f"Nuevo vendedor en {name}: {who(sellers[0][0])}" if len(sellers) == 1
+                                 else f"{len(sellers)} vendedores nuevos en {name}"),
+                          detail=". ".join(one(*x) for x in sellers) + ".",
+                          since=sellers[0][1], href=url_for("buybox", asin=asin), cta="Ver producto", asin=asin))
     if profit["sin_coste"]:
         n = len(profit["sin_coste"])
         items.append(dict(tone="warn", area="Profit", title=f"{n} SKU vendido{'s' if n > 1 else ''} sin coste de producto",
@@ -792,6 +822,26 @@ def report_range():
         if end < start:
             start, end = end, start
     return preset, presets, start, min(end, today)
+
+
+@app.route("/resenas", methods=["GET", "POST"])
+def resenas():
+    con = sn.db()
+    rt.ensure_tables(con)
+    conf = rs.settings(con)
+    if request.method == "POST":
+        f = request.form
+        dias = int(_num(f.get("dias")) or conf["dias"])
+        rs.save_settings(con, activo=f.get("activo") == "1", dias=min(max(dias, 5), 25))
+        return redirect(url_for("resenas", ok=1))
+    month = datetime.now(sn.TZ).date().replace(day=1).isoformat()
+    counts = dict(con.execute("SELECT estado, COUNT(*) FROM resenas GROUP BY estado"))
+    mes = con.execute("SELECT COUNT(*) FROM resenas WHERE estado='enviada' AND ts>=?", (month,)).fetchone()[0]
+    pend = rs.candidates(con, int(conf["dias"]))
+    log = con.execute("SELECT pedido, compra, estado, ts, detalle FROM resenas ORDER BY ts DESC LIMIT 60").fetchall()
+    return render_template("resenas.html", page="resenas", conf=conf, counts=counts, mes=mes, log=log,
+                           pendientes=[p for p in pend if not p[2]], excluir=[p for p in pend if p[2]],
+                           estados=rs.ESTADOS, ok=request.args.get("ok"))
 
 
 @app.route("/informes")
@@ -1063,6 +1113,64 @@ def return_details(con, start, end):
     return out
 
 
+FEE_ALERT_EUR, FEE_ALERT_PCT = 0.10, 1.0  # subida de tarifa FBA (€/u) o de comisión (puntos de %) que merece aviso
+
+
+def fee_changes(con, today):
+    """SKUs cuya tarifa FBA por unidad o cuyo % de comisión ha subido en las ventas de los últimos 14 días frente a
+    los 75 anteriores (lo más repetido en cada tramo). Suele ser un cambio de medidas, peso o categoría."""
+    from statistics import mode
+    recent_from = (today - timedelta(days=14)).isoformat()
+    old_from = (today - timedelta(days=90)).isoformat()
+    per = defaultdict(lambda: dict(fba=([], []), com=([], []), first_new=None))
+    for sku, posted, uds, fba, com, principal in con.execute(
+            "SELECT sku, MIN(posted), SUM(CASE WHEN concepto='UNIDADES' THEN cantidad ELSE 0 END), "
+            "SUM(CASE WHEN concepto='FBAPerUnitFulfillmentFee' THEN importe ELSE 0 END), "
+            "SUM(CASE WHEN concepto='Commission' THEN importe ELSE 0 END), "
+            "SUM(CASE WHEN concepto='Principal' THEN importe ELSE 0 END) "
+            "FROM fin_lineas WHERE tipo='venta' AND sku IS NOT NULL AND posted>=? GROUP BY pedido, sku ORDER BY 2",
+            (old_from,)):
+        if not uds:
+            continue
+        p = per[sku]
+        new = posted >= recent_from
+        if fba < 0:
+            p["fba"][new].append((round(-fba / uds, 2), posted))
+        if com < 0 and principal > 0:
+            p["com"][new].append((round(-100 * com / principal, 1), posted))
+    out = []
+    for sku, p in per.items():
+        for kind, limit in (("fba", FEE_ALERT_EUR), ("com", FEE_ALERT_PCT)):
+            old, new = p[kind]
+            if len(old) < 3 or len(new) < 2:
+                continue
+            was, now = mode(v for v, _ in old), mode(v for v, _ in new)
+            if now - was >= limit and sum(1 for v, _ in new if v == now) >= 2:
+                since = next(ts for v, ts in new if v == now)
+                out.append(dict(sku=sku, tipo=kind, antes=was, ahora=now, desde=since,
+                                uds=sum(1 for v, _ in new if v == now)))
+    return out
+
+
+def new_sellers(con, asins, days=3):
+    """Vendedores que aparecen por primera vez en tus ASIN en los últimos días: {asin: [(seller, primera, precio o None)]}."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    start = dict(con.execute("SELECT asin, MIN(ts) FROM snapshots GROUP BY asin"))
+    me = sn.MY_SELLER_ID
+    out = defaultdict(list)
+    q = ",".join("?" * len(asins))
+    for asin, seller, first in con.execute(
+            f"SELECT asin, seller_id, primera FROM vendedores_vistos WHERE primera>? AND asin IN ({q}) ORDER BY primera",
+            (cutoff, *asins)):
+        a0 = start.get(asin)
+        # los que ya estaban cuando empezó la vigilancia del ASIN no son nuevos
+        if seller == me or not a0 or datetime.fromisoformat(first) - datetime.fromisoformat(a0) < timedelta(hours=2):
+            continue
+        last = sn.last_snapshot(con, asin) or {"offers": {}}
+        out[asin].append((seller, first, last["offers"].get(seller)))
+    return out
+
+
 def refunds_view(con, start, end, rows):
     """Productos con reembolsos en el rango: unidades, % sobre lo vendido, dinero y motivos."""
     details = return_details(con, start, end)
@@ -1146,7 +1254,7 @@ def rentabilidad():
     last = con.execute("SELECT MAX(posted) FROM fin_lineas").fetchone()[0]
     return render_template("rentabilidad.html", page="rentabilidad", rows=rows, acc=acc, tot=tot, periods=periods,
                            today=today,
-                           refunds=refunds_view(con, start, end, rows),
+                           refunds=refunds_view(con, start, end, rows), payout=rt.payouts(con),
                            chart=json.dumps([dict(l=p["label"], p=round(p["producto"], 2), n=round(p["neto"], 2)) for p in periods]),
                            start=start, end=end, group=group, groups=GROUPS, preset=preset, presets=presets,
                            last=last, sync=_sync_state, error=request.args.get("error"),
@@ -1206,6 +1314,38 @@ def costes():
     saved = dict(sku=a["ok"], desde=a.get("desde", ""), coste=float(a.get("coste", 0))) if a.get("ok") else None
     return render_template("costes.html", page="costes", costs=sorted(latest.values(), key=lambda c: c["sku"]),
                            missing=missing, today=datetime.now(sn.TZ).date().isoformat(), saved=saved)
+
+
+@app.route("/rentabilidad/gastos", methods=["GET", "POST"])
+def gastos():
+    con = sn.db()
+    rt.ensure_tables(con)
+    today = datetime.now(sn.TZ).date()
+    if request.method == "POST":
+        f = request.form
+        if f.get("borrar"):
+            con.execute("DELETE FROM gastos_indirectos WHERE id=?", (f["borrar"],))
+        elif f.get("terminar"):  # un gasto mensual que dejas de pagar: se cuenta hasta el final de este mes
+            con.execute("UPDATE gastos_indirectos SET hasta=? WHERE id=?", (today.isoformat(), f["terminar"]))
+        else:
+            concepto, importe = f.get("concepto", "").strip()[:60], an.parse_money(f.get("importe"))
+            frecuencia = "puntual" if f.get("frecuencia") == "puntual" else "mensual"
+            if not concepto or not importe:
+                return redirect(url_for("gastos", error=1))
+            con.execute("INSERT INTO gastos_indirectos(concepto, importe, frecuencia, desde, hasta) VALUES (?,?,?,?,?)",
+                        (concepto, abs(importe), frecuencia, f.get("desde") or today.isoformat(), f.get("hasta") or None))
+        con.commit()
+        return redirect(url_for("gastos"))
+    rows = [dict(id=i, concepto=c, importe=imp, frecuencia=fr, desde=d, hasta=h,
+                 activo=fr == "mensual" and d <= today.isoformat() and (not h or h[:7] >= today.isoformat()[:7]))
+            for i, c, imp, fr, d, h in con.execute(
+                "SELECT id, concepto, importe, frecuencia, desde, hasta FROM gastos_indirectos ORDER BY frecuencia, desde DESC")]
+    month_start = today.replace(day=1)
+    this_month = sum(rt.indirect_by_day(con, month_start, (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)).values())
+    conceptos = sorted({r["concepto"] for r in rows} | {"Gestoría", "Software", "Prep center", "Muestras", "Banco"})
+    return render_template("gastos.html", page="gastos", rows=rows, today=today.isoformat(), conceptos=conceptos,
+                           mensual=sum(r["importe"] for r in rows if r["activo"]), este_mes=this_month,
+                           mes=MONTHS_ES[today.month].lower(), error=request.args.get("error"))
 
 
 def mark_interrupted_jobs():

@@ -113,6 +113,13 @@ def db():
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast TEXT")
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast_price REAL")
         con.execute("ALTER TABLE snapshots ADD COLUMN bb_fast_label TEXT")
+    # primera vez que se ve a cada vendedor en cada ASIN (para avisar de competidores nuevos sin recorrer «offers»)
+    con.execute("CREATE TABLE IF NOT EXISTS vendedores_vistos (asin TEXT, seller_id TEXT, primera TEXT, "
+                "PRIMARY KEY (asin, seller_id))")
+    if not con.execute("SELECT 1 FROM vendedores_vistos LIMIT 1").fetchone():
+        with con:
+            con.execute("INSERT OR IGNORE INTO vendedores_vistos SELECT asin, seller_id, MIN(ts) FROM offers "
+                        "GROUP BY asin, seller_id")
     return con
 
 
@@ -348,6 +355,7 @@ def store(con, asin, ts, total, offers, raw=None, my_stock=None, segments=None, 
         "INSERT INTO offers VALUES (?,?,?,?,?,?,?,?,?)",
         [(sid, asin, ts, o["seller_id"], o["price"], o["shipping"], o["landed"], o["fba"], o["is_bb"]) for o in offers],
     )
+    con.executemany("INSERT OR IGNORE INTO vendedores_vistos VALUES (?,?,?)", [(asin, o["seller_id"], ts) for o in offers])
 
     events = []
     if prev is not None:
@@ -414,6 +422,11 @@ def sync_finances(with_returns):
         print(f"[{datetime.now(TZ):%H:%M}] Rentabilidad actualizada{' (con devoluciones)' if with_returns else ''}", flush=True)
     except Exception as e:
         print(f"    (Error actualizando la rentabilidad: {e})", flush=True)
+    try:  # con los pedidos recién actualizados, pide las reseñas que ya tocan (si está activado en el panel)
+        import resenas
+        resenas.run(db(), progress=lambda m: print(f"[{datetime.now(TZ):%H:%M}] {m}", flush=True))
+    except Exception as e:
+        print(f"    (Error pidiendo reseñas: {e})", flush=True)
 
 
 def sync_new_orders():

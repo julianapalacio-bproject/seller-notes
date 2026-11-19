@@ -22,6 +22,45 @@
 
 {% include "_resumen.html" %}
 
+{% set nxt, paid = payout %}
+{% set tr_label = {'Failed': 'Fallido', 'Processing': 'En curso', 'Unknown': 'Sin transferencia'} %}
+{% if nxt or paid %}
+<section class="g-card payout" aria-labelledby="payout-title">
+  <div class="payout-main">
+    <div>
+      <h2 class="sec" id="payout-title">Próximo pago de Amazon</h2>
+      {% if nxt %}
+      <p class="payout-amount {{ 'neg' if nxt.total < 0 }}"><b>{{ eur(nxt.total) }}</b>
+        {% if nxt.estimada %}<span class="muted">hacia el {{ nxt.estimada.strftime('%d/%m') }}</span>{% endif %}</p>
+      <p class="muted small">Lo acumulado desde el {{ nxt.inicio | local('%d/%m') }}. Aún puede cambiar con ventas, devoluciones y cargos nuevos, y Amazon puede retener una parte como reserva.</p>
+      {% else %}<p class="muted">Amazon no tiene ahora ninguna liquidación abierta.</p>{% endif %}
+    </div>
+    {% if paid %}
+    <div class="payout-last">
+      <span class="muted small">Último pago</span>
+      <b>{{ eur(paid[0].total) }}</b>
+      <span class="muted small">{{ paid[0].fecha_pago | local('%d/%m/%Y') if paid[0].fecha_pago else '' }}{% if paid[0].transferencia and paid[0].transferencia != 'Succeeded' %} · {{ tr_label.get(paid[0].transferencia, paid[0].transferencia) }}{% endif %}</span>
+    </div>
+    {% endif %}
+  </div>
+  {% if paid | length > 1 %}
+  <details class="payout-hist">
+    <summary>Pagos anteriores ({{ paid | length }})</summary>
+    <div class="table-scroll flat">
+    <table>
+      <thead><tr><th>Periodo</th><th>Pagado</th><th class="r">Importe</th></tr></thead>
+      <tbody>{% for p in paid %}
+        <tr><td class="small">{{ p.inicio | local('%d/%m') }} – {{ p.fin | local('%d/%m/%Y') }}</td>
+          <td class="small">{{ p.fecha_pago | local('%d/%m/%Y') if p.fecha_pago else '—' }}{% if p.transferencia and p.transferencia != 'Succeeded' %} <span class="pill ink">{{ tr_label.get(p.transferencia, p.transferencia) }}</span>{% endif %}</td>
+          <td class="r mono">{{ eur(p.total) }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+    </div>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="g-filters">
   <div class="g-seg">
     {% for key, (label, a, b) in presets.items() %}

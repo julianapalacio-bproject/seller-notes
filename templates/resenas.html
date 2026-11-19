@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block body_class %}glass navy{% endblock %}
+{% block content %}
+<section class="g-card g-head">
+  <div>
+    <div class="g-title"><h1>Reseñas</h1>
+      {% if conf.activo %}<span class="pill ok"><i class="dot me"></i> Activado</span>{% else %}<span class="pill ink">Apagado</span>{% endif %}</div>
+    <p class="muted small">Pide la reseña de cada pedido automáticamente, como el botón «Solicitar una reseña» de Seller Central.
+      Amazon envía su correo oficial (reseña del producto y valoración del vendedor), en el idioma del cliente. Se puede una sola vez por pedido, entre 5 y 30 días después de la entrega.</p>
+  </div>
+</section>
+
+{% if ok %}<div class="info" role="status">Guardado. {{ 'El monitor pedirá las reseñas en su próxima ronda (cada 30 minutos).' if conf.activo else 'No se pedirá ninguna reseña.' }}</div>{% endif %}
+
+<section class="g-card">
+  <form method="post" class="rv-form">
+    <label class="rp-switch"><input type="checkbox" name="activo" value="1" {{ 'checked' if conf.activo }}
+      onchange="if (this.checked && !confirm('Seller Notes pedirá a Amazon que envíe la solicitud de reseña a tus clientes, pedido a pedido. ¿Activar?')) this.checked = false">
+      Pedir reseñas automáticamente</label>
+    <label>Días después de la compra
+      <input name="dias" inputmode="numeric" value="{{ conf.dias }}" size="3" aria-describedby="rv-dias-help"></label>
+    <button type="submit" class="btn-ink">Guardar</button>
+    <p class="muted small" id="rv-dias-help">Entre 5 y 25. Con 10, la mayoría llega una semana después de recibir el pedido. Se saltan los pedidos con devolución o reembolso.</p>
+  </form>
+</section>
+
+<section class="g-card"><div class="rp-stats rv-stats">
+  <div><span class="muted small">Pedidas este mes</span><b>{{ mes }}</b></div>
+  <div><span class="muted small">Pedidas en total</span><b>{{ counts.get('enviada', 0) }}</b></div>
+  <div><span class="muted small">{{ 'Se pedirán en la próxima ronda' if conf.activo else 'Se pedirían ahora' }}</span><b>{{ pendientes | length }}</b></div>
+  <div><span class="muted small">Se saltan (devolución o reembolso)</span><b>{{ excluir | length + counts.get('excluido', 0) }}</b></div>
+</div></section>
+
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Historial</h2>
+    <p class="muted small">Pedidos ya revisados. «Amazon no la permite» suele ser porque ya la pediste desde Seller Central o el pedido aún no se ha entregado: se vuelve a intentar al día siguiente mientras esté en plazo.</p></div></div>
+  {% if log %}
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>Pedido</th><th>Compra</th><th>Resultado</th><th>Revisado</th></tr></thead>
+    <tbody>
+    {% for pedido, compra, estado, ts, detalle in log %}
+      <tr>
+        <td class="mono small">{{ pedido }}</td>
+        <td class="small">{{ compra | local('%d/%m/%Y') }}</td>
+        <td>{% if estado == 'enviada' %}<span class="pill ok">Pedida</span>{% elif estado == 'error' %}<span class="pill bad">Error</span>{% else %}<span class="pill ink">{{ estados.get(estado, estado) }}</span>{% endif %}
+          {% if detalle and estado != 'no_disponible' %}<div class="muted small">{{ detalle }}</div>{% endif %}</td>
+        <td class="small">{{ ts | local }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted pad-x rp-empty">{{ 'Aún no se ha pedido ninguna reseña. La primera ronda llegará en menos de 30 minutos.' if conf.activo else 'Activa la opción de arriba para empezar.' }}</p>{% endif %}
+</section>
+{% endblock %}

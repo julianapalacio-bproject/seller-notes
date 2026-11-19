@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% macro eur(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') ~ ' €' }}{% endmacro %}
+{% macro fecha(d) %}{{ d[8:10] }}/{{ d[5:7] }}/{{ d[:4] }}{% endmacro %}
+{% block body_class %}glass navy{% endblock %}
+{% block content %}
+<section class="g-card g-head">
+  <div>
+    <div class="g-title"><h1>Gastos indirectos</h1>
+      {% if mensual %}<span class="pill ink">{{ eur(mensual) }} al mes</span>{% endif %}</div>
+    <p class="muted">Gastos del negocio que no cobra Amazon: gestoría, software, prep center, muestras… Restan del beneficio neto en Profit.
+      Los <b>mensuales</b> se reparten entre los días del mes; los <b>puntuales</b> cuentan el día que los pagas.</p>
+  </div>
+  <a class="btn-ghost" href="{{ url_for('rentabilidad') }}">← Volver a Profit</a>
+</section>
+
+{% if error %}<div class="alert" role="alert">Escribe un concepto y un importe.</div>{% endif %}
+
+<section class="g-card">
+  <div class="g-card-head"><div><h2 class="sec">Añadir un gasto</h2>
+    <p class="muted small">Pon el importe sin IVA si recuperas el IVA (lo normal con número de IVA); si no, con IVA.</p></div></div>
+  <form method="post" class="form-grid">
+    <label><span>Concepto</span><input type="text" name="concepto" required maxlength="60" list="conceptos" placeholder="Ej.: Gestoría"></label>
+    <datalist id="conceptos">{% for c in conceptos %}<option value="{{ c }}">{% endfor %}</datalist>
+    <label><span>Importe (€)</span><input type="text" name="importe" required inputmode="decimal" placeholder="0,00"></label>
+    <label><span>Tipo</span>
+      <select name="frecuencia" id="gx-freq">
+        <option value="mensual">Mensual (se repite cada mes)</option>
+        <option value="puntual">Puntual (una sola vez)</option>
+      </select></label>
+    <label><span id="gx-desde-l">Desde</span><input type="date" name="desde" value="{{ today }}" min="2026-07-01"></label>
+    <label id="gx-hasta"><span>Hasta (opcional)</span><input type="date" name="hasta" min="2026-07-01"></label>
+    <div class="form-go"><button type="submit" class="btn-ink plain">Añadir</button></div>
+  </form>
+</section>
+
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Tus gastos <span class="pill ink">{{ rows | length }}</span></h2>
+    <p class="muted small">Este mes ({{ mes }}) restan {{ eur(este_mes) }} en total.</p></div></div>
+  {% if rows %}
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>Concepto</th><th>Tipo</th><th class="r">Importe</th><th>Cuándo</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.concepto }}</strong></td>
+        <td>{% if r.frecuencia == 'puntual' %}<span class="pill ink">Puntual</span>{% elif r.activo %}<span class="pill ok">Mensual</span>{% else %}<span class="pill ink">Mensual · terminado</span>{% endif %}</td>
+        <td class="r mono">{{ eur(r.importe) }}{{ ' /mes' if r.frecuencia == 'mensual' }}</td>
+        <td class="small">{% if r.frecuencia == 'puntual' %}{{ fecha(r.desde) }}{% else %}desde {{ fecha(r.desde)[3:] }}{% if r.hasta %} hasta {{ fecha(r.hasta)[3:] }}{% endif %}{% endif %}</td>
+        <td class="r gx-actions">
+          <form method="post">
+            {% if r.activo and not r.hasta %}<button type="submit" name="terminar" value="{{ r.id }}" class="btn-ghost small"
+              onclick="return confirm('¿Dejas de pagar «{{ r.concepto }}»? Se cuenta hasta el final de este mes y deja de restar después.')">Terminar</button>{% endif %}
+            <button type="submit" name="borrar" value="{{ r.id }}" class="btn-ghost small"
+              onclick="return confirm('¿Borrar «{{ r.concepto }}»? Deja de restar en todos los meses, también los pasados.')">Borrar</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted pad-x rp-empty">Aún no has añadido gastos. Empieza por los fijos: gestoría, software, cuota de autónomo si quieres verla en el beneficio…</p>{% endif %}
+</section>
+<script>
+  (() => {
+    const f = document.getElementById('gx-freq'), h = document.getElementById('gx-hasta'), l = document.getElementById('gx-desde-l');
+    const sync = () => { const p = f.value === 'puntual'; h.hidden = p; l.textContent = p ? 'Fecha' : 'Desde'; };
+    f.addEventListener('change', sync); sync();
+  })();
+</script>
+{% endblock %}
