@@ -175,40 +175,6 @@
   <div class="chart tall"><canvas id="profit-chart" data-chart='{{ chart }}' role="img" aria-label="Evolución por {{ unidad }}: beneficio de productos {{ eur(tot.producto) }} y beneficio neto {{ eur(tot.neto) }} en total"></canvas></div>
 </section>
 
-{% if mapa.total %}
-<section class="g-card" id="mapa" aria-labelledby="mapa-title">
-  <div class="g-card-head"><div><h2 class="sec" id="mapa-title">Dónde vendes</h2>
-    <p class="muted small">{{ mapa.total }} pedidos por dirección de envío. Mapa esquemático: cada cuadro es una provincia en su posición aproximada.</p></div></div>
-  <div class="map-grid">
-    <div class="es-map" role="img" aria-label="Pedidos por provincia: {% for t in mapa.ranking[:8] %}{{ t.nombre }} {{ t.pedidos }}{{ ', ' if not loop.last }}{% endfor %}">
-      {% for t in mapa.provincias %}
-      <div class="es-tile lv{{ t.nivel }}" style="grid-column: {{ t.col + 1 }}; grid-row: {{ t.fila + 1 }}"
-           title="{{ t.nombre }}: {{ t.pedidos }} pedido{{ 's' if t.pedidos != 1 }}, {{ t.uds }} uds, {{ eur(t.ventas) }}">
-        <b>{{ t.abr }}</b>{% if t.pedidos %}<span>{{ t.pedidos }}</span>{% endif %}</div>
-      {% endfor %}
-      <span class="es-note es-note-c" style="grid-column: 1 / 5; grid-row: 9">Ceuta · Melilla</span>
-      <span class="es-note" style="grid-column: 6 / 11; grid-row: 9">Canarias</span>
-    </div>
-    <div class="map-side">
-      <h3 class="small muted">Provincias</h3>
-      <ol class="map-rank">
-        {% for t in mapa.ranking[:10] %}
-        <li><span>{{ t.nombre }}</span><span class="map-bar"><i style="width: {{ '%.0f' % (100 * t.pedidos / mapa.ranking[0].pedidos) }}%"></i></span>
-          <b class="mono">{{ t.pedidos }}</b><span class="muted small mono">{{ '%.0f' % t.parte }} %</span></li>
-        {% endfor %}
-      </ol>
-      <h3 class="small muted">Países</h3>
-      <ol class="map-rank">
-        {% for c in mapa.paises %}
-        <li><span>{{ c.nombre }}</span><span class="map-bar"><i style="width: {{ '%.0f' % c.parte }}%"></i></span>
-          <b class="mono">{{ c.pedidos }}</b><span class="muted small mono">{{ eur(c.ventas) }}</span></li>
-        {% endfor %}
-      </ol>
-    </div>
-  </div>
-</section>
-{% endif %}
-
 <section class="g-card flush" id="reembolsos">
   <div class="g-card-head pad">
     <div><h2 class="sec">Reembolsos {% if refunds.tasa is not none and refunds.devueltas %}<span class="pill {{ 'bad' if refunds.tasa >= 15 else 'ink' }}">{{ ('%.1f' % refunds.tasa) | replace('.', ',') }} % de lo vendido</span>{% endif %}</h2>
@@ -308,6 +274,40 @@
   reembolsada solo recupera su coste si Amazon la recibe como vendible.
   Beneficio = ventas sin IVA − reembolsos − comisiones − FBA + reembolsos de Amazon − COG.
 </div></section>
+
+{% if mapa.total %}
+<section class="g-card" id="mapa" aria-labelledby="mapa-title">
+  <div class="g-card-head"><div><h2 class="sec" id="mapa-title">Dónde vendes</h2>
+    <p class="muted small">{{ mapa.total }} pedidos por dirección de envío. Mapa esquemático: cada cuadro es una provincia en su posición aproximada.</p></div></div>
+  <div class="map-grid">
+    <div class="es-map" role="img" aria-label="Pedidos por provincia: {% for t in mapa.ranking[:8] %}{{ t.nombre }} {{ t.pedidos }}{{ ', ' if not loop.last }}{% endfor %}">
+      {% for t in mapa.provincias %}
+      <div class="es-tile lv{{ t.nivel }}" style="grid-column: {{ t.col + 1 }}; grid-row: {{ t.fila + 1 }}"
+           title="{{ t.nombre }}: {{ t.pedidos }} pedido{{ 's' if t.pedidos != 1 }}, {{ t.uds }} uds, {{ eur(t.ventas) }}">
+        <b>{{ t.abr }}</b>{% if t.pedidos %}<span>{{ t.pedidos }}</span>{% endif %}</div>
+      {% endfor %}
+      <span class="es-note es-note-c" style="grid-column: 1 / 5; grid-row: 9">Ceuta · Melilla</span>
+      <span class="es-note" style="grid-column: 6 / 11; grid-row: 9">Canarias</span>
+    </div>
+    <div class="map-side">
+      <h3 class="small muted">Provincias</h3>
+      <ol class="map-rank">
+        {% for t in mapa.ranking[:10] %}
+        <li><span>{{ t.nombre }}</span><span class="map-bar"><i style="width: {{ '%.0f' % (100 * t.pedidos / mapa.ranking[0].pedidos) }}%"></i></span>
+          <b class="mono">{{ t.pedidos }}</b><span class="muted small mono">{{ '%.0f' % t.parte }} %</span></li>
+        {% endfor %}
+      </ol>
+      <h3 class="small muted">Países</h3>
+      <ol class="map-rank">
+        {% for c in mapa.paises %}
+        <li><span>{{ c.nombre }}</span><span class="map-bar"><i style="width: {{ '%.0f' % c.parte }}%"></i></span>
+          <b class="mono">{{ c.pedidos }}</b><span class="muted small mono">{{ eur(c.ventas) }}</span></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</section>
+{% endif %}
 {% endif %}
 {% endblock %}
 
