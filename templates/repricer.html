@@ -5,7 +5,8 @@
 <section class="g-card g-head">
   <div>
     <div class="g-title"><h1>Repricer</h1>
-      <span class="pill {{ 'ok' if activos else 'ink' }}">{{ activos }} activado{{ 's' if activos != 1 }}</span></div>
+      <a class="pill {{ 'ok' if activos else 'ink' }} rp-pill-link" href="{{ url_for('repricer', ver='activados') }}" title="Ver solo los activados">{{ activos }} activado{{ 's' if activos != 1 }}</a>
+      {% set sin = filtros[2][2] %}{% if sin %}<a class="pill ink rp-pill-link" href="{{ url_for('repricer', ver='sin_activar') }}" title="Ver solo los que no están activados">{{ sin }} sin activar</a>{% endif %}</div>
     <p class="muted small">Revisa la Buy Box cada 5 minutos y ajusta tu precio. Los productos sin activar solo muestran qué haría.{% if sin_stock %} Solo se muestran los que tienen stock ({{ sin_stock }} sin stock ocultos).{% endif %}</p>
   </div>
 </section>

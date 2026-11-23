@@ -32,18 +32,19 @@
   {% set estados = tiles[:4] | selectattr(1) | list %}
   <div class="ls-summary">
     <div class="ls-health">
-      <p><b>{{ activos }}</b> de {{ total }} activos</p>
+      <p><a class="ls-count" href="?tab=activo" data-tab="activo" title="Ver solo los activos"><b>{{ activos }}</b></a> de <a class="ls-count" href="?tab=todos" data-tab="todos" title="Ver todos">{{ total }}</a> activos</p>
       <div class="health-bar" role="img" aria-label="{% for label, n, t in estados %}{{ n }} {{ label | lower }}{{ ', ' if not loop.last }}{% endfor %}">
         {% for label, n, t in estados %}<span class="{{ t }}" style="flex: {{ n }}" title="{{ n }} {{ label | lower }}"></span>{% endfor %}
       </div>
     </div>
     <p class="ls-units"><b>{{ '{:,}'.format(unidades).replace(',', '.') }}</b> uds en stock</p>
-    <ul class="ls-flags" aria-label="Qué revisar">
+    <ul class="ls-flags" aria-label="Filtrar por estado">
+      {% if activos %}<li><a class="ok" href="?tab=activo" data-tab="activo">{{ activos }} activo{{ 's' if activos != 1 }}</a></li>{% endif %}
       {% if sin_stock %}<li><a class="bad" href="?tab=sin-stock" data-tab="sin-stock">{{ sin_stock }} sin stock</a></li>{% endif %}
       {% if stock_bajo %}<li><a class="warn" href="?tab=stock-bajo" data-tab="stock-bajo" title="Stock para menos de {{ dias_aviso }} días al ritmo de venta actual">{{ stock_bajo }} con stock bajo</a></li>{% endif %}
       {% if total - activos %}<li><a class="{{ 'bad' if tiles[2][1] or tiles[3][1] else 'warn' }}" href="?tab=no-activo" data-tab="no-activo">{{ total - activos }} no activo{{ 's' if total - activos != 1 }}</a></li>{% endif %}
       {% if con_inc %}<li><a class="warn" href="?tab=incidencias" data-tab="incidencias">{{ con_inc }} con incidencias</a></li>{% endif %}
-      {% if not (sin_stock or stock_bajo or total - activos or con_inc) %}<li class="ok">Todo activo, con stock para más de {{ dias_aviso }} días y sin incidencias</li>{% endif %}
+      {% if not (sin_stock or stock_bajo or total - activos or con_inc) %}<li class="ok-note">Todo activo, con stock para más de {{ dias_aviso }} días y sin incidencias</li>{% endif %}
     </ul>
   </div>
   {% endif %}
@@ -133,6 +134,7 @@
     }
     const apply = () => {
       const q = filtro.value.trim().toLowerCase();
+      document.querySelectorAll('.ls-flags a').forEach(f => f.classList.toggle('is-on', f.dataset.tab === tab));
       // la pestaña y el filtro van en la dirección: sobreviven al recargar o al cambiar de modo y se pueden compartir
       for (const [k, v] of [['tab', tab === 'todos' ? '' : tab], ['q', filtro.value.trim()]]) v ? url.searchParams.set(k, v) : url.searchParams.delete(k);
       url.searchParams.delete('ok'); url.searchParams.delete('error');
