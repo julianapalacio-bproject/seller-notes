@@ -842,6 +842,11 @@ def main():
                 repricer.run(con)
             except Exception as e:
                 print(f"    (Error en el repricer: {e})", flush=True)
+            try:  # avisos por Telegram de lo que acaba de cambiar (Buy Box, precios, vendedores nuevos, repricer)
+                import alertas
+                alertas.run(con)
+            except Exception as e:
+                print(f"    (Error en las alertas: {e})", flush=True)
         try:  # nombres de tiendas nuevas, leídos de su ficha en amazon.es
             fill_names(con)
         except Exception as e:
