@@ -266,7 +266,7 @@ struct RepricerDetalle: View {
                 } header: {
                     Text("Estrategia")
                 } footer: {
-                    Text("Igualar pone el mismo precio que la Buy Box. Competir se pone 0,02 € por debajo. Si ya tienes la Buy Box, tu precio se mantiene. Nunca baja de tu mínimo: si lo dejas vacío, se calcula con el coste, las comisiones, la tarifa FBA y el margen.")
+                    Text("Igualar pone el mismo precio que la Buy Box. Competir se pone 0,02 € por debajo. Si ya tienes la Buy Box, tu precio se mantiene. Nunca baja de tu mínimo, y si está por debajo, sube a él: si lo dejas vacío, se calcula con el coste, las comisiones, la tarifa FBA y el margen.")
                 }
 
                 Section {

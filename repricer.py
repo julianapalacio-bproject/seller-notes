@@ -6,7 +6,8 @@ Cada producto tiene una estrategia:
 Si ya tienes la Buy Box, el precio se mantiene.
 Solo frena en lo que tú pongas (todo opcional): un mínimo y un máximo a mano, y un margen mínimo % (el precio que,
 con el coste, las comisiones y la tarifa FBA, te deja ese margen). También respeta los precios mínimo y máximo de la
-oferta en Seller Central, porque fuera de ellos Amazon desactiva la oferta.
+oferta en Seller Central, porque fuera de ellos Amazon desactiva la oferta. Si tu precio está por debajo de tu
+mínimo (por ejemplo, porque lo acabas de subir), el repricer lo sube al mínimo aunque tengas la Buy Box.
 
 Un producto solo cambia de precio en Amazon si está ACTIVADO; si no, el repricer solo anota qué haría
 (simulación). Se ejecuta en el monitor justo después de cada consulta de la Buy Box (cada 5 min).
@@ -107,7 +108,7 @@ def decide(con, sku, asin, conf, my_price=None):
             if high is not None and target > high:
                 target, why = high, why + f" Tope en tu máximo ({high:.2f} €)."
             if low is not None and target < low and not (current is not None and target > current):
-                if current is not None and current <= low + 0.005:  # el mínimo frena bajadas, nunca sube tu precio
+                if current is not None and current <= low + 0.005:  # ya estás en tu mínimo: no se toca
                     target, why = None, why + f" Pero no baja de tu mínimo ({low:.2f} €): se mantiene."
                 else:
                     target, why = low, why + f" No baja de tu mínimo ({low:.2f} €)."
@@ -124,6 +125,8 @@ def decide(con, sku, asin, conf, my_price=None):
         return done(None, "Aún no hay datos de la Buy Box de este producto.")
     if current is None:
         return done(None, "No encuentro tu oferta en este ASIN.")
+    if low is not None and current < low - 0.005:  # por debajo de tu mínimo: sube a él, aunque tengas la Buy Box
+        return done(low, f"Tu precio ({current:.2f} €) está por debajo de tu mínimo: sube a {low:.2f} €.")
     i_win = bool(mine and mine["is_bb"])
     if bb is None:
         return done(None, "Nadie tiene la Buy Box ahora: no se cambia.")
