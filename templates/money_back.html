@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block body_class %}glass navy{% endblock %}
+{% macro eur(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') ~ ' €' }}{% endmacro %}
+{% block content %}
+<section class="g-card g-head">
+  <div>
+    <div class="g-title"><h1>Money Back</h1>
+      {% if mb.reclamar %}<span class="pill warn">{{ eur(mb.total_reclamar) }} por reclamar</span>{% endif %}</div>
+    <p class="muted small">Dinero que Amazon te debe: reembolsos a clientes cuyo producto no volvió al almacén y que Amazon no te ha compensado.
+      Amazon da al cliente {{ espera }} días para devolverlo; pasado ese plazo puedes reclamarlo.</p>
+  </div>
+</section>
+
+{% if mb.sin_datos %}<div class="info" role="status">Aún no se ha descargado el informe de compensaciones de Amazon. Seller Notes lo pide una vez al día; hasta entonces la lista puede incluir casos que Amazon ya pagó.</div>{% endif %}
+
+<section class="g-card">
+  <div class="rp-stats mb-stats">
+    <div><span class="muted small">Puedes reclamar ya</span><b>{{ eur(mb.total_reclamar) }}</b><span class="muted small">{{ mb.reclamar | length }} pedido{{ 's' if mb.reclamar | length != 1 }}</span></div>
+    <div><span class="muted small">Aún en plazo del cliente</span><b>{{ eur(mb.total_esperar) }}</b><span class="muted small">{{ mb.esperar | length }} pedido{{ 's' if mb.esperar | length != 1 }}</span></div>
+    <div><span class="muted small">Ya te ha compensado Amazon</span><b>{{ eur(mb.total_pagadas) }}</b><span class="muted small">{{ mb.pagadas | length }} compensaci{{ 'ones' if mb.pagadas | length != 1 else 'ón' }}</span></div>
+  </div>
+</section>
+
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Para reclamar</h2>
+    <p class="muted small">Reembolsados hace {{ espera }} días o más, sin devolución recibida ni compensación.</p></div></div>
+  {% if mb.reclamar %}
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>Pedido</th><th>Producto</th><th>Reembolso</th><th class="r">Días</th><th class="r">Uds</th><th class="r">Importe</th></tr></thead>
+    <tbody>
+    {% for i in mb.reclamar %}
+      <tr><td class="mono small">{{ i.pedido }}</td><td><strong class="mono small">{{ i.sku }}</strong><div class="muted small">{{ i.nombre[:50] }}</div></td>
+        <td class="small">{{ i.fecha.strftime('%d/%m/%Y') }}</td><td class="r mono">{{ i.dias }}</td><td class="r mono">{{ i.uds }}</td><td class="r mono">{{ eur(i.importe) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div class="pad-x mb-how">
+    <h3 class="small">Cómo reclamarlo</h3>
+    <ol class="small">
+      <li>Revisa que ninguno de estos reembolsos lo hiciste tú sin pedir la devolución (en ese caso no se puede reclamar).</li>
+      <li>En Seller Central abre <b>Ayuda → Obtener ayuda → Logística de Amazon → Devolución de cliente no recibida</b> (o «FBA customer return not received»).</li>
+      <li>Pega los números de pedido. Amazon revisa cada uno y te paga los que correspondan.</li>
+    </ol>
+    <label class="small muted" for="mb-ids">Números de pedido para copiar</label>
+    <textarea id="mb-ids" class="mb-ids mono" rows="{{ [mb.reclamar | length, 8] | min }}" readonly>{% for i in mb.reclamar %}{{ i.pedido }}{{ '\n' if not loop.last }}{% endfor %}</textarea>
+    <button type="button" class="btn-ghost small" onclick="navigator.clipboard.writeText(document.getElementById('mb-ids').value).then(() => { this.textContent = 'Copiados'; })">Copiar números de pedido</button>
+  </div>
+  {% else %}<p class="muted pad-x rp-empty">No hay nada que reclamar ahora mismo.</p>{% endif %}
+</section>
+
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Envíos FBA con unidades de menos</h2>
+    <p class="muted small">Envíos cerrados en los que Amazon recibió menos unidades de las que mandaste.</p></div></div>
+  {% if falta_rol %}
+  <p class="small pad-x mb-how">Para revisarlo, tu app de SP-API necesita el rol <b>«Amazon Fulfillment»</b> (mira la página <a href="{{ url_for('envios') }}">Envíos FBA</a>).</p>
+  {% elif envios %}
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>Envío</th><th class="r">Enviadas</th><th class="r">Recibidas</th><th class="r">Faltan</th><th class="r">Coste</th></tr></thead>
+    <tbody>{% for e in envios %}
+      <tr><td><a class="mono small" href="{{ url_for('envios', _anchor='e-' ~ e.id) }}">{{ e.id }}</a><div class="muted small">{{ e.nombre }}</div></td>
+        <td class="r mono">{{ e.enviadas }}</td><td class="r mono">{{ e.recibidas }}</td><td class="r mono neg">{{ e.faltan }}</td><td class="r mono">{{ eur(e.valor) }}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted pad-x rp-empty">Ningún envío cerrado con unidades de menos.</p>{% endif %}
+</section>
+
+{% if mb.esperar %}
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Aún en plazo</h2>
+    <p class="muted small">El cliente todavía puede devolverlo. Si no llega, pasarán a «Para reclamar».</p></div></div>
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>Pedido</th><th>Producto</th><th>Reembolso</th><th class="r">Reclamable en</th><th class="r">Importe</th></tr></thead>
+    <tbody>
+    {% for i in mb.esperar %}
+      <tr><td class="mono small">{{ i.pedido }}</td><td><strong class="mono small">{{ i.sku }}</strong></td>
+        <td class="small">{{ i.fecha.strftime('%d/%m/%Y') }}</td><td class="r small">{{ i.faltan }} día{{ 's' if i.faltan != 1 }}</td><td class="r mono">{{ eur(i.importe) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
+{% if mb.pagadas %}
+<section class="g-card flush">
+  <div class="g-card-head pad"><div><h2 class="sec">Compensaciones de Amazon</h2>
+    <p class="muted small">Lo que Amazon ya te ha pagado por su cuenta.</p></div></div>
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>Fecha</th><th>Motivo</th><th>Pedido</th><th>SKU</th><th class="r">Uds</th><th class="r">Importe</th></tr></thead>
+    <tbody>
+    {% for p in mb.pagadas %}
+      <tr><td class="small">{{ p.fecha.strftime('%d/%m/%Y') }}</td><td class="small">{{ p.motivo }}</td><td class="mono small">{{ p.pedido or '—' }}</td>
+        <td class="mono small">{{ p.sku }}</td><td class="r mono">{{ p.uds }}</td><td class="r mono">{{ eur(p.importe) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

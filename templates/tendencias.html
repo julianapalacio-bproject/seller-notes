@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block body_class %}glass navy{% endblock %}
+{% macro val(v) -%}
+  {%- if v is none -%}—
+  {%- elif fmt == 'eur' -%}{{ ('{:,.0f}'.format(v)).replace(',', '.') }} €
+  {%- elif fmt == 'pct' -%}{{ ('%.1f' % v).replace('.', ',') }} %
+  {%- else -%}{{ '{:,.0f}'.format(v).replace(',', '.') }}{%- endif -%}
+{%- endmacro %}
+{% macro chg(p) -%}
+  {%- if p is not none -%}
+  <span class="tr-chg {{ 'up' if p > 0 else 'down' if p < 0 }}">{{ '+' if p > 0 }}{{ ('%.0f' % p).replace('-', '−') }}{{ ' pt' if fmt == 'pct' else ' %' }}</span>
+  {%- endif -%}
+{%- endmacro %}
+{# color de la celda según el cambio frente al mes anterior; en reembolsos, subir es malo #}
+{% macro heat(p) -%}
+  {%- if p is none -%}{%- else -%}
+  {%- set good = (p < 0) if metric == 'devueltas' else (p > 0) -%}
+  {%- set a = [p | abs, 100] | min -%}
+  {%- set lv = 1 if a < 10 else 2 if a < 30 else 3 if a < 60 else 4 -%}
+  {{ 'hg' if good else 'hb' }}{{ lv }}
+  {%- endif -%}
+{%- endmacro %}
+{% macro spark(vals) -%}
+  {%- set nums = vals | reject('none') | list -%}
+  {%- if nums | length > 1 -%}
+  {%- set lo, hi = nums | min, nums | max -%}
+  {%- set span = (hi - lo) or 1 -%}
+  <svg class="tr-spark" viewBox="0 0 {{ (vals | length - 1) * 14 }} 24" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="{% for v in vals %}{% if v is not none %}{{ loop.index0 * 14 }},{{ '%.1f' % (22 - 20 * (v - lo) / span) }} {% endif %}{% endfor %}"/>
+  </svg>
+  {%- endif -%}
+{%- endmacro %}
+{% block content %}
+<section class="g-card g-head">
+  <div>
+    <div class="g-title"><h1>Tendencias</h1></div>
+    <p class="muted small">{{ label }} de cada producto por mes. El color compara con el mes anterior: verde mejora, rojo empeora; cuanto más intenso, mayor el cambio.</p>
+  </div>
+</section>
+
+<section class="g-filters">
+  <div class="g-seg" role="tablist" aria-label="Qué cifra ver">
+    {% for k, (l, f, a) in metrics.items() %}
+    <a href="{{ url_for('tendencias', ver=None if k == 'ventas' else k) }}" class="{{ 'on' if k == metric }}" {% if k == metric %}aria-current="page"{% endif %}>{{ l }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if sin_trafico %}
+<div class="info" role="status">Aún no hay datos de sesiones. Seller Notes descarga el informe de tráfico de Amazon una vez al día; aparecerán tras la próxima descarga.</div>
+{% endif %}
+
+<section class="g-card flush">
+  <div class="table-scroll flat">
+  <table class="tr-table">
+    <thead><tr>
+      <th class="tr-prod">Producto</th><th class="tr-sp">Evolución</th>
+      {% for m, l in months | reverse %}<th class="r">{{ l }}{% if loop.first %}<div class="muted small">día {{ dia }} de {{ dias_mes }}</div>{% endif %}</th>
+        {% if loop.first and total and total.forecast is not none %}<th class="r tr-fc">Previsión<div class="muted small">{{ l }}</div></th>{% endif %}{% endfor %}
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="tr-prod"><strong class="mono small">{{ r.sku }}</strong><div class="muted small">{{ r.nombre[:48] }}</div></td>
+        <td class="tr-sp">{{ spark(r.spark) }}</td>
+        {% for c in r.cells | reverse %}
+          <td class="r tr-cell {{ heat(c.pct) if not loop.first }}"><b>{{ val(c.v) }}</b>{% if not loop.first or True %}<div>{{ chg(c.pct) }}</div>{% endif %}</td>
+          {% if loop.first and total and total.forecast is not none %}<td class="r tr-fc">{{ val(r.forecast) }}</td>{% endif %}
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    {% if total %}
+      <tr class="tr-total">
+        <td class="tr-prod"><strong>Total</strong></td><td class="tr-sp"></td>
+        {% for c in total.cells | reverse %}
+          <td class="r"><b>{{ val(c.v) }}</b><div>{{ chg(c.pct) }}</div></td>
+          {% if loop.first and total.forecast is not none %}<td class="r tr-fc"><b>{{ val(total.forecast) }}</b></td>{% endif %}
+        {% endfor %}
+      </tr>
+    {% endif %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted small pad-x tr-note">El mes en curso va sin color porque aún no está cerrado: compáralo con la columna Previsión (lo que lleva al mismo ritmo hasta fin de mes).
+    {% if metric == 'beneficio' %} Beneficio de producto: antes de publicidad y gastos de la cuenta.{% endif %}
+    {% if metric in ('sesiones', 'conversion') %} Sesiones y conversión del informe de tráfico de Amazon (Business Reports).{% endif %}</p>
+</section>
+{% endblock %}

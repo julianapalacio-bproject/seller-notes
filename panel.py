@@ -801,6 +801,33 @@ def avisos():
                           detail=f"{it['nombre'][:60]}. Restan {eur(-it['efecto'])} a tu beneficio.{motivo}".lstrip(". "),
                           since=None, href=url_for("rentabilidad", rango="30d", _anchor="reembolsos"),
                           cta="Ver reembolsos", asin=asin_of.get(it["sku"])))
+    mb = money_back(con, today)
+    if mb["reclamar"]:
+        n = len(mb["reclamar"])
+        items.append(dict(tone="warn", area="Money Back",
+                          title=f"{n} devolucion{'es' if n > 1 else ''} no recibida{'s' if n > 1 else ''}: puedes reclamar unos {eur(mb['total_reclamar'])}",
+                          detail="Amazon reembolsó al cliente hace más de 45 días, el producto no ha vuelto al almacén y no te ha compensado.",
+                          since=None, href=url_for("money_back_page"), cta="Ver qué reclamar"))
+    roles = missing_roles(con)
+    if roles:
+        que = " y ".join({"envios": "los envíos FBA", "valoraciones": "las valoraciones"}.get(k, k) for k in roles)
+        items.append(dict(tone="warn", area="Amazon", title=f"Tu app de Amazon no deja leer {que}",
+                          detail="; ".join(roles.values()) + ". Añade el rol en Seller Central → Aplicaciones y servicios → "
+                                 "Desarrollar aplicaciones, y vuelve a autorizar la app.",
+                          since=None, href=url_for("envios"), cta="Ver qué falta"))
+    for e in shipments_view(con):
+        if e["reclamar"]:
+            items.append(dict(tone="warn", area="Envíos FBA",
+                              title=f"Faltan {e['faltan']} uds en el envío {e['id']}",
+                              detail=f"Enviaste {e['enviadas']} y Amazon recibió {e['recibidas']} (unos {eur(e['valor'])} de coste). "
+                                     "Puedes abrir un caso de unidades no recibidas en Seller Central.",
+                              since=None, href=url_for("envios", _anchor="e-" + e["id"]), cta="Ver envío"))
+    for pedido, fecha, nota, comentario in negative_feedback(con, today):
+        items.append(dict(tone="bad" if nota <= 2 else "warn", area="Valoraciones",
+                          title=f"Valoración de {nota} estrella{'s' if nota != 1 else ''} en el pedido {pedido}",
+                          detail=(comentario[:160] + " · " if comentario else "") +
+                                 "Puedes responder o pedir a Amazon que la retire si habla del producto o del envío de FBA.",
+                          since=None, href="https://sellercentral.amazon.es/feedback-manager/index.html", cta="Abrir en Seller Central"))
     name_of = {r["sku"]: r["nombre"] or r["sku"] for r in rows}
     for sku, c in rp.settings(con).items():
         if c["activo"] and c["regla_amazon"]:
@@ -1510,6 +1537,197 @@ def costes():
     saved = dict(sku=a["ok"], desde=a.get("desde", ""), coste=float(a.get("coste", 0))) if a.get("ok") else None
     return render_template("costes.html", page="costes", costs=sorted(latest.values(), key=lambda c: c["sku"]),
                            missing=missing, today=datetime.now(sn.TZ).date().isoformat(), saved=saved)
+
+
+RETURN_WAIT_DAYS = 45  # días que Amazon da al cliente para devolver el producto antes de poder reclamarlo
+COMP_REASONS = {"CustomerReturn": "Devolución no recibida", "Lost_Warehouse": "Perdida en el almacén",
+                "Damaged_Warehouse": "Dañada en el almacén", "Lost_Inbound": "Perdida en un envío a Amazon",
+                "CustomerServiceIssue": "Atención al cliente", "Reimbursement_Reversal": "Anulación de compensación",
+                "FeeCorrection": "Corrección de tarifa", "Disposed_Warehouse": "Desechada en el almacén"}
+
+
+def money_back(con, today):
+    """Reembolsos al cliente cuyo producto no ha vuelto al almacén ni te ha compensado Amazon.
+    Pasados 45 días desde el reembolso se pueden reclamar en Seller Central."""
+    rt.ensure_tables(con)
+    refunds = {}
+    for pedido, sku, first, uds, importe in con.execute(
+            "SELECT pedido, sku, MIN(posted), SUM(CASE WHEN concepto='UNIDADES' THEN cantidad ELSE 0 END), "
+            "SUM(CASE WHEN concepto IN ('Principal','ShippingCharge','GiftWrap','Promotion') THEN importe ELSE 0 END) "
+            "FROM fin_lineas WHERE tipo='devolucion' AND sku IS NOT NULL AND pedido != '' GROUP BY pedido, sku"):
+        if uds:
+            refunds[(pedido, sku)] = (first, uds, -importe)
+    returned = defaultdict(int)
+    for pedido, sku, qty in con.execute("SELECT pedido, sku, cantidad FROM devoluciones_fba"):
+        returned[(pedido, sku)] += qty or 0
+    comp = defaultdict(int)
+    for pedido, sku, a, b in con.execute("SELECT pedido, sku, uds_dinero, uds_stock FROM compensaciones WHERE pedido != ''"):
+        comp[(pedido, sku)] += (a or 0) + (b or 0)
+    names = {r[0]: r[6] for r in rt.costs_table(con)}
+    claim, wait = [], []
+    for (pedido, sku), (first, uds, importe) in refunds.items():
+        pend = uds - returned[(pedido, sku)] - comp[(pedido, sku)]
+        if pend <= 0:
+            continue
+        d = rt.local_date(first)
+        days = (today - d).days
+        item = dict(pedido=pedido, sku=sku, nombre=names.get(sku) or sku, fecha=d, dias=days, uds=pend,
+                    importe=importe * pend / uds, faltan=max(0, RETURN_WAIT_DAYS - days))
+        (claim if days >= RETURN_WAIT_DAYS else wait).append(item)
+    claim.sort(key=lambda i: i["fecha"])
+    wait.sort(key=lambda i: i["fecha"])
+    paid = [dict(fecha=rt.local_date(f), pedido=p, motivo=COMP_REASONS.get(m, m), sku=k, importe=i, uds=(a or 0) + (b or 0))
+            for f, p, m, k, i, a, b in con.execute(
+                "SELECT fecha, pedido, motivo, sku, importe, uds_dinero, uds_stock FROM compensaciones ORDER BY fecha DESC")]
+    return dict(reclamar=claim, esperar=wait, pagadas=paid,
+                total_reclamar=sum(i["importe"] for i in claim), total_esperar=sum(i["importe"] for i in wait),
+                total_pagadas=sum(p["importe"] for p in paid),
+                sin_datos=not con.execute("SELECT 1 FROM compensaciones LIMIT 1").fetchone())
+
+
+def negative_feedback(con, today, days=60):
+    """Valoraciones de 1 a 3 estrellas de los últimos días: [(pedido, fecha, nota, comentario)]."""
+    rt.ensure_tables(con)
+    out = []
+    for pedido, fecha, nota, comentario in con.execute(
+            "SELECT pedido, fecha, nota, comentario FROM valoraciones WHERE nota <= 3"):
+        d = None
+        for fmt in ("%d/%m/%y", "%d/%m/%Y", "%m/%d/%y", "%m/%d/%Y", "%Y-%m-%d", "%d.%m.%Y"):
+            try:
+                d = datetime.strptime(fecha[:10], fmt).date()
+                break
+            except ValueError:
+                continue
+        if d and (today - d).days <= days:
+            out.append((pedido, d, nota, comentario))
+    return sorted(out, key=lambda x: x[1], reverse=True)
+
+
+def shipments_view(con):
+    """Envíos a FBA con unidades enviadas, recibidas y diferencia; y los SKU donde faltan unidades."""
+    rt.ensure_tables(con)
+    names, cost = {}, {}
+    for sku, desde, coste, envio, iva, asin, nombre in rt.costs_table(con):
+        names[sku], cost[sku] = nombre, coste + (envio or 0)
+    out = []
+    for sid, nombre, estado, destino, visto in con.execute(
+            "SELECT id, nombre, estado, destino, visto FROM envios_fba WHERE estado != 'DELETED' ORDER BY visto DESC, id DESC"):
+        items = [dict(sku=k, nombre=names.get(k) or k, enviadas=e or 0, recibidas=r or 0, dif=(r or 0) - (e or 0),
+                      coste=cost.get(k)) for k, e, r in con.execute(
+                     "SELECT sku, enviadas, recibidas FROM envio_items WHERE envio=? ORDER BY sku", (sid,))]
+        env, rec = sum(i["enviadas"] for i in items), sum(i["recibidas"] for i in items)
+        falta = [i for i in items if i["dif"] < 0]
+        out.append(dict(id=sid, nombre=nombre, estado=estado, destino=destino, items=items, enviadas=env, recibidas=rec,
+                        pct=100 * rec / env if env else None, faltan=-sum(i["dif"] for i in falta),
+                        valor=sum(-i["dif"] * (i["coste"] or 0) for i in falta),
+                        reclamar=estado == "CLOSED" and bool(falta)))
+    return out
+
+
+SHIPMENT_LABELS = {"WORKING": "Preparando", "READY_TO_SHIP": "Listo para enviar", "SHIPPED": "Enviado",
+                   "IN_TRANSIT": "En tránsito", "DELIVERED": "Entregado", "CHECKED_IN": "Registrado",
+                   "RECEIVING": "Recibiendo", "CLOSED": "Cerrado", "CANCELLED": "Cancelado", "ERROR": "Error"}
+
+
+def missing_roles(con):
+    rt.ensure_tables(con)
+    return dict(con.execute("SELECT clave, mensaje FROM sync_permisos"))
+
+
+@app.route("/envios")
+def envios():
+    con = sn.db()
+    return render_template("envios.html", page="envios", envios=shipments_view(con), labels=SHIPMENT_LABELS,
+                           falta_rol=missing_roles(con).get("envios"),
+                           sin_datos=not con.execute("SELECT 1 FROM envios_fba LIMIT 1").fetchone())
+
+
+@app.route("/rentabilidad/money-back")
+def money_back_page():
+    con = sn.db()
+    today = datetime.now(sn.TZ).date()
+    return render_template("money_back.html", page="money_back_page", mb=money_back(con, today), espera=RETURN_WAIT_DAYS,
+                           envios=[e for e in shipments_view(con) if e["reclamar"]], falta_rol=missing_roles(con).get("envios"))
+
+
+TREND_METRICS = {  # clave: (etiqueta, campo de la fila por SKU o del tráfico, formato, se suma por meses)
+    "ventas": ("Ventas con IVA", "eur", True), "uds": ("Unidades", "int", True),
+    "beneficio": ("Beneficio de producto", "eur", True), "margen": ("Margen", "pct", False),
+    "devueltas": ("Reembolsos (uds)", "int", True), "sesiones": ("Sesiones", "int", True),
+    "conversion": ("Conversión", "pct", False),
+}
+
+
+@app.route("/rentabilidad/tendencias")
+def tendencias():
+    """Producto × mes: la cifra de cada mes, el cambio frente al anterior y la previsión del mes en curso."""
+    con = sn.db()
+    rt.ensure_tables(con)
+    today = datetime.now(sn.TZ).date()
+    metric = request.args.get("ver") if request.args.get("ver") in TREND_METRICS else "ventas"
+    label, fmt, additive = TREND_METRICS[metric]
+    first = datetime.strptime(rt.DEFAULT_FROM, "%Y-%m-%d").date()
+    months, d = [], first
+    while d <= today:
+        months.append(d.strftime("%Y-%m"))
+        d = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+    skus, _ = rt.aggregate(con, first, today, "mes")
+    names = {r[0]: r[6] for r in rt.costs_table(con)}
+    asin_of = {r[0]: r[5] for r in rt.costs_table(con)}
+    traffic = rt.traffic_by_month(con) if metric in ("sesiones", "conversion") else {}
+
+    def value(sku, m):
+        r = skus.get(m, {}).get(sku)
+        if metric in ("sesiones", "conversion"):
+            t = traffic.get((asin_of.get(sku), m))
+            if not t:
+                return None
+            if metric == "sesiones":
+                return t["sesiones"]
+            return 100 * t["uds"] / t["sesiones"] if t["sesiones"] else None
+        if not r:
+            return None
+        if metric == "beneficio":
+            return r["ingresos"] + r["comisiones"] + r["fba"] + r["reembolsos"] - r["coste"]
+        if metric == "margen":
+            b = r["ingresos"] + r["comisiones"] + r["fba"] + r["reembolsos"] - r["coste"]
+            return 100 * b / r["ingresos"] if r["ingresos"] else None
+        return r[metric]
+
+    all_skus = {s for by in skus.values() for s in by}
+    days_in = ((today.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)).day
+    ratio = days_in / today.day  # previsión: lo que va de mes al mismo ritmo
+    rows = []
+    for sku in all_skus:
+        vals = [value(sku, m) for m in months]
+        if not any(v for v in vals):
+            continue
+        cells = []
+        for i, v in enumerate(vals):
+            prev = vals[i - 1] if i else None
+            pct = None
+            if v is not None and prev not in (None, 0) and fmt != "pct":
+                pct = 100 * (v - prev) / abs(prev)
+            elif v is not None and prev is not None and fmt == "pct":
+                pct = v - prev  # en puntos
+            cells.append(dict(v=v, pct=pct))
+        cur = vals[-1]
+        forecast = cur * ratio if additive and cur is not None and today.day < days_in else None
+        last3 = sum(abs(v or 0) for v in vals[-3:])
+        rows.append(dict(sku=sku, nombre=names.get(sku) or sku, asin=asin_of.get(sku), cells=cells, forecast=forecast,
+                         spark=vals, orden=last3))
+    rows.sort(key=lambda r: -r["orden"])
+    total = None
+    if additive:
+        tv = [sum((r["cells"][i]["v"] or 0) for r in rows) for i in range(len(months))]
+        total = dict(cells=[dict(v=v, pct=100 * (v - tv[i - 1]) / abs(tv[i - 1]) if i and tv[i - 1] else None)
+                            for i, v in enumerate(tv)],
+                     forecast=tv[-1] * ratio if today.day < days_in else None)
+    return render_template("tendencias.html", page="tendencias", rows=rows, total=total, metric=metric,
+                           metrics=TREND_METRICS, label=label, fmt=fmt,
+                           months=[(m, period_label(m, "mes")) for m in months],
+                           sin_trafico=metric in ("sesiones", "conversion") and not traffic,
+                           dia=today.day, dias_mes=days_in)
 
 
 @app.route("/rentabilidad/gastos", methods=["GET", "POST"])

@@ -50,6 +50,20 @@ def ensure_tables(con):
         CREATE TABLE IF NOT EXISTS pagos (  -- liquidaciones de Amazon: la abierta es el próximo pago
             grupo TEXT PRIMARY KEY, inicio TEXT, fin TEXT, estado TEXT, transferencia TEXT, total REAL,
             fecha_pago TEXT, moneda TEXT);
+        CREATE TABLE IF NOT EXISTS compensaciones (  -- informe de reembolsos de Amazon al vendedor (FBA)
+            id TEXT PRIMARY KEY, fecha TEXT, pedido TEXT, motivo TEXT, sku TEXT, importe REAL,
+            uds_dinero INTEGER, uds_stock INTEGER);
+        CREATE TABLE IF NOT EXISTS envios_fba (  -- envíos a los almacenes de Amazon (Fulfillment Inbound API)
+            id TEXT PRIMARY KEY, nombre TEXT, estado TEXT, destino TEXT, visto TEXT, actualizado TEXT);
+        CREATE TABLE IF NOT EXISTS envio_items (
+            envio TEXT, sku TEXT, enviadas INTEGER, recibidas INTEGER, PRIMARY KEY (envio, sku));
+        CREATE TABLE IF NOT EXISTS valoraciones (  -- valoraciones de vendedor (sin datos del comprador)
+            pedido TEXT, fecha TEXT, nota INTEGER, comentario TEXT, respuesta TEXT, PRIMARY KEY (pedido, fecha));
+        CREATE TABLE IF NOT EXISTS sync_permisos (  -- informes que Amazon no deja descargar por falta de un rol
+            clave TEXT PRIMARY KEY, mensaje TEXT, ts TEXT);
+        CREATE TABLE IF NOT EXISTS trafico (  -- informe de ventas y tráfico: sesiones y conversión por ASIN y día
+            fecha TEXT, asin TEXT, sesiones INTEGER, paginas INTEGER, uds INTEGER, pedidos INTEGER, buybox REAL,
+            PRIMARY KEY (fecha, asin));
         CREATE TABLE IF NOT EXISTS tarifas_estimadas (  -- tarifa de Amazon para SKUs aún sin ventas liquidadas
             sku TEXT PRIMARY KEY, fecha TEXT, comision REAL, fba REAL);
     """)
@@ -267,6 +281,209 @@ def estimate_new_fees(con, items):
                             (sku, today, -(total - fba) * 1.03 / p, -fba))
 
 
+def request_reports(specs, progress=print, wait_minutes=15):
+    """Pide varios informes a la vez y devuelve {clave: bytes del documento o None si Amazon no lo da}.
+    specs = {clave: (tipo de informe, opciones extra del cuerpo)}."""
+    import gzip
+    base = f"{sn.ENDPOINT}/reports/2021-06-30"
+    hdr = lambda: {"x-amz-access-token": sn.access_token(), "content-type": "application/json"}
+    ids, out = {}, {}
+    for key, (rtype, extra) in specs.items():
+        for attempt in range(6):  # Amazon deja pedir pocos informes seguidos: si dice 429, se espera y se repite
+            r = requests.post(f"{base}/reports", headers=hdr(), timeout=60,
+                              json={"reportType": rtype, "marketplaceIds": [sn.MARKETPLACE_ID], **extra})
+            if r.status_code != 429:
+                break
+            time.sleep(60)
+        if r.status_code in (401, 403):
+            raise PermissionError(f"Amazon no da acceso al informe {rtype}: falta un rol en la app de SP-API")
+        r.raise_for_status()
+        ids[key] = r.json()["reportId"]
+        time.sleep(1)
+    deadline = time.time() + wait_minutes * 60
+    while ids and time.time() < deadline:
+        time.sleep(15)
+        for key, rid in list(ids.items()):
+            st = requests.get(f"{base}/reports/{rid}", headers=hdr(), timeout=60).json()
+            if st.get("processingStatus") not in ("DONE", "CANCELLED", "FATAL"):
+                continue
+            del ids[key]
+            out[key] = None
+            if st["processingStatus"] == "DONE":
+                doc = requests.get(f"{base}/documents/{st['reportDocumentId']}", headers=hdr(), timeout=60).json()
+                raw = requests.get(doc["url"], timeout=120).content
+                out[key] = gzip.decompress(raw) if doc.get("compressionAlgorithm") == "GZIP" else raw
+    for key in ids:
+        out[key] = None
+        progress(f"El informe {key} no estuvo listo a tiempo")
+    return out
+
+
+def sync_reimbursements(progress=print):
+    """Compensaciones de Amazon (devoluciones no recibidas, unidades perdidas o dañadas en el almacén)."""
+    raw = request_reports({"r": ("GET_FBA_REIMBURSEMENTS_DATA", {"dataStartTime": DEFAULT_FROM + "T00:00:00Z"})},
+                          progress)["r"]
+    if raw is None:
+        return 0
+    lines = [l.split("\t") for l in raw.decode("utf-8", "replace").strip().splitlines()]
+    rows = []
+    for x in (dict(zip(lines[0], l)) for l in lines[1:]):
+        num = lambda k: float(x.get(k) or 0)
+        rows.append((x["reimbursement-id"] + "|" + x.get("sku", ""), x["approval-date"], x.get("amazon-order-id") or "",
+                     x.get("reason") or "", x.get("sku") or "", num("amount-total"),
+                     int(num("quantity-reimbursed-cash")), int(num("quantity-reimbursed-inventory"))))
+    con = sn.db()
+    ensure_tables(con)
+    with con:
+        con.executemany("INSERT OR REPLACE INTO compensaciones VALUES (?,?,?,?,?,?,?,?)", rows)
+    progress(f"{len(rows)} compensaciones de Amazon")
+    return len(rows)
+
+
+def sync_traffic(progress=print, full=False):
+    """Sesiones, páginas vistas y conversión por ASIN y mes (informe de ventas y tráfico de Amazon).
+    Se piden los meses que faltan y siempre el mes en curso y el anterior (Amazon los completa con retraso)."""
+    con = sn.db()
+    ensure_tables(con)
+    today = datetime.now(sn.TZ).date()
+    have = {r[0] for r in con.execute("SELECT DISTINCT fecha FROM trafico")}
+    months, d = [], date.fromisoformat(DEFAULT_FROM)
+    while d <= today:
+        months.append(d)
+        d = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+    recent = {m for m in months if (today.year - m.year) * 12 + today.month - m.month <= 1}
+    todo = [m for m in months if full or m in recent or m.isoformat() not in have]
+    specs = {}
+    for m in todo:
+        last = min((m.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1), today - timedelta(days=1))
+        if last < m:
+            continue
+        specs[m.isoformat()] = ("GET_SALES_AND_TRAFFIC_REPORT", {
+            "dataStartTime": m.isoformat(), "dataEndTime": last.isoformat(),
+            "reportOptions": {"dateGranularity": "MONTH", "asinGranularity": "CHILD"}})
+    if not specs:
+        return 0
+    import json
+    n = 0
+    for month, raw in request_reports(specs, progress).items():
+        if raw is None:
+            continue
+        rows = []
+        for a in json.loads(raw).get("salesAndTrafficByAsin") or []:
+            t, s_ = a.get("trafficByAsin") or {}, a.get("salesByAsin") or {}
+            rows.append((month, a.get("childAsin"), t.get("sessions") or 0, t.get("pageViews") or 0,
+                         s_.get("unitsOrdered") or 0, s_.get("totalOrderItems") or 0, t.get("buyBoxPercentage")))
+        with con:
+            con.execute("DELETE FROM trafico WHERE fecha=?", (month,))
+            con.executemany("INSERT INTO trafico VALUES (?,?,?,?,?,?,?)", rows)
+        n += len(rows)
+    progress(f"Tráfico: {len(specs)} meses, {n} filas")
+    return n
+
+
+SHIPMENT_STATES = "WORKING,READY_TO_SHIP,SHIPPED,RECEIVING,CANCELLED,DELETED,CLOSED,ERROR,IN_TRANSIT,DELIVERED,CHECKED_IN"
+
+
+def _permission(con, key, error=None):
+    """Anota (o borra, si error es None) que Amazon no deja descargar algo por falta de un rol en la app."""
+    with con:
+        if error:
+            con.execute("INSERT OR REPLACE INTO sync_permisos VALUES (?,?,?)",
+                        (key, str(error)[:300], datetime.now(timezone.utc).isoformat()))
+        else:
+            con.execute("DELETE FROM sync_permisos WHERE clave=?", (key,))
+
+
+def sync_shipments(progress=print):
+    """Envíos a FBA y, por SKU, unidades enviadas y recibidas (para ver si Amazon perdió alguna al recibirlas).
+    Necesita el rol «Amazon Fulfillment» en la app de SP-API."""
+    con = sn.db()
+    ensure_tables(con)
+    hdr = lambda: {"x-amz-access-token": sn.access_token()}
+    params = {"MarketplaceId": sn.MARKETPLACE_ID, "QueryType": "SHIPMENT", "ShipmentStatusList": SHIPMENT_STATES}
+    shipments = []
+    while True:
+        r = requests.get(f"{sn.ENDPOINT}/fba/inbound/v0/shipments", params=params, headers=hdr(), timeout=60)
+        if r.status_code in (401, 403):
+            _permission(con, "envios", "Falta el rol «Amazon Fulfillment» en la app de SP-API")
+            raise PermissionError("Amazon no da acceso a los envíos FBA: falta el rol «Amazon Fulfillment»")
+        if r.status_code == 429:
+            time.sleep(5)
+            continue
+        r.raise_for_status()
+        p = r.json().get("payload") or {}
+        shipments += p.get("ShipmentData") or []
+        if not p.get("NextToken"):
+            break
+        params = {"MarketplaceId": sn.MARKETPLACE_ID, "QueryType": "NEXT_TOKEN", "NextToken": p["NextToken"]}
+        time.sleep(2)
+    _permission(con, "envios")
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    known = {i: (e, v) for i, e, v in con.execute("SELECT id, estado, visto FROM envios_fba")}
+    for sh in shipments:
+        sid, state = sh["ShipmentId"], sh.get("ShipmentStatus")
+        old = known.get(sid)
+        with con:
+            con.execute("INSERT OR REPLACE INTO envios_fba VALUES (?,?,?,?,?,?)",
+                        (sid, sh.get("ShipmentName") or sid, state, sh.get("DestinationFulfillmentCenterId") or "",
+                         old[1] if old else now, now))
+        if state in ("CANCELLED", "DELETED") or (old and old[0] == "CLOSED" and state == "CLOSED"):
+            continue  # un envío cerrado ya no cambia: no hace falta volver a pedir sus artículos
+        items, ip = [], {"MarketplaceId": sn.MARKETPLACE_ID}
+        while True:
+            time.sleep(2)  # 2 peticiones por segundo como mucho
+            r = requests.get(f"{sn.ENDPOINT}/fba/inbound/v0/shipments/{sid}/items", params=ip, headers=hdr(), timeout=60)
+            if r.status_code == 429:
+                time.sleep(5)
+                continue
+            r.raise_for_status()
+            p = r.json().get("payload") or {}
+            items += p.get("ItemData") or []
+            if not p.get("NextToken"):
+                break
+            ip = {"MarketplaceId": sn.MARKETPLACE_ID, "QueryType": "NEXT_TOKEN", "NextToken": p["NextToken"]}
+        with con:
+            con.execute("DELETE FROM envio_items WHERE envio=?", (sid,))
+            con.executemany("INSERT OR REPLACE INTO envio_items VALUES (?,?,?,?)",
+                            [(sid, it.get("SellerSKU"), it.get("QuantityShipped") or 0, it.get("QuantityReceived") or 0)
+                             for it in items])
+    progress(f"{len(shipments)} envíos FBA")
+    return len(shipments)
+
+
+def sync_feedback(progress=print):
+    """Valoraciones de vendedor (1 a 5 estrellas). No se guarda nada del comprador.
+    Necesita el rol «Selling Partner Insights» en la app de SP-API."""
+    con = sn.db()
+    ensure_tables(con)
+    try:
+        raw = request_reports({"f": ("GET_SELLER_FEEDBACK_DATA", {"dataStartTime": DEFAULT_FROM + "T00:00:00Z"})},
+                              progress)["f"]
+    except PermissionError as e:
+        _permission(con, "valoraciones", "Falta el rol «Selling Partner Insights» en la app de SP-API")
+        raise e
+    _permission(con, "valoraciones")
+    if raw is None:
+        return 0
+    lines = [l.split("\t") for l in raw.decode("utf-8", "replace").strip().splitlines()]
+    head = [h.strip().lower() for h in lines[0]]
+    col = lambda *names: next((i for i, h in enumerate(head) if any(n in h for n in names)), None)
+    c_date, c_rating, c_comment = col("date", "fecha"), col("rating", "puntu"), col("comment", "coment")
+    c_resp, c_order = col("response", "respuesta"), col("order", "pedido")
+    rows = []
+    for l in lines[1:]:
+        get = lambda c: l[c].strip() if c is not None and c < len(l) else ""
+        try:
+            nota = int(float(get(c_rating)))
+        except ValueError:
+            continue
+        rows.append((get(c_order), get(c_date), nota, get(c_comment)[:500], get(c_resp)[:500]))
+    with con:
+        con.executemany("INSERT OR REPLACE INTO valoraciones VALUES (?,?,?,?,?)", rows)
+    progress(f"{len(rows)} valoraciones")
+    return len(rows)
+
+
 def sync_payouts(progress=print):
     """Liquidaciones de Amazon (grupos de movimientos): las cerradas son pagos hechos; la abierta, el próximo."""
     params, groups = {"FinancialEventGroupStartedAfter": DEFAULT_FROM + "T00:00:00Z", "MaxResultsPerPage": 100}, []
@@ -343,6 +560,11 @@ def sync(full=False, progress=print, returns=True):
         progress(f"No se pudieron leer los pagos de Amazon: {e}")
     if returns:
         sync_returns(progress)
+        for extra in (sync_reimbursements, sync_traffic, sync_shipments, sync_feedback):  # informes diarios: si uno falla, los demás siguen
+            try:
+                extra(progress)
+            except Exception as e:
+                progress(f"{extra.__name__}: {e}")
     return len(rows)
 
 
@@ -598,6 +820,16 @@ def indirect_by_day(con, start=None, end=None):
             share = importe / (nxt - d.replace(day=1)).days
             out[(d, concepto)] = out.get((d, concepto), 0.0) + share
             d += timedelta(days=1)
+    return out
+
+
+def traffic_by_month(con):
+    """{(asin, AAAA-MM): {sesiones, paginas, uds}} del informe de ventas y tráfico de Amazon."""
+    ensure_tables(con)
+    out = {}
+    for asin, mes, ses, pag, uds in con.execute(
+            "SELECT asin, substr(fecha, 1, 7), SUM(sesiones), SUM(paginas), SUM(uds) FROM trafico GROUP BY 1, 2"):
+        out[(asin, mes)] = dict(sesiones=ses or 0, paginas=pag or 0, uds=uds or 0)
     return out
 
 

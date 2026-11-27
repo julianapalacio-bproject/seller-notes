@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block body_class %}glass navy{% endblock %}
+{% macro eur(v) %}{{ ('{:,.2f}'.format(v)).replace(',', ' ').replace('.', ',').replace(' ', '.') ~ ' €' }}{% endmacro %}
+{% block content %}
+<section class="g-card g-head">
+  <div>
+    <div class="g-title"><h1>Envíos FBA</h1></div>
+    <p class="muted small">Unidades que enviaste a los almacenes de Amazon y las que Amazon ha recibido. Si un envío se cierra con unidades de menos, puedes reclamarlas.</p>
+  </div>
+</section>
+
+{% if falta_rol %}
+<div class="alert notice-row" role="alert"><p><b>Amazon no deja leer tus envíos todavía.</b>
+  A tu app de SP-API le falta el rol <b>«Amazon Fulfillment»</b>. Añádelo en Seller Central → Aplicaciones y servicios → Desarrollar aplicaciones → Editar la app,
+  y vuelve a autorizarla. En cuanto esté, Seller Notes cargará los envíos en la siguiente descarga diaria.</p></div>
+{% elif sin_datos %}
+<div class="info" role="status">Aún no se han descargado tus envíos. Seller Notes los pide una vez al día.</div>
+{% endif %}
+
+{% for e in envios %}
+<section class="g-card flush sh-card {{ 'is-bad' if e.reclamar }}" id="e-{{ e.id }}">
+  <div class="g-card-head pad">
+    <div><h2 class="sec mono">{{ e.id }}</h2><p class="muted small">{{ e.nombre }}{{ ' · ' ~ e.destino if e.destino }}</p></div>
+    <div class="sh-head-r">
+      <span class="pill {{ 'ok' if e.estado == 'CLOSED' and not e.faltan else 'bad' if e.reclamar else 'ink' }}">{{ labels.get(e.estado, e.estado) }}</span>
+      {% if e.pct is not none %}<b class="sh-pct">{{ '%.0f' % e.pct }} %</b><span class="muted small">{{ e.recibidas }} de {{ e.enviadas }} uds</span>{% endif %}
+    </div>
+  </div>
+  {% if e.pct is not none %}<div class="sh-bar pad-x"><span style="width: {{ '%.1f' % ([e.pct, 100] | min) }}%"></span></div>{% endif %}
+  {% if e.items %}
+  <div class="table-scroll flat">
+  <table>
+    <thead><tr><th>SKU</th><th class="r">Enviadas</th><th class="r">Recibidas</th><th class="r">Diferencia</th></tr></thead>
+    <tbody>{% for i in e['items'] %}
+      <tr><td><strong class="mono small">{{ i.sku }}</strong><div class="muted small">{{ i.nombre[:50] }}</div></td>
+        <td class="r mono">{{ i.enviadas }}</td><td class="r mono">{{ i.recibidas }}</td>
+        <td class="r mono {{ 'neg' if i.dif < 0 }}">{{ i.dif if i.dif else '—' }}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+  </div>
+  {% endif %}
+  {% if e.reclamar %}<p class="small pad-x sh-claim"><b>Faltan {{ e.faltan }} uds (unos {{ eur(e.valor) }} de coste).</b>
+    En Seller Central abre el envío en <b>Envíos a Amazon</b> y usa «Investigar envío» / «Unidades no recibidas» antes de que pase el plazo de reclamación.</p>{% endif %}
+</section>
+{% endfor %}
+{% endblock %}

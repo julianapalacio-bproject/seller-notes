@@ -1618,3 +1618,43 @@ body.glass .ls-flags a.ok { background: var(--ok-bg); color: var(--ok-ink); bord
 .ls-flags a.is-on { outline: 2px solid currentColor; outline-offset: 1px; }
 a.rp-pill-link { text-decoration: none; cursor: pointer; }
 a.rp-pill-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Money Back */
+.mb-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 0; padding-top: 0; }
+.mb-stats b { font-size: 22px; }
+.mb-how { padding-bottom: 18px; }
+.mb-how h3 { margin: 14px 0 6px; }
+.mb-how ol { margin: 0 0 12px; padding-left: 18px; line-height: 1.6; }
+.mb-ids { display: block; width: 100%; max-width: 360px; box-sizing: border-box; margin: 4px 0 8px; font-size: 12px; resize: vertical; }
+@media (max-width: 600px) { .mb-stats { grid-template-columns: 1fr; gap: 12px; } }
+
+/* Tendencias */
+.tr-table th, .tr-table td { white-space: nowrap; }
+.tr-table .tr-prod { position: sticky; left: 0; background: var(--card); z-index: 1; min-width: 180px; max-width: 240px; white-space: normal; }
+.tr-cell b, .tr-total b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.tr-chg { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.tr-chg.up { color: var(--ok); }
+.tr-chg.down { color: var(--bad); }
+body:not(#_) .tr-table td.tr-cell.hg1 { background: color-mix(in srgb, var(--ok) 8%, transparent); }
+body:not(#_) .tr-table td.tr-cell.hg2 { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+body:not(#_) .tr-table td.tr-cell.hg3 { background: color-mix(in srgb, var(--ok) 26%, transparent); }
+body:not(#_) .tr-table td.tr-cell.hg4 { background: color-mix(in srgb, var(--ok) 38%, transparent); }
+body:not(#_) .tr-table td.tr-cell.hb1 { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+body:not(#_) .tr-table td.tr-cell.hb2 { background: color-mix(in srgb, var(--bad) 16%, transparent); }
+body:not(#_) .tr-table td.tr-cell.hb3 { background: color-mix(in srgb, var(--bad) 26%, transparent); }
+body:not(#_) .tr-table td.tr-cell.hb4 { background: color-mix(in srgb, var(--bad) 38%, transparent); }
+.tr-fc { color: var(--muted); border-left: 1px dashed var(--line); }
+.tr-total td { border-top: 2px solid var(--line); }
+.tr-spark { width: 84px; height: 24px; display: block; }
+.tr-spark polyline { fill: none; stroke: var(--text); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.tr-note { margin: 10px 0 16px; }
+
+/* Envíos FBA */
+.sh-card.is-bad { box-shadow: inset 3px 0 0 var(--bad); }
+.sh-head-r { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.sh-pct { font-size: 20px; font-variant-numeric: tabular-nums; }
+.sh-bar { height: 6px; margin: 0 22px 12px; padding: 0; background: var(--line); }
+.sh-bar span { display: block; height: 100%; background: var(--ink, #111); }
+.sh-card.is-bad .sh-bar span { background: var(--bad); }
+.sh-claim { margin: 10px 0 16px; }
+@media (max-width: 600px) { .tr-table .tr-sp { display: none; } .tr-table .tr-prod { min-width: 120px; max-width: 140px; } }
